@@ -22,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import useToast from "@/hooks/useToast";
 import { updateProfile } from "./actions";
+import { getInitials, getAvatarUrl } from "@/lib/utils/avatar";
 
 // Define the form schema
 const profileFormSchema = z.object({
@@ -60,17 +61,6 @@ export function EditProfileForm({ user, profile }: EditProfileFormProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
-  // Get user initials for avatar fallback
-  const getInitials = (name: string) => {
-    if (!name) return "U";
-    return name
-      .split(" ")
-      .map((part) => part?.[0] || "")
-      .join("")
-      .toUpperCase()
-      .substring(0, 2);
-  };
-
   // Default values from the existing profile
   const defaultValues: Partial<ProfileFormValues> = {
     full_name: profile?.full_name || "",
@@ -95,6 +85,7 @@ export function EditProfileForm({ user, profile }: EditProfileFormProps) {
 
       toast.success("Your profile has been updated successfully.");
 
+      // Use router.refresh() to refresh the page data without losing URL state
       router.refresh();
     } catch (error) {
       console.error(error);
@@ -110,7 +101,10 @@ export function EditProfileForm({ user, profile }: EditProfileFormProps) {
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
           <Avatar className="h-24 w-24 border-2 border-border">
             <AvatarImage
-              src={form.watch("avatar_url") || ""}
+              src={getAvatarUrl(
+                form.watch("avatar_url"),
+                form.watch("full_name") || user?.email || ""
+              )}
               alt={form.watch("full_name") || user?.email || ""}
             />
             <AvatarFallback className="text-xl font-semibold bg-primary/10">

@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import AppSidebar from "./components/app-sidebar";
-import PageTitle from "./components/page-title";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { AppSidebar } from "./components/app-sidebar";
+import { SiteHeader } from "./components/site-header";
 
 export default async function DashboardLayout({
   children,
@@ -27,16 +27,17 @@ export default async function DashboardLayout({
 
   return (
     <SidebarProvider defaultOpen={defaultOpen}>
-      <div className="flex h-screen">
-        <AppSidebar />
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
-          <div className="flex items-center mb-6">
-            <SidebarTrigger />
-            <PageTitle />
+      <AppSidebar variant="inset" />
+      <SidebarInset>
+        <SiteHeader />
+        <div className="flex flex-1 flex-col">
+          <div className="@container/main flex flex-1 flex-col gap-2">
+            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+              <div className="px-4 lg:px-6">{children}</div>
+            </div>
           </div>
-          {children}
-        </main>
-      </div>
+        </div>
+      </SidebarInset>
     </SidebarProvider>
   );
 }

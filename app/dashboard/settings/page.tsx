@@ -1,41 +1,117 @@
-import { createClient } from "@/lib/supabase/server"
-import { getUserRole } from "@/app/auth/actions"
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { Typography } from "@/components/ui/typography"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Separator } from "@/components/ui/separator"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { EditProfileForm } from "./edit-profile-form"
+"use client";
 
-export default async function SettingsPage() {
-  const supabase = await createClient()
-  const userRole = await getUserRole()
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Typography } from "@/components/ui/typography";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EditProfileForm } from "./edit-profile-form";
+import { getInitials, getAvatarUrl } from "@/lib/utils/avatar";
+import { useQueryState, parseAsStringLiteral } from "nuqs";
+import { User } from "@supabase/supabase-js";
 
-  // Get user data
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+// Define valid tab values
+const TABS = ["profile", "account", "permissions"] as const;
 
-  // Fetch user profile
-  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user?.id).single()
+// Define types for our state
+interface Profile {
+  id: string;
+  full_name?: string | null;
+  avatar_url?: string | null;
+  username?: string | null;
+  bio?: string | null;
+  updated_at?: string;
+  created_at?: string;
+}
 
-  // Fetch role permissions
-  const { data: rolePermissions } = await supabase
-    .from("role_permissions")
-    .select("*")
-    .order("role", { ascending: true })
-    .order("permission", { ascending: true })
+// TODO: organize the types properly
+interface RolePermission {
+  role: string;
+  permission: string;
+  id?: string;
+  created_at?: string;
+  updated_at?: string;
+}
 
-  // Get user initials for avatar fallback
-  const getInitials = (name: string) => {
-    if (!name) return "U"
-    return name
-      .split(" ")
-      .map((part) => part[0])
-      .join("")
-      .toUpperCase()
-      .substring(0, 2)
+export default function SettingsPage() {
+  const supabase = createClient();
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [rolePermissions, setRolePermissions] = useState<RolePermission[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Use nuqs to manage the active tab in the URL
+  const [activeTab, setActiveTab] = useQueryState(
+    "tab",
+    parseAsStringLiteral(TABS).withDefault("profile")
+  );
+
+  // Fetch data on component mount
+  useEffect(() => {
+    async function fetchData() {
+      setIsLoading(true);
+
+      try {
+        // Get user data
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        setUser(user);
+
+        // Get user role
+        const { data: userRolesData } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user?.id)
+          .single();
+        setUserRole(userRolesData?.role || null);
+
+        // Fetch user profile
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user?.id)
+          .single();
+        setProfile(profileData);
+
+        // Fetch role permissions
+        const { data: permissionsData } = await supabase
+          .from("role_permissions")
+          .select("*")
+          .order("role", { ascending: true })
+          .order("permission", { ascending: true });
+        setRolePermissions(permissionsData || []);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchData();
+  }, [supabase]);
+
+  // Show loading state if data is still loading
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold">Settings</h1>
+        </div>
+        <div className="flex items-center justify-center p-8">
+          <Typography>Loading settings...</Typography>
+        </div>
+      </div>
+    );
   }
+
+  // Handle tab change
+  const handleTabChange = (value: string) => {
+    setActiveTab(value as (typeof TABS)[number]);
+  };
 
   return (
     <div className="space-y-6">
@@ -43,7 +119,11 @@ export default async function SettingsPage() {
         <h1 className="text-3xl font-bold">Settings</h1>
       </div>
 
-      <Tabs defaultValue="profile" className="w-full">
+      <Tabs
+        value={activeTab}
+        onValueChange={handleTabChange}
+        className="w-full"
+      >
         <TabsList className="mb-4">
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="account">Account</TabsTrigger>
@@ -68,7 +148,13 @@ export default async function SettingsPage() {
             <Card>
               <CardHeader className="flex flex-row items-center gap-4">
                 <Avatar className="h-16 w-16">
-                  <AvatarImage src={profile?.avatar_url || ""} alt={profile?.full_name || user?.email || ""} />
+                  <AvatarImage
+                    src={getAvatarUrl(
+                      profile?.avatar_url,
+                      profile?.full_name || user?.email || ""
+                    )}
+                    alt={profile?.full_name || user?.email || ""}
+                  />
                   <AvatarFallback className="text-lg">
                     {getInitials(profile?.full_name || user?.email || "")}
                   </AvatarFallback>
@@ -86,31 +172,47 @@ export default async function SettingsPage() {
                   <Separator className="my-2" />
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <Typography variant="smallText" className="text-muted-foreground">
+                      <Typography
+                        variant="smallText"
+                        className="text-muted-foreground"
+                      >
                         Role
                       </Typography>
                       <Typography variant="smallText">{userRole}</Typography>
                     </div>
                     <div className="flex justify-between">
-                      <Typography variant="smallText" className="text-muted-foreground">
+                      <Typography
+                        variant="smallText"
+                        className="text-muted-foreground"
+                      >
                         Email
                       </Typography>
                       <Typography variant="smallText">{user?.email}</Typography>
                     </div>
                     <div className="flex justify-between">
-                      <Typography variant="smallText" className="text-muted-foreground">
+                      <Typography
+                        variant="smallText"
+                        className="text-muted-foreground"
+                      >
                         Last Sign In
                       </Typography>
                       <Typography variant="smallText">
-                        {user?.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString() : "N/A"}
+                        {user?.last_sign_in_at
+                          ? new Date(user.last_sign_in_at).toLocaleString()
+                          : "N/A"}
                       </Typography>
                     </div>
                     <div className="flex justify-between">
-                      <Typography variant="smallText" className="text-muted-foreground">
+                      <Typography
+                        variant="smallText"
+                        className="text-muted-foreground"
+                      >
                         Created At
                       </Typography>
                       <Typography variant="smallText">
-                        {user?.created_at ? new Date(user.created_at).toLocaleString() : "N/A"}
+                        {user?.created_at
+                          ? new Date(user.created_at).toLocaleString()
+                          : "N/A"}
                       </Typography>
                     </div>
                   </div>
@@ -124,24 +226,40 @@ export default async function SettingsPage() {
                     <Separator className="my-2" />
                     <div className="space-y-2">
                       <div className="flex justify-between">
-                        <Typography variant="smallText" className="text-muted-foreground">
+                        <Typography
+                          variant="smallText"
+                          className="text-muted-foreground"
+                        >
                           User ID
                         </Typography>
-                        <Typography variant="smallText" className="font-mono text-xs">
+                        <Typography
+                          variant="smallText"
+                          className="font-mono text-xs"
+                        >
                           {user?.id}
                         </Typography>
                       </div>
                       <div className="flex justify-between">
-                        <Typography variant="smallText" className="text-muted-foreground">
+                        <Typography
+                          variant="smallText"
+                          className="text-muted-foreground"
+                        >
                           Email Confirmed
                         </Typography>
-                        <Typography variant="smallText">{user?.email_confirmed_at ? "Yes" : "No"}</Typography>
+                        <Typography variant="smallText">
+                          {user?.email_confirmed_at ? "Yes" : "No"}
+                        </Typography>
                       </div>
                       <div className="flex justify-between">
-                        <Typography variant="smallText" className="text-muted-foreground">
+                        <Typography
+                          variant="smallText"
+                          className="text-muted-foreground"
+                        >
                           Auth Provider
                         </Typography>
-                        <Typography variant="smallText">{user?.app_metadata?.provider || "email"}</Typography>
+                        <Typography variant="smallText">
+                          {user?.app_metadata?.provider || "email"}
+                        </Typography>
                       </div>
                     </div>
                   </div>
@@ -155,7 +273,9 @@ export default async function SettingsPage() {
                   <CardTitle>Superadmin Settings</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Typography variant="mutedText">You need superadmin privileges to access these settings.</Typography>
+                  <Typography variant="mutedText">
+                    You need superadmin privileges to access these settings.
+                  </Typography>
                 </CardContent>
               </Card>
             )}
@@ -173,8 +293,12 @@ export default async function SettingsPage() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-border bg-muted/50">
-                        <th className="px-4 py-3 text-left text-sm font-medium">Role</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium">Permission</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">
+                          Role
+                        </th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">
+                          Permission
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -193,5 +317,5 @@ export default async function SettingsPage() {
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }

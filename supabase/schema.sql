@@ -45,13 +45,13 @@ INSERT INTO public.role_permissions (role, permission) VALUES
   ('superadmin', 'users.delete'),
   ('superadmin', 'settings.read'),
   ('superadmin', 'settings.write'),
-  
+
   -- Admin permissions (most permissions, but limited)
   ('admin', 'dashboard.access'),
   ('admin', 'users.read'),
   ('admin', 'users.write'),
   ('admin', 'settings.read'),
-  
+
   -- Regular user permissions (limited access)
   ('user', 'dashboard.access');
 
@@ -65,30 +65,56 @@ DECLARE
 BEGIN
   -- Get the user's role from JWT claims
   SELECT (auth.jwt() ->> 'user_role')::public.app_role INTO user_role;
-  
+
   -- Count matching permissions for the user's role
   SELECT COUNT(*)
   INTO bind_permissions
   FROM public.role_permissions
   WHERE role_permissions.permission = requested_permission
     AND role_permissions.role = user_role;
-    
+
   RETURN bind_permissions > 0;
 END;
 $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
 
 -- Create function to set user role in JWT claims
-CREATE OR REPLACE FUNCTION public.handle_new_user() 
+CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+  avatar_url TEXT;
 BEGIN
+  -- Check for avatar_url in user metadata (from OAuth providers)
+  -- For Google, the avatar URL is in the user's metadata
+  IF NEW.raw_user_meta_data->>'avatar_url' IS NOT NULL THEN
+    avatar_url := NEW.raw_user_meta_data->>'avatar_url';
+  -- For Google specifically, it might also be in the identity provider data
+  ELSIF NEW.identities IS NOT NULL AND jsonb_array_length(NEW.identities) > 0 THEN
+    -- Check if the identity is from Google
+    IF NEW.identities[0]->>'provider' = 'google' THEN
+      -- Try to get the picture URL from identity data
+      avatar_url := NEW.identities[0]->'identity_data'->>'picture';
+    -- Check if the identity is from Facebook
+    ELSIF NEW.identities[0]->>'provider' = 'facebook' THEN
+      -- Try to get the picture URL from identity data
+      avatar_url := NEW.identities[0]->'identity_data'->>'picture';
+    END IF;
+  ELSE
+    avatar_url := NULL;
+  END IF;
+
   -- Insert into public.profiles
   INSERT INTO public.profiles (id, full_name, avatar_url, updated_at)
-  VALUES (NEW.id, NEW.raw_user_meta_data->>'full_name', NULL, NOW());
-  
+  VALUES (
+    NEW.id,
+    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.identities[0]->'identity_data'->>'full_name', NEW.identities[0]->'identity_data'->>'name'),
+    avatar_url,
+    NOW()
+  );
+
   -- Assign default 'user' role
   INSERT INTO public.user_roles (user_id, role)
   VALUES (NEW.id, 'user');
-  
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -109,22 +135,22 @@ DECLARE
   user_role public.app_role;
 BEGIN
   -- Fetch the user role from the user_roles table
-  SELECT role INTO user_role 
-  FROM public.user_roles 
+  SELECT role INTO user_role
+  FROM public.user_roles
   WHERE user_id = (event->>'user_id')::UUID;
-  
+
   claims := event->'claims';
-  
+
   IF user_role IS NOT NULL THEN
     -- Set the claim
     claims := jsonb_set(claims, '{user_role}', to_jsonb(user_role));
   ELSE
     claims := jsonb_set(claims, '{user_role}', '"user"');
   END IF;
-  
+
   -- Update the 'claims' object in the original event
   event := jsonb_set(event, '{claims}', claims);
-  
+
   -- Return the modified event
   RETURN event;
 END;
