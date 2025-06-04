@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode } from "react";
+import React, { ReactNode } from "react";
 import { useUser, useProfile } from "@/hooks/use-auth";
 import { getAvatarUrl } from "@/lib/utils/avatar";
 
