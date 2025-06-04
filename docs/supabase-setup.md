@@ -109,3 +109,7 @@ The application has two user roles with different permissions:
 
 - Verify that the role permissions are correctly set up in the `role_permissions` table
 - Check that users have the correct roles assigned in the `user_roles` table
+- If you see "permission denied for table user_roles" as an admin,
+  ensure `custom_access_token_hook` is enabled under **Auth → Hooks** and
+  refresh your session or sign in again so the JWT includes the `user_role`
+  claim.
