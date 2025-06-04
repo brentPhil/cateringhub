@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Typography } from "@/components/ui/typography";
@@ -36,7 +36,7 @@ interface RolePermission {
 }
 
 export default function SettingsPage() {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -92,7 +92,7 @@ export default function SettingsPage() {
     }
 
     fetchData();
-  }, [supabase]);
+  }, []);
 
   // Show loading state if data is still loading
   if (isLoading) {
