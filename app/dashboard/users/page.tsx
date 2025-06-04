@@ -60,7 +60,9 @@ export default function UsersPage() {
       user &&
       userRole?.role === "admin" &&
       canViewUsers === true &&
-      error?.message?.includes("403")
+      (error?.message?.includes("403") ||
+        error?.code === "42501" ||
+        error?.message?.toLowerCase().includes("permission denied"))
     ) {
       setShowSessionRefresh(true);
     }
