@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import { decodeJwtPayload } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -100,9 +101,8 @@ export function useUserRole() {
       if (!sessionData.session) return null;
       
       const token = sessionData.session.access_token;
-      const payload = token.split('.')[1];
-      const decoded = JSON.parse(atob(payload));
-      
+      const decoded = decodeJwtPayload(token);
+
       return decoded.user_role || 'user';
     },
     enabled: !!user,
