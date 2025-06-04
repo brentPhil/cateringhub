@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { AppRole, AppPermission, ProviderRoleType } from '@/types'
 
 export async function login(formData: FormData) {
-  const supabase = await createClient()
+  const supabase = createClient()
 
   const data = {
     email: formData.get('email') as string,
@@ -24,7 +24,7 @@ export async function login(formData: FormData) {
 }
 
 export async function signInWithGoogle() {
-  const supabase = await createClient()
+  const supabase = createClient()
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
@@ -42,7 +42,7 @@ export async function signInWithGoogle() {
 }
 
 export async function signInWithFacebook() {
-  const supabase = await createClient()
+  const supabase = createClient()
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'facebook',
@@ -59,7 +59,7 @@ export async function signInWithFacebook() {
 }
 
 export async function signup(formData: FormData) {
-  const supabase = await createClient()
+  const supabase = createClient()
 
   const data = {
     email: formData.get('email') as string,
@@ -81,14 +81,14 @@ export async function signup(formData: FormData) {
 }
 
 export async function signout() {
-  const supabase = await createClient()
+  const supabase = createClient()
   await supabase.auth.signOut()
   revalidatePath('/', 'layout')
   redirect('/login')
 }
 
 async function getUserPermissionsForRole(role: AppRole, provider_role?: ProviderRoleType | null): Promise<AppPermission[]> {
-  const supabase = await createClient()
+  const supabase = createClient()
 
   // For catering_provider role, get provider sub-role permissions
   if (role === 'catering_provider' && provider_role) {
@@ -116,7 +116,7 @@ export async function getUserRole(): Promise<{
   provider_role: ProviderRoleType | null;
   permissions: AppPermission[];
 } | null> {
-  const supabase = await createClient()
+  const supabase = createClient()
 
   try {
     const { data: { session }, error } = await supabase.auth.getSession()
@@ -158,7 +158,7 @@ export async function getUserPermissions(): Promise<AppPermission[]> {
 }
 
 export async function refreshSession() {
-  const supabase = await createClient()
+  const supabase = createClient()
 
   try {
     const { data, error } = await supabase.auth.refreshSession()
