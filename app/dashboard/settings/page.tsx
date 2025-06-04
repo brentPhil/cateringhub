@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Typography } from "@/components/ui/typography";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -8,27 +10,38 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EditProfileForm } from "./edit-profile-form";
 import { getInitials, getAvatarUrl } from "@/lib/utils/avatar";
 import { useQueryState, parseAsStringLiteral } from "nuqs";
-
-import {
-  useUser,
-  useProfile,
-  useUserRole,
-  useRolePermissions,
-  useProviderRolePermissions,
-} from "@/hooks/use-auth";
-import { Loader2 } from "lucide-react";
-import type { User } from "@supabase/supabase-js";
+import { User } from "@supabase/supabase-js";
 
 // Define valid tab values
 const TABS = ["profile", "account", "permissions"] as const;
 
+// Define types for our state
+interface Profile {
+  id: string;
+  full_name?: string | null;
+  avatar_url?: string | null;
+  username?: string | null;
+  bio?: string | null;
+  updated_at?: string;
+  created_at?: string;
+}
+
+// TODO: organize the types properly
+interface RolePermission {
+  role: string;
+  permission: string;
+  id?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export default function SettingsPage() {
-  // Use TanStack Query hooks for data fetching
-  const { data: user, isLoading: isUserLoading } = useUser();
-  const { data: profile, isLoading: isProfileLoading } = useProfile();
-  const { data: userRoleData, isLoading: isUserRoleLoading } = useUserRole();
-  const { data: rolePermissions = [] } = useRolePermissions();
-  const { data: providerRolePermissions = [] } = useProviderRolePermissions();
+  const supabase = useMemo(() => createClient(), []);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [rolePermissions, setRolePermissions] = useState<RolePermission[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Use nuqs to manage the active tab in the URL
   const [activeTab, setActiveTab] = useQueryState(
@@ -36,8 +49,50 @@ export default function SettingsPage() {
     parseAsStringLiteral(TABS).withDefault("profile")
   );
 
-  // Calculate overall loading state
-  const isLoading = isUserLoading || isProfileLoading || isUserRoleLoading;
+  // Fetch data on component mount
+  useEffect(() => {
+    async function fetchData() {
+      setIsLoading(true);
+
+      try {
+        // Get user data
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        setUser(user);
+
+        // Get user role
+        const { data: userRolesData } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user?.id)
+          .single();
+        setUserRole(userRolesData?.role || null);
+
+        // Fetch user profile
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user?.id)
+          .single();
+        setProfile(profileData);
+
+        // Fetch role permissions
+        const { data: permissionsData } = await supabase
+          .from("role_permissions")
+          .select("*")
+          .order("role", { ascending: true })
+          .order("permission", { ascending: true });
+        setRolePermissions(permissionsData || []);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchData();
+  }, []);
 
   // Show loading state if data is still loading
   if (isLoading) {
@@ -47,7 +102,6 @@ export default function SettingsPage() {
           <h1 className="text-3xl font-bold">Settings</h1>
         </div>
         <div className="flex items-center justify-center p-8">
-          <Loader2 className="h-6 w-6 animate-spin mr-2" />
           <Typography>Loading settings...</Typography>
         </div>
       </div>
@@ -73,7 +127,7 @@ export default function SettingsPage() {
         <TabsList className="mb-4">
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="account">Account</TabsTrigger>
-          {userRoleData?.role === "admin" && (
+          {(userRole === "admin" || userRole === "superadmin") && (
             <TabsTrigger value="permissions">Permissions</TabsTrigger>
           )}
         </TabsList>
@@ -84,10 +138,7 @@ export default function SettingsPage() {
               <CardTitle>Edit Profile</CardTitle>
             </CardHeader>
             <CardContent>
-              <EditProfileForm
-                user={user as User | null}
-                profile={profile || null}
-              />
+              <EditProfileForm user={user} profile={profile} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -127,27 +178,8 @@ export default function SettingsPage() {
                       >
                         Role
                       </Typography>
-                      <Typography variant="smallText">
-                        {userRoleData?.role || "user"}
-                        {userRoleData?.role === "catering_provider" &&
-                          userRoleData?.provider_role &&
-                          ` (${userRoleData.provider_role})`}
-                      </Typography>
+                      <Typography variant="smallText">{userRole}</Typography>
                     </div>
-                    {userRoleData?.role === "catering_provider" &&
-                      userRoleData?.provider_role && (
-                        <div className="flex justify-between">
-                          <Typography
-                            variant="smallText"
-                            className="text-muted-foreground"
-                          >
-                            Provider Type
-                          </Typography>
-                          <Typography variant="smallText">
-                            {userRoleData.provider_role}
-                          </Typography>
-                        </div>
-                      )}
                     <div className="flex justify-between">
                       <Typography
                         variant="smallText"
@@ -186,7 +218,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                {userRoleData?.role === "admin" && (
+                {(userRole === "admin" || userRole === "superadmin") && (
                   <div>
                     <Typography variant="smallText" className="font-medium">
                       Advanced Information
@@ -235,14 +267,14 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
 
-            {userRoleData?.role !== "admin" && (
+            {userRole !== "superadmin" && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Admin Settings</CardTitle>
+                  <CardTitle>Superadmin Settings</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <Typography variant="mutedText">
-                    You need admin privileges to access these settings.
+                    You need superadmin privileges to access these settings.
                   </Typography>
                 </CardContent>
               </Card>
@@ -251,74 +283,36 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="permissions">
-          {userRoleData?.role === "admin" && (
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Role Permissions</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-border bg-muted/50">
-                          <th className="px-4 py-3 text-left text-sm font-medium">
-                            Role
-                          </th>
-                          <th className="px-4 py-3 text-left text-sm font-medium">
-                            Permission
-                          </th>
+          {(userRole === "admin" || userRole === "superadmin") && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Role Permissions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/50">
+                        <th className="px-4 py-3 text-left text-sm font-medium">
+                          Role
+                        </th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">
+                          Permission
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rolePermissions?.map((rp, index) => (
+                        <tr key={index} className="border-b border-border">
+                          <td className="px-4 py-3 text-sm">{rp.role}</td>
+                          <td className="px-4 py-3 text-sm">{rp.permission}</td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {rolePermissions?.map((rp, index) => (
-                          <tr key={index} className="border-b border-border">
-                            <td className="px-4 py-3 text-sm">{rp.role}</td>
-                            <td className="px-4 py-3 text-sm">
-                              {rp.permission}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Catering Provider Sub-Role Permissions</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-border bg-muted/50">
-                          <th className="px-4 py-3 text-left text-sm font-medium">
-                            Provider Role
-                          </th>
-                          <th className="px-4 py-3 text-left text-sm font-medium">
-                            Permission
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {providerRolePermissions?.map((prp, index) => (
-                          <tr key={index} className="border-b border-border">
-                            <td className="px-4 py-3 text-sm">
-                              {prp.provider_role}
-                            </td>
-                            <td className="px-4 py-3 text-sm">
-                              {prp.permission}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
           )}
         </TabsContent>
       </Tabs>
