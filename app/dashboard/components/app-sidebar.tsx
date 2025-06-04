@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, Settings, ChefHat, LayoutDashboard } from "lucide-react";
+import {
+  Users,
+  Settings,
+  ChefHat,
+  LayoutDashboard,
+  type LucideIcon,
+} from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -17,12 +23,14 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { NavUser } from "@/app/dashboard/components/nav-user";
-import { useUser, useProfile } from "@/hooks/use-auth";
+import { useUser, useProfile, useHasPermission } from "@/hooks/use-auth";
+import type { AppPermission } from "@/types";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
@@ -32,29 +40,54 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     return pathname === path || pathname.startsWith(`${path}/`);
   };
 
-  const navItems = [
+  const allNavItems: Array<{
+    name: string;
+    href: string;
+    icon: LucideIcon;
+    description: string;
+    permission: AppPermission;
+  }> = [
     {
       name: "Dashboard",
       href: "/dashboard",
       icon: LayoutDashboard,
       description: "View your dashboard",
+      permission: "dashboard.access",
     },
     {
       name: "Users",
       href: "/dashboard/users",
       icon: Users,
       description: "Manage system users",
+      permission: "users.read",
     },
     {
       name: "Settings",
       href: "/dashboard/settings",
       icon: Settings,
       description: "Configure your account",
+      permission: "dashboard.access", // Everyone with dashboard access can access settings
     },
   ];
 
   const { data: user, isLoading: isUserLoading } = useUser();
   const { data: profile, isLoading: isProfileLoading } = useProfile();
+
+  // Get user permissions to filter navigation items
+  const canViewUsers = useHasPermission("users.read");
+  const canAccessDashboard = useHasPermission("dashboard.access");
+
+  // Filter navigation items based on permissions
+  const navItems = allNavItems.filter((item) => {
+    switch (item.permission) {
+      case "users.read":
+        return canViewUsers;
+      case "dashboard.access":
+        return canAccessDashboard;
+      default:
+        return true; // Show items without specific permissions
+    }
+  });
 
   // Prepare user data for NavUser component
   const userData = user && {
@@ -83,7 +116,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <span>Navigation</span>
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className={cn(state === "collapsed" ? "gap-0" : "")}>
               {navItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <Tooltip delayDuration={350}>

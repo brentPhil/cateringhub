@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import * as z from "zod";
 import type { User } from "@supabase/supabase-js";
 
 import { Button } from "@/components/ui/button";
@@ -23,37 +22,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import useToast from "@/hooks/useToast";
 import { updateProfile } from "./actions";
 import { getInitials, getAvatarUrl } from "@/lib/utils/avatar";
-
-// Define the form schema
-const profileFormSchema = z.object({
-  full_name: z.string().min(2, {
-    message: "Name must be at least 2 characters.",
-  }),
-  username: z
-    .string()
-    .min(2, {
-      message: "Username must be at least 2 characters.",
-    })
-    .optional(),
-  bio: z.string().max(160).optional(),
-  avatar_url: z
-    .string()
-    .url({ message: "Please enter a valid URL." })
-    .optional()
-    .or(z.literal("")),
-});
-
-type ProfileFormValues = z.infer<typeof profileFormSchema>;
+import { profileSchema, type ProfileFormData } from "@/lib/validations";
+import type { Profile } from "@/types";
 
 interface EditProfileFormProps {
   user: User | null;
-  profile: {
-    id: string;
-    full_name?: string | null;
-    username?: string | null;
-    bio?: string | null;
-    avatar_url?: string | null;
-  } | null;
+  profile: Profile | null;
 }
 
 export function EditProfileForm({ user, profile }: EditProfileFormProps) {
@@ -62,25 +36,28 @@ export function EditProfileForm({ user, profile }: EditProfileFormProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   // Default values from the existing profile
-  const defaultValues: Partial<ProfileFormValues> = {
-    full_name: profile?.full_name || "",
-    username: profile?.username || "",
-    bio: profile?.bio || "",
-    avatar_url: profile?.avatar_url || "",
+  const defaultValues: Partial<ProfileFormData> = {
+    full_name: profile?.full_name ?? "",
+    username: profile?.username ?? "",
+    bio: profile?.bio ?? "",
+    avatar_url: profile?.avatar_url ?? "",
   };
 
-  const form = useForm<ProfileFormValues>({
-    resolver: zodResolver(profileFormSchema),
+  const form = useForm<ProfileFormData>({
+    resolver: zodResolver(profileSchema),
     defaultValues,
   });
 
-  async function onSubmit(data: ProfileFormValues) {
+  async function onSubmit(data: ProfileFormData) {
     setIsLoading(true);
 
     try {
       await updateProfile({
         id: user?.id,
-        ...data,
+        full_name: data.full_name,
+        username: data.username || undefined,
+        bio: data.bio || undefined,
+        avatar_url: data.avatar_url || undefined,
       });
 
       toast.success("Your profile has been updated successfully.");

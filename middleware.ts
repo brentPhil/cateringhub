@@ -10,6 +10,11 @@ const PUBLIC_ROUTES = [
   '/auth/reset-password'
 ]
 
+// List of routes that should be accessible to authenticated users without redirect
+const AUTHENTICATED_ROUTES = [
+  '/onboarding/provider'
+]
+
 export async function middleware(request: NextRequest) {
   // Get the pathname from the URL
   const { pathname } = request.nextUrl
@@ -20,6 +25,11 @@ export async function middleware(request: NextRequest) {
   // Check if the current path is in the public routes list
   const isPublicRoute = PUBLIC_ROUTES.some(route =>
     pathname === route || pathname === `${route}/`
+  )
+
+  // Check if the current path is in the authenticated routes list
+  const isAuthenticatedRoute = AUTHENTICATED_ROUTES.some(route =>
+    pathname === route || pathname.startsWith(`${route}/`)
   )
 
   // Only check authentication for public routes
@@ -37,6 +47,9 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // For authenticated routes, allow access without redirect
+  // The individual pages will handle their own authentication checks
+
   return response
 }
 
@@ -47,8 +60,9 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
+     * - sw.js (service worker file)
      * Feel free to modify this pattern to include more paths.
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

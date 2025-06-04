@@ -52,7 +52,8 @@ export default function LoginPage() {
     },
     onSuccess: () => {
       toast.success("Logged in successfully");
-      router.push("/dashboard");
+      const redirectTo = searchParams.get("redirect") || "/dashboard";
+      router.push(redirectTo);
       router.refresh();
     },
     onError: (error: Error) => {
@@ -64,10 +65,13 @@ export default function LoginPage() {
   // Google login mutation
   const { mutate: loginWithGoogle, isPending: isGooglePending } = useMutation({
     mutationFn: async () => {
+      const redirectTo = searchParams.get("redirect") || "/dashboard";
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${
+            window.location.origin
+          }/auth/callback?redirect=${encodeURIComponent(redirectTo)}`,
           scopes: "profile email", // Request access to profile info including image
         },
       });
@@ -85,10 +89,13 @@ export default function LoginPage() {
   const { mutate: loginWithFacebook, isPending: isFacebookPending } =
     useMutation({
       mutationFn: async () => {
+        const redirectTo = searchParams.get("redirect") || "/dashboard";
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: "facebook",
           options: {
-            redirectTo: `${window.location.origin}/auth/callback`,
+            redirectTo: `${
+              window.location.origin
+            }/auth/callback?redirect=${encodeURIComponent(redirectTo)}`,
           },
         });
 

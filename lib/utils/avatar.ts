@@ -9,13 +9,13 @@
  */
 export function getInitials(nameOrEmail: string | null | undefined): string {
   if (!nameOrEmail) return "U";
-  
+
   // If it looks like an email, use the first character of the username
   if (nameOrEmail.includes('@')) {
     const username = nameOrEmail.split('@')[0];
-    return username.charAt(0).toUpperCase();
+    return username?.charAt(0).toUpperCase() || 'U';
   }
-  
+
   // Otherwise, get initials from the name
   return nameOrEmail
     .split(' ')
@@ -33,7 +33,7 @@ export function getInitials(nameOrEmail: string | null | undefined): string {
  */
 export function getFallbackAvatarUrl(name: string | null | undefined, size: number = 128): string {
   if (!name) name = 'User';
-  
+
   // Use UI Avatars service to generate a fallback avatar
   const initials = getInitials(name);
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&size=${size}&background=random`;
@@ -47,15 +47,15 @@ export function getFallbackAvatarUrl(name: string | null | undefined, size: numb
  * @returns The best available avatar URL
  */
 export function getAvatarUrl(
-  avatarUrl: string | null | undefined, 
-  name: string | null | undefined, 
+  avatarUrl: string | null | undefined,
+  name: string | null | undefined,
   size: number = 128
 ): string {
   // If we have a valid avatar URL, use it
   if (avatarUrl && avatarUrl.trim() !== '') {
     return avatarUrl;
   }
-  
+
   // Otherwise, generate a fallback avatar
   return getFallbackAvatarUrl(name, size);
 }

@@ -47,9 +47,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 1. In your Supabase dashboard, go to "Authentication" > "Hooks"
 2. For "Custom Access Token", select the function `custom_access_token_hook`
 
-## Step 6: Create Admin and Superadmin Users
+## Step 6: Create Admin Users
 
-To create admin and superadmin users:
+To create admin users:
 
 1. First, create regular users through the signup process
 2. Then, use the SQL Editor to update their roles:
@@ -58,10 +58,6 @@ To create admin and superadmin users:
 -- Make a user an admin
 INSERT INTO public.user_roles (user_id, role)
 VALUES ('user-uuid-here', 'admin');
-
--- Make a user a superadmin
-INSERT INTO public.user_roles (user_id, role)
-VALUES ('user-uuid-here', 'superadmin');
 ```
 
 Replace `user-uuid-here` with the actual UUID of the user you want to promote.
@@ -82,7 +78,7 @@ pnpm dev
 
 ## Role-Based Access Control (RBAC)
 
-The application has three user roles with different permissions:
+The application has two user roles with different permissions:
 
 1. **User** (default role)
    - Can access the dashboard
@@ -91,12 +87,8 @@ The application has three user roles with different permissions:
 2. **Admin**
    - All user permissions
    - Can view all users
-   - Can read settings
-
-3. **Superadmin**
-   - All admin permissions
+   - Can read and modify settings
    - Can delete users
-   - Can modify settings
    - Can manage user roles
 
 ## Troubleshooting

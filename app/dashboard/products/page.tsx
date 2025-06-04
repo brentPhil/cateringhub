@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useFetchData, queryKeys } from "@/hooks/use-supabase-query";
+import { useState, useMemo, useEffect } from "react";
 import {
   usePaginationState,
   useSortingState,
@@ -50,10 +49,6 @@ interface Product {
 }
 
 // Define the response type
-interface ProductsResponse {
-  products: Product[];
-  totalCount: number;
-}
 
 export default function ProductsPage() {
   // URL state for pagination
@@ -88,44 +83,77 @@ export default function ProductsPage() {
   // Local state for search input (to avoid too many URL updates while typing)
   const [searchInput, setSearchInput] = useState(query ? query : "");
 
-  // Calculate range for pagination
-  const range = useMemo(() => {
-    const pageNum = typeof page === "number" ? page : 1;
-    const pageSizeNum = typeof pageSize === "number" ? pageSize : 10;
-    const from = (pageNum - 1) * pageSizeNum;
-    const to = from + pageSizeNum - 1;
-    return [from, to] as [number, number];
-  }, [page, pageSize]);
-
-  // Fetch products with the custom hook
-  const { data, isLoading, error } = useFetchData<ProductsResponse>(
-    "products",
-    [...queryKeys.products, page, pageSize, sortBy, sortOrder, query],
-    {
-      columns: "*, count(*) OVER() AS total_count",
-      range,
-      order: {
-        column: typeof sortBy === "string" ? sortBy : "created_at",
-        ascending: sortOrder === "asc",
+  // Mock data for products (since products table doesn't exist in database)
+  const mockProducts: Product[] = useMemo(
+    () => [
+      {
+        id: "1",
+        name: "Gourmet Sandwich Platter",
+        description: "Assorted gourmet sandwiches with premium ingredients",
+        price: 89.99,
+        category: "Catering",
+        created_at: new Date().toISOString(),
       },
-      filter: query ? { name: `ilike.%${query}%` } : undefined,
-      enabled: true,
-    }
+      {
+        id: "2",
+        name: "Mediterranean Mezze Box",
+        description: "Traditional Mediterranean appetizers and dips",
+        price: 65.5,
+        category: "Appetizers",
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: "3",
+        name: "BBQ Feast Package",
+        description: "Slow-cooked BBQ meats with classic sides",
+        price: 125.0,
+        category: "Main Course",
+        created_at: new Date().toISOString(),
+      },
+    ],
+    []
   );
+
+  // Simulate loading and data processing
+  const [isLoading, setIsLoading] = useState(true);
+  const [error] = useState<Error | null>(null);
+
+  useEffect(() => {
+    // Simulate API call delay
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Filter products based on search query
+  const filteredProducts = useMemo(() => {
+    if (!query) return mockProducts;
+    return mockProducts.filter(
+      (product) =>
+        product.name.toLowerCase().includes(query.toLowerCase()) ||
+        product.description.toLowerCase().includes(query.toLowerCase())
+    );
+  }, [query, mockProducts]);
 
   // Process the data to match the expected format
   const processedData = useMemo(() => {
-    if (!data || !Array.isArray(data)) return null;
+    if (isLoading) return null;
 
-    const products = data as unknown as (Product & { total_count: number })[];
-    const totalCount =
-      products.length > 0 ? Number(products[0].total_count) : 0;
+    // Apply pagination to filtered products
+    const pageNum = typeof page === "number" ? page : 1;
+    const pageSizeNum = typeof pageSize === "number" ? pageSize : 10;
+    const startIndex = (pageNum - 1) * pageSizeNum;
+    const endIndex = startIndex + pageSizeNum;
+
+    const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
 
     return {
-      products,
-      totalCount,
+      products: paginatedProducts,
+      totalCount: filteredProducts.length,
     };
-  }, [data]);
+  }, [filteredProducts, page, pageSize, isLoading]);
 
   // Handle search form submission
   const handleSearch = (e: React.FormEvent) => {

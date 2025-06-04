@@ -52,26 +52,29 @@ export async function GET(request: NextRequest) {
               // If profile doesn't have an avatar_url but we have one from identity data, update it
               if ((!profile?.avatar_url || profile.avatar_url === '') && user.identities && user.identities.length > 0) {
                 const identity = user.identities[0]
-                const provider = identity.provider
-                const identityData = identity.identity_data
 
-                // Get avatar URL based on provider
-                let avatarUrl = null
-                if (provider === 'google' && identityData.picture) {
-                  avatarUrl = identityData.picture
-                } else if (provider === 'facebook' && identityData.picture) {
-                  avatarUrl = identityData.picture
-                }
+                if (identity) {
+                  const provider = identity.provider
+                  const identityData = identity.identity_data
 
-                // Update profile if we found an avatar URL
-                if (avatarUrl) {
-                  await supabase
-                    .from('profiles')
-                    .update({
-                      avatar_url: avatarUrl,
-                      updated_at: new Date().toISOString()
-                    })
-                    .eq('id', user.id)
+                  // Get avatar URL based on provider
+                  let avatarUrl = null
+                  if (provider === 'google' && identityData?.picture) {
+                    avatarUrl = identityData.picture
+                  } else if (provider === 'facebook' && identityData?.picture) {
+                    avatarUrl = identityData.picture
+                  }
+
+                  // Update profile if we found an avatar URL
+                  if (avatarUrl) {
+                    await supabase
+                      .from('profiles')
+                      .update({
+                        avatar_url: avatarUrl,
+                        updated_at: new Date().toISOString()
+                      })
+                      .eq('id', user.id)
+                  }
                 }
               }
             }
@@ -84,7 +87,8 @@ export async function GET(request: NextRequest) {
     }
 
     // URL to redirect to after sign in process completes
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+    const redirectTo = requestUrl.searchParams.get('redirect') || '/dashboard'
+    return NextResponse.redirect(new URL(redirectTo, request.url))
   } catch (err) {
     console.error('Unexpected error in auth callback:', err)
     return NextResponse.redirect(

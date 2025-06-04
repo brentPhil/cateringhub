@@ -1,42 +1,13 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import { ChefHat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Typography } from "@/components/ui/typography";
 import { Separator } from "@/components/ui/separator";
+import { LandingNavigation } from "@/components/landing-navigation";
 
-export default async function Home() {
-  const supabase = await createClient();
-
-  // Check if user is logged in
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  // If logged in, redirect to dashboard
-  if (user) {
-    redirect("/dashboard");
-  }
-
+export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
-      <header className="border-b border-border">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ChefHat className="h-6 w-6" />
-            <Typography variant="h5">CateringHub</Typography>
-          </div>
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" asChild>
-              <Link href="/login">Log in</Link>
-            </Button>
-            <Button asChild>
-              <Link href="/signup">Sign up</Link>
-            </Button>
-          </div>
-        </div>
-      </header>
+      <LandingNavigation />
 
       <main className="flex-1 container mx-auto px-4 py-12 flex flex-col items-center justify-center text-center">
         <Typography variant="h2" className="mb-6">
@@ -48,9 +19,12 @@ export default async function Home() {
         </Typography>
         <div className="flex gap-4 flex-col sm:flex-row">
           <Button size="lg" asChild>
-            <Link href="/signup">Get Started</Link>
+            <Link href="/onboarding/provider">Become a Provider</Link>
           </Button>
           <Button size="lg" variant="outline" asChild>
+            <Link href="/signup">Get Started</Link>
+          </Button>
+          <Button size="lg" variant="ghost" asChild>
             <Link href="/login">Log in</Link>
           </Button>
         </div>
