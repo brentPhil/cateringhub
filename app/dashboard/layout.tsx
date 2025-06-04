@@ -10,7 +10,7 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
+  const supabase = createClient();
 
   // Check if user is logged in
   const {
@@ -22,7 +22,7 @@ export default async function DashboardLayout({
   }
 
   // Get sidebar state from cookie
-  const cookieStore = await cookies();
+  const cookieStore = cookies();
   const defaultOpen = cookieStore.get("sidebar_state")?.value === "true";
 
   return (
