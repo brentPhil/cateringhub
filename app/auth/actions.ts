@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { decodeJwtPayload } from '@/lib/utils'
 
 export async function login(formData: FormData) {
   const supabase = await createClient()
@@ -94,8 +95,7 @@ export async function getUserRole() {
 
   // Get the JWT and decode it
   const token = session.access_token
-  const payload = token.split('.')[1]
-  const decoded = JSON.parse(atob(payload))
+  const decoded = decodeJwtPayload(token)
 
   return decoded.user_role || 'user'
 }
