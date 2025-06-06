@@ -2,7 +2,6 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import { decodeJwtPayload } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { jwtDecode } from "jwt-decode";
@@ -372,33 +371,91 @@ export function useRefreshSession() {
 
   return useMutation({
     mutationFn: async () => {
-      // Force a complete session refresh to get fresh JWT with updated claims
-      const { error } = await supabase.auth.refreshSession();
-      if (error) throw error;
+      console.log("🔄 Starting session refresh...");
 
-      // Wait a moment for the new JWT to be available
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Verify the new session has the correct claims
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (sessionData.session) {
+      // First, let's check the current session
+      const { data: currentSession } = await supabase.auth.getSession();
+      if (currentSession.session) {
+        console.log("📋 Current JWT Claims (before refresh):");
         try {
-          const decoded = jwtDecode<{
-            user_role?: string;
-            provider_role?: string;
-          }>(sessionData.session.access_token);
+          const currentDecoded = jwtDecode<{
+            user_role?: AppRole;
+            provider_role?: ProviderRoleType;
+            sub?: string;
+            email?: string;
+            exp?: number;
+          }>(currentSession.session.access_token);
 
-          console.log("🔄 Session refreshed - New JWT claims:", {
-            user_role: decoded.user_role,
-            provider_role: decoded.provider_role,
-            expires_at: new Date(sessionData.session.expires_at! * 1000).toISOString()
+          console.log({
+            user_role: currentDecoded.user_role,
+            provider_role: currentDecoded.provider_role,
+            email: currentDecoded.email,
+            expires_at: currentDecoded.exp ? new Date(currentDecoded.exp * 1000).toISOString() : 'unknown'
           });
         } catch (err) {
-          console.error("Failed to decode refreshed JWT:", err);
+          console.error("Failed to decode current JWT:", err);
         }
       }
+
+      // Force a complete session refresh to get fresh JWT with updated claims
+      console.log("🔄 Calling supabase.auth.refreshSession()...");
+      const { error } = await supabase.auth.refreshSession();
+      if (error) {
+        console.error("❌ Refresh session error:", error);
+        throw error;
+      }
+
+      console.log("✅ Session refresh completed");
+
+      // Wait a moment for the new JWT to be available
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // Get the fresh session to verify the new JWT
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        console.error("❌ Get session error after refresh:", sessionError);
+        throw sessionError;
+      }
+
+      if (!sessionData.session) {
+        throw new Error("No session available after refresh");
+      }
+
+      // Log the new JWT claims for debugging
+      console.log("🆕 New JWT Claims (after refresh):");
+      try {
+        const decoded = jwtDecode<{
+          user_role?: AppRole;
+          provider_role?: ProviderRoleType;
+          sub?: string;
+          email?: string;
+          exp?: number;
+        }>(sessionData.session.access_token);
+
+        console.log({
+          user_role: decoded.user_role,
+          provider_role: decoded.provider_role,
+          email: decoded.email,
+          expires_at: decoded.exp ? new Date(decoded.exp * 1000).toISOString() : 'unknown'
+        });
+
+        // Verify that we have the expected admin role
+        if (decoded.user_role !== 'admin') {
+          console.warn("⚠️ Expected admin role but got:", decoded.user_role);
+          throw new Error(`Expected admin role but JWT contains: ${decoded.user_role || 'no role'}`);
+        } else {
+          console.log("✅ Admin role confirmed in JWT");
+        }
+      } catch (err) {
+        console.error("Failed to decode refreshed JWT:", err);
+        throw err;
+      }
+
+      return sessionData;
     },
     onSuccess: () => {
+      console.log("🎉 Session refresh successful, invalidating queries...");
+
       // Invalidate all auth-related queries
       qc.invalidateQueries({ queryKey: authKeys.user });
       qc.invalidateQueries({ queryKey: ["userRole"] }); // This covers authKeys.userRole
@@ -409,11 +466,11 @@ export function useRefreshSession() {
       qc.clear();
 
       router.refresh();
-      toast.success("Session and JWT refreshed successfully!");
+      toast.success("Session and JWT refreshed successfully! Admin permissions should now work.");
     },
     onError: (err: { message: string }) => {
-      console.error("Session refresh failed:", err);
-      toast.error(`Failed to refresh session: ${err.message}. Please sign in again.`);
+      console.error("❌ Session refresh failed:", err);
+      toast.error(`Failed to refresh session: ${err.message}. Please try signing out and back in.`);
     },
   });
 }

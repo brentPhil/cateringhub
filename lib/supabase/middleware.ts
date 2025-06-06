@@ -1,100 +1,49 @@
-import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
-  // Create a response object that we'll modify as needed
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
+  let supabaseResponse = NextResponse.next({
+    request,
   })
 
-  // Create cookie handlers for the middleware context
-  const cookieStore = {
-    get(name: string) {
-      return request.cookies.get(name)?.value
-    },
-    set(name: string, value: string, options: { path?: string; maxAge?: number; domain?: string; secure?: boolean; sameSite?: 'strict' | 'lax' | 'none' }) {
-      // When setting cookies from middleware, we need to set them on both
-      // the request and the response to ensure they are sent to the browser
-      // and also available for any Server Components or Server Actions
-      request.cookies.set({
-        name,
-        value,
-        ...options,
-      })
-
-      // We need to create a new response with the updated request headers
-      response = NextResponse.next({
-        request: {
-          headers: request.headers,
-        },
-      })
-
-      // Also set the cookie on the response
-      response.cookies.set({
-        name,
-        value,
-        ...options,
-      })
-    },
-    remove(name: string, options: { path?: string; domain?: string }) {
-      // Same pattern for removing cookies
-      request.cookies.set({
-        name,
-        value: '',
-        ...options,
-      })
-
-      // We need to create a new response with the updated request headers
-      response = NextResponse.next({
-        request: {
-          headers: request.headers,
-        },
-      })
-
-      // Also remove the cookie from the response
-      response.cookies.set({
-        name,
-        value: '',
-        ...options,
-      })
-    },
-  }
-
-  // Create the Supabase client using the standard createClient function
-  // with custom cookie handling for middleware
-  const supabase = createClient(
+  const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      auth: {
-        flowType: 'pkce',
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-        persistSession: true,
-        storage: {
-          getItem: (key) => {
-            return cookieStore.get(key) || null
-          },
-          setItem: (key, value) => {
-            cookieStore.set(key, value, {
-              path: '/',
-              maxAge: 60 * 60 * 24 * 365, // 1 year
-              sameSite: 'lax',
-              secure: process.env.NODE_ENV === 'production'
-            })
-          },
-          removeItem: (key) => {
-            cookieStore.remove(key, { path: '/' })
-          },
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+          supabaseResponse = NextResponse.next({
+            request,
+          })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
         },
       },
     }
   )
 
-  // Refresh the session - this is important to trigger the cookie refresh
-  await supabase.auth.getUser()
+  // IMPORTANT: Avoid writing any logic between createServerClient and
+  // supabase.auth.getUser(). A simple mistake could make it very hard to debug
+  // issues with users being randomly logged out.
 
-  return response
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  // if user is signed in and the current path is / redirect the user to /dashboard
+  if (user && request.nextUrl.pathname === '/') {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
+  // if user is not signed in and the current path is not / redirect the user to /
+  if (!user && request.nextUrl.pathname !== '/' && !request.nextUrl.pathname.startsWith('/login') && !request.nextUrl.pathname.startsWith('/signup') && !request.nextUrl.pathname.startsWith('/auth')) {
+    return NextResponse.redirect(new URL('/', request.url))
+  }
+
+  return supabaseResponse
 }

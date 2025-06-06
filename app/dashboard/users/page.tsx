@@ -22,8 +22,13 @@ import { Typography } from "@/components/ui/typography";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, AlertCircle, Users, RefreshCw } from "lucide-react";
+import { Loader2, AlertCircle, Users, RefreshCw, Bug } from "lucide-react";
 import { useEffect, useState } from "react";
+import {
+  debugJwtToken,
+  forceJwtRefresh,
+  testSupabaseConnection,
+} from "@/app/auth/actions";
 
 // Define types for our data
 type UserRole = {
@@ -61,7 +66,7 @@ export default function UsersPage() {
       userRole?.role === "admin" &&
       canViewUsers === true &&
       (error?.message?.includes("403") ||
-        error?.code === "42501" ||
+        (error as any)?.code === "42501" ||
         error?.message?.toLowerCase().includes("permission denied"))
     ) {
       setShowSessionRefresh(true);
@@ -141,9 +146,52 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2">
-        <Users className="h-6 w-6" />
-        <Typography variant="h3">Users Management</Typography>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Users className="h-6 w-6" />
+          <Typography variant="h3">Users Management</Typography>
+        </div>
+
+        {/* Debug Tools - Only show for admin users */}
+        {userRole?.role === "admin" && (
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                console.log("🔍 Debug JWT Token clicked");
+                await debugJwtToken();
+              }}
+            >
+              <Bug className="h-4 w-4 mr-2" />
+              Debug JWT
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                console.log("🔄 Force JWT Refresh clicked");
+                const success = await forceJwtRefresh();
+                if (success) {
+                  window.location.reload();
+                }
+              }}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Force Refresh
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                console.log("🧪 Test Connection clicked");
+                await testSupabaseConnection();
+              }}
+            >
+              🧪 Test Connection
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Session Refresh Prompt */}
