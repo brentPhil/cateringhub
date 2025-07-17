@@ -178,6 +178,7 @@ export async function hasProviderRole(providerRole: ProviderRoleType): Promise<b
 
 
 
+// Debug function - should be removed in production
 export async function debugJwtToken() {
   const supabase = createClient()
 
@@ -185,16 +186,14 @@ export async function debugJwtToken() {
     const { data: { session }, error } = await supabase.auth.getSession()
 
     if (error || !session) {
-      console.log("❌ No session available:", error?.message || "Session is null")
       return null
     }
 
-    // Decode and log JWT token details
+    // Decode JWT token details
     const token = session.access_token
     const payload = token.split('.')[1]
 
     if (!payload) {
-      console.log("❌ Invalid JWT token format")
       return null
     }
 

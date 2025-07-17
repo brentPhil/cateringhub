@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Typography } from "@/components/ui/typography";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -10,23 +8,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EditProfileForm } from "./edit-profile-form";
 import { getInitials, getAvatarUrl } from "@/lib/utils/avatar";
 import { useQueryState, parseAsStringLiteral } from "nuqs";
-import { User } from "@supabase/supabase-js";
+import { useQuery } from "@tanstack/react-query";
+import { createClient } from "@/lib/supabase/client";
+import { useUser, useProfile, useUserRole } from "@/hooks/use-auth";
 
 // Define valid tab values
 const TABS = ["profile", "account", "permissions"] as const;
 
-// Define types for our state
-interface Profile {
-  id: string;
-  full_name?: string | null;
-  avatar_url?: string | null;
-  username?: string | null;
-  bio?: string | null;
-  updated_at?: string;
-  created_at?: string;
-}
-
-// TODO: organize the types properly
+// Role permission interface for settings page
 interface RolePermission {
   role: string;
   permission: string;
@@ -35,13 +24,34 @@ interface RolePermission {
   updated_at?: string;
 }
 
+// Custom hook for role permissions using TanStack Query directly
+function useRolePermissions() {
+  const supabase = createClient();
+
+  return useQuery<RolePermission[]>({
+    queryKey: ["role_permissions"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("role_permissions")
+        .select("id, role, permission, created_at")
+        .order("role", { ascending: true })
+        .order("permission", { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  });
+}
+
 export default function SettingsPage() {
-  const supabase = useMemo(() => createClient(), []);
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [rolePermissions, setRolePermissions] = useState<RolePermission[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Use existing auth hooks
+  const { data: user, isLoading: userLoading } = useUser();
+  const { data: profile, isLoading: profileLoading } = useProfile();
+  const { data: userRoleData, isLoading: userRoleLoading } = useUserRole();
+  const { data: rolePermissions, isLoading: permissionsLoading } =
+    useRolePermissions();
 
   // Use nuqs to manage the active tab in the URL
   const [activeTab, setActiveTab] = useQueryState(
@@ -49,50 +59,10 @@ export default function SettingsPage() {
     parseAsStringLiteral(TABS).withDefault("profile")
   );
 
-  // Fetch data on component mount
-  useEffect(() => {
-    async function fetchData() {
-      setIsLoading(true);
-
-      try {
-        // Get user data
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        setUser(user);
-
-        // Get user role
-        const { data: userRolesData } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", user?.id)
-          .single();
-        setUserRole(userRolesData?.role || null);
-
-        // Fetch user profile
-        const { data: profileData } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", user?.id)
-          .single();
-        setProfile(profileData);
-
-        // Fetch role permissions
-        const { data: permissionsData } = await supabase
-          .from("role_permissions")
-          .select("*")
-          .order("role", { ascending: true })
-          .order("permission", { ascending: true });
-        setRolePermissions(permissionsData || []);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchData();
-  }, []);
+  // Derive loading state and user role from hooks
+  const isLoading =
+    userLoading || profileLoading || userRoleLoading || permissionsLoading;
+  const userRole = userRoleData?.role || null;
 
   // Show loading state if data is still loading
   if (isLoading) {
@@ -127,7 +97,7 @@ export default function SettingsPage() {
         <TabsList className="mb-4">
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="account">Account</TabsTrigger>
-          {(userRole === "admin" || userRole === "superadmin") && (
+          {userRole === "admin" && (
             <TabsTrigger value="permissions">Permissions</TabsTrigger>
           )}
         </TabsList>
@@ -138,7 +108,7 @@ export default function SettingsPage() {
               <CardTitle>Edit Profile</CardTitle>
             </CardHeader>
             <CardContent>
-              <EditProfileForm user={user} profile={profile} />
+              <EditProfileForm user={user || null} profile={profile || null} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -218,7 +188,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                {(userRole === "admin" || userRole === "superadmin") && (
+                {userRole === "admin" && (
                   <div>
                     <Typography variant="smallText" className="font-medium">
                       Advanced Information
@@ -267,14 +237,14 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
 
-            {userRole !== "superadmin" && (
+            {userRole !== "admin" && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Superadmin Settings</CardTitle>
+                  <CardTitle>Admin Settings</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <Typography variant="mutedText">
-                    You need superadmin privileges to access these settings.
+                    You need admin privileges to access these settings.
                   </Typography>
                 </CardContent>
               </Card>
@@ -283,7 +253,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="permissions">
-          {(userRole === "admin" || userRole === "superadmin") && (
+          {userRole === "admin" && (
             <Card>
               <CardHeader>
                 <CardTitle>Role Permissions</CardTitle>

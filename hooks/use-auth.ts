@@ -5,22 +5,28 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { jwtDecode } from "jwt-decode";
+import { useMemo } from "react";
 import type {
   AuthUser,
-  Profile,
-  AppRole,
-  ProviderRoleType,
 } from "@/types";
+import { AppRole, ProviderRoleType } from "@/types/supabase";
 
 /* ------------------------------------------------------------------ */
 /* Helpers & constants                                                */
 /* ------------------------------------------------------------------ */
 
-const STALE_5_MIN = 5 * 60 * 1000;
-const GC_10_MIN = 10 * 60 * 1000;
+// Increased stale times to reduce unnecessary refetches
+const STALE_10_MIN = 10 * 60 * 1000;
+const GC_30_MIN = 30 * 60 * 1000;
+
+// Create a singleton Supabase client to prevent recreation on every render
+let supabaseClient: ReturnType<typeof createClient> | null = null;
 
 function getSupabase() {
-  return createClient();
+  if (!supabaseClient) {
+    supabaseClient = createClient();
+  }
+  return supabaseClient;
 }
 
 /* ------------------------------------------------------------------ */
@@ -39,62 +45,83 @@ export const authKeys = {
 
 // -- User -------------------------------------------------------------
 
-// hooks/auth.ts
+// Enhanced user hook that includes profile data
 export function useUser() {
   const supabase = getSupabase();
 
   return useQuery<AuthUser | null>({
     queryKey: authKeys.user,
-    staleTime: STALE_5_MIN,
-    gcTime: GC_10_MIN,
+    staleTime: STALE_10_MIN,
+    gcTime: GC_30_MIN,
     retry: 1,
     queryFn: async () => {
       try {
-        // 1️⃣ Do we even have a session?
-        const { data: sessionData } = await supabase.auth.getSession();
-        const session = sessionData.session;
-        if (!session) return null;           // not signed in
+        // 1️⃣ Check for session
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+          console.error("Session error:", sessionError);
+          return null;
+        }
 
-        // 2️⃣ Session exists → safe to ask for user
-        const { data: userData } = await supabase.auth.getUser();
-        return userData.user as AuthUser | null;
+        const session = sessionData.session;
+        if (!session) return null;
+
+        // 2️⃣ Get user data
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        if (userError) {
+          console.error("User fetch error:", userError);
+          return null;
+        }
+
+        if (!userData.user) return null;
+
+        // 3️⃣ Fetch associated profile
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userData.user.id)
+          .single();
+
+        // Profile error is not fatal - user might not have a profile yet
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.warn("Profile fetch error:", profileError);
+        }
+
+        // 4️⃣ Return enhanced user object
+        const authUser: AuthUser = {
+          ...userData.user,
+          profile: profileData || null
+        };
+
+        return authUser;
       } catch (err: unknown) {
-        // 3️⃣ Treat "no session" as a non-fatal null
-        if (err && typeof err === "object" && "name" in err && err.name === "AuthSessionMissingError") return null;
+        // Handle specific auth errors gracefully
+        if (err && typeof err === "object" && "name" in err && err.name === "AuthSessionMissingError") {
+          return null;
+        }
 
         console.error("Unexpected auth error:", err);
-        return null;                         // fail-soft
+        return null;
       }
     },
   });
 }
 
 // -- Profile ----------------------------------------------------------
-
+// Note: Profile data is now included in useUser() hook for better performance
+// This hook is kept for backward compatibility and specific profile operations
 export function useProfile() {
-  const supabase = getSupabase();
-  const { data: user, isLoading: userLoading } = useUser();
+  const { data: user, isLoading: userLoading, error: userError } = useUser();
 
-  return useQuery<Profile | null>({
-    queryKey: authKeys.profile(user?.id ?? "unknown"),
-    enabled: !!user && !userLoading,
-    staleTime: STALE_5_MIN,
-    gcTime: GC_10_MIN,
-    retry: 1,
-    queryFn: async () => {
-      if (!user) return null;
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-      if (error) {
-        console.error("Error fetching profile:", error);
-        return null;
-      }
-      return data as Profile;
-    },
-  });
+  return {
+    data: user?.profile || null,
+    isLoading: userLoading,
+    error: userError,
+    refetch: () => {
+      // This will be handled by the useUser hook refetch
+      console.warn("useProfile refetch - consider using useUser refetch instead");
+    }
+  };
 }
 
 // -- Sign out ---------------------------------------------------------
@@ -128,11 +155,17 @@ export function useUserRole() {
   const supabase = getSupabase();
   const { data: user } = useUser();
 
+  // Memoize the query key to prevent unnecessary re-renders
+  const queryKey = useMemo(() =>
+    authKeys.userRole(user?.id ?? "unknown"),
+    [user?.id]
+  );
+
   return useQuery<{ role: AppRole; provider_role: ProviderRoleType | null } | null>({
-    queryKey: authKeys.userRole(user?.id ?? "unknown"),
+    queryKey,
     enabled: !!user,
-    staleTime: STALE_5_MIN,
-    gcTime: GC_10_MIN,
+    staleTime: STALE_10_MIN,
+    gcTime: GC_30_MIN,
     retry: 1,
     queryFn: async () => {
       if (!user) return null;
@@ -141,11 +174,8 @@ export function useUserRole() {
       if (error || !sessionData.session) return null;
 
       try {
-        // Use jwt-decode package as recommended by Supabase docs
+        // Decode JWT token to extract user role information
         const rawToken = sessionData.session.access_token;
-
-        // 1. Log the raw JWT token (first 50 chars for security)
-        console.log("🔑 Raw JWT Token (first 50 chars):", rawToken.substring(0, 50) + "...");
 
         const decoded = jwtDecode<{
           user_role?: AppRole;
@@ -157,40 +187,13 @@ export function useUserRole() {
           iat?: number;
         }>(rawToken);
 
-        // 2. Log the complete decoded JWT claims object
-        console.log("🎯 Decoded JWT Claims:", {
-          user_role: decoded.user_role,
-          provider_role: decoded.provider_role,
-          sub: decoded.sub,
-          email: decoded.email,
-          aud: decoded.aud,
-          exp: decoded.exp ? new Date(decoded.exp * 1000).toISOString() : undefined,
-          iat: decoded.iat ? new Date(decoded.iat * 1000).toISOString() : undefined,
-          // Show all other claims
-          ...decoded
-        });
-
-        // 3. Compare with expected values
-        const expectedClaims = { user_role: "admin", provider_role: "owner" };
-        console.log("✅ Expected Claims:", expectedClaims);
-        console.log("🔍 Claims Match:", {
-          user_role_matches: decoded.user_role === expectedClaims.user_role,
-          provider_role_matches: decoded.provider_role === expectedClaims.provider_role,
-          actual_user_role: decoded.user_role,
-          actual_provider_role: decoded.provider_role
-        });
-
-        // 4. Log the final return value
-        const result = {
+        // Return role information with fallback to 'user' role
+        return {
           role: decoded.user_role ?? "user",
           provider_role: decoded.provider_role ?? null,
         };
-        console.log("📤 useUserRole returning:", result);
-
-        return result;
       } catch (error) {
-        console.error("❌ Failed to decode JWT:", error);
-        console.error("❌ Raw token length:", sessionData.session.access_token?.length);
+        console.error("Failed to decode JWT token:", error);
         return null;
       }
     },
@@ -256,8 +259,8 @@ export function useUsers() {
   return useQuery({
     queryKey: ["users"],
     enabled: !isLoading && isAdmin,
-    staleTime: 30 * 1000,
-    gcTime: 2 * 60 * 1000,
+    staleTime: STALE_10_MIN, // Increased from 30 seconds
+    gcTime: GC_30_MIN, // Increased from 2 minutes
     queryFn: async () => {
       // profiles
       const { data: profiles, error: profilesErr } = await supabase
@@ -380,13 +383,13 @@ export function useRefreshSession() {
     onSuccess: () => {
       console.log("🎉 Session refresh successful, invalidating queries...");
 
-      // Invalidate all auth-related queries
+      // Only invalidate specific auth-related queries instead of clearing everything
       qc.invalidateQueries({ queryKey: authKeys.user });
       qc.invalidateQueries({ queryKey: ["userRole"] }); // This covers authKeys.userRole
       qc.invalidateQueries({ queryKey: ["users"] }); // Refresh users list
 
-      // Clear all query cache to ensure fresh data
-      qc.clear();
+      // Don't clear all cache - this was causing excessive re-renders
+      // qc.clear();
 
       router.refresh();
       toast.success("Session and JWT refreshed successfully! Admin access should now work.");

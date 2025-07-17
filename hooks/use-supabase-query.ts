@@ -77,13 +77,11 @@ export function useFetchData<T = unknown>(
           : await query;
 
         if (error) {
-          console.error(`Error fetching data from ${table}:`, error);
           throw error;
         }
 
         return options?.select ? options.select(data) : (data as T);
       } catch (error) {
-        console.error(`Query failed for table ${table}:`, error);
         throw error;
       }
     },
@@ -109,13 +107,11 @@ export function useInsertData<T>(table: TableName) {
           .single();
 
         if (error) {
-          console.error(`Error inserting data into ${table}:`, error);
           throw error;
         }
 
         return data as T;
       } catch (error) {
-        console.error(`Insert mutation failed for table ${table}:`, error);
         throw error;
       }
     },
@@ -125,7 +121,6 @@ export function useInsertData<T>(table: TableName) {
       toast.success(`${table} created successfully`);
     },
     onError: (error) => {
-      console.error(`Mutation error for ${table}:`, error);
       toast.error(`Error creating ${table}: ${error.message}`);
     },
   });
@@ -184,11 +179,9 @@ export function useDeleteData(table: TableName, id: string) {
           .eq("id", id);
 
         if (error) {
-          console.error(`Error deleting data from ${table}:`, error);
           throw error;
         }
       } catch (error) {
-        console.error(`Delete mutation failed for table ${table}:`, error);
         throw error;
       }
     },
@@ -199,7 +192,6 @@ export function useDeleteData(table: TableName, id: string) {
       toast.success(`${table} deleted successfully`);
     },
     onError: (error) => {
-      console.error(`Delete mutation error for ${table}:`, error);
       toast.error(`Error deleting ${table}: ${error.message}`);
     },
   });
@@ -276,13 +268,11 @@ export function useBatchInsertData<T>(table: TableName) {
           .select();
 
         if (error) {
-          console.error(`Error batch inserting data into ${table}:`, error);
           throw error;
         }
 
         return data as T[];
       } catch (error) {
-        console.error(`Batch insert mutation failed for table ${table}:`, error);
         throw error;
       }
     },
@@ -291,7 +281,6 @@ export function useBatchInsertData<T>(table: TableName) {
       toast.success(`${table} records created successfully`);
     },
     onError: (error) => {
-      console.error(`Batch insert mutation error for ${table}:`, error);
       toast.error(`Error creating ${table} records: ${error.message}`);
     },
   });

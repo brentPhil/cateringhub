@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          operationName?: string
+          query?: string
+          variables?: Json
+          extensions?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       profiles: {
@@ -41,6 +66,48 @@ export type Database = {
           id?: string
           updated_at?: string | null
           username?: string | null
+        }
+        Relationships: []
+      }
+      provider_role_permissions: {
+        Row: {
+          created_at: string | null
+          id: number
+          permission: Database["public"]["Enums"]["app_permission"]
+          provider_role: Database["public"]["Enums"]["provider_role_type"]
+        }
+        Insert: {
+          created_at?: string | null
+          id?: number
+          permission: Database["public"]["Enums"]["app_permission"]
+          provider_role: Database["public"]["Enums"]["provider_role_type"]
+        }
+        Update: {
+          created_at?: string | null
+          id?: number
+          permission?: Database["public"]["Enums"]["app_permission"]
+          provider_role?: Database["public"]["Enums"]["provider_role_type"]
+        }
+        Relationships: []
+      }
+      role_permissions: {
+        Row: {
+          created_at: string | null
+          id: number
+          permission: Database["public"]["Enums"]["app_permission"]
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          created_at?: string | null
+          id?: number
+          permission: Database["public"]["Enums"]["app_permission"]
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          created_at?: string | null
+          id?: number
+          permission?: Database["public"]["Enums"]["app_permission"]
+          role?: Database["public"]["Enums"]["app_role"]
         }
         Relationships: []
       }
@@ -94,6 +161,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      has_permission: {
+        Args: { permission_name: Database["public"]["Enums"]["app_permission"] }
+        Returns: boolean
+      }
       has_provider_role: {
         Args: {
           required_provider_role: Database["public"]["Enums"]["provider_role_type"]
@@ -122,6 +193,25 @@ export type Database = {
       }
     }
     Enums: {
+      app_permission:
+        | "dashboard.access"
+        | "users.read"
+        | "users.write"
+        | "users.delete"
+        | "settings.read"
+        | "settings.write"
+        | "services.create"
+        | "services.read"
+        | "services.update"
+        | "services.delete"
+        | "bookings.read"
+        | "bookings.update"
+        | "calendar.read"
+        | "messages.read"
+        | "messages.create"
+        | "reviews.read"
+        | "reviews.respond"
+        | "analytics.basic"
       app_role: "user" | "admin" | "catering_provider"
       provider_role_type: "owner" | "staff"
     }
@@ -249,8 +339,31 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
+      app_permission: [
+        "dashboard.access",
+        "users.read",
+        "users.write",
+        "users.delete",
+        "settings.read",
+        "settings.write",
+        "services.create",
+        "services.read",
+        "services.update",
+        "services.delete",
+        "bookings.read",
+        "bookings.update",
+        "calendar.read",
+        "messages.read",
+        "messages.create",
+        "reviews.read",
+        "reviews.respond",
+        "analytics.basic",
+      ],
       app_role: ["user", "admin", "catering_provider"],
       provider_role_type: ["owner", "staff"],
     },
