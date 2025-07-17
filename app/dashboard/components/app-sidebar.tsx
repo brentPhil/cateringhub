@@ -23,8 +23,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { NavUser } from "@/app/dashboard/components/nav-user";
-import { useUser, useProfile, useHasPermission } from "@/hooks/use-auth";
-import type { AppPermission } from "@/types";
+import { useUser, useProfile, useIsAdmin } from "@/hooks/use-auth";
 import {
   Tooltip,
   TooltipContent,
@@ -45,48 +44,41 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     href: string;
     icon: LucideIcon;
     description: string;
-    permission: AppPermission;
+    adminOnly?: boolean;
   }> = [
     {
       name: "Dashboard",
       href: "/dashboard",
       icon: LayoutDashboard,
       description: "View your dashboard",
-      permission: "dashboard.access",
     },
     {
       name: "Users",
       href: "/dashboard/users",
       icon: Users,
       description: "Manage system users",
-      permission: "users.read",
+      adminOnly: true,
     },
     {
       name: "Settings",
       href: "/dashboard/settings",
       icon: Settings,
       description: "Configure your account",
-      permission: "dashboard.access", // Everyone with dashboard access can access settings
     },
   ];
 
   const { data: user, isLoading: isUserLoading } = useUser();
   const { data: profile, isLoading: isProfileLoading } = useProfile();
 
-  // Get user permissions to filter navigation items
-  const canViewUsers = useHasPermission("users.read");
-  const canAccessDashboard = useHasPermission("dashboard.access");
+  // Get user role to filter navigation items
+  const { value: isAdmin, isLoading: isAdminLoading } = useIsAdmin();
 
-  // Filter navigation items based on permissions
+  // Filter navigation items based on roles
   const navItems = allNavItems.filter((item) => {
-    switch (item.permission) {
-      case "users.read":
-        return canViewUsers;
-      case "dashboard.access":
-        return canAccessDashboard;
-      default:
-        return true; // Show items without specific permissions
+    if (item.adminOnly) {
+      return isAdmin;
     }
+    return true; // Show items without specific role requirements
   });
 
   // Prepare user data for NavUser component

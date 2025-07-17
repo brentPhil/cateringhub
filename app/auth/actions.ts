@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import type { AppRole, AppPermission, ProviderRoleType } from '@/types'
+import type { AppRole, ProviderRoleType } from '@/types'
 
 export async function login(formData: FormData) {
   const supabase = createClient()
@@ -87,34 +87,11 @@ export async function signout() {
   redirect('/login')
 }
 
-async function getUserPermissionsForRole(role: AppRole, provider_role?: ProviderRoleType | null): Promise<AppPermission[]> {
-  const supabase = createClient()
 
-  // For catering_provider role, get provider sub-role permissions
-  if (role === 'catering_provider' && provider_role) {
-    const { data, error } = await supabase
-      .from('provider_role_permissions')
-      .select('permission')
-      .eq('provider_role', provider_role)
-
-    if (error) throw error
-    return data.map(p => p.permission as AppPermission)
-  }
-
-  // For other roles, get regular role permissions
-  const { data, error } = await supabase
-    .from('role_permissions')
-    .select('permission')
-    .eq('role', role)
-
-  if (error) throw error
-  return data.map(p => p.permission as AppPermission)
-}
 
 export async function getUserRole(): Promise<{
   role: AppRole;
   provider_role: ProviderRoleType | null;
-  permissions: AppPermission[];
 } | null> {
   const supabase = createClient()
 
@@ -138,13 +115,9 @@ export async function getUserRole(): Promise<{
     const role = (decoded.user_role as AppRole) || 'user'
     const provider_role = (decoded.provider_role as ProviderRoleType) || null
 
-    // Get permissions for this role
-    const permissions = await getUserPermissionsForRole(role, provider_role)
-
     return {
       role,
       provider_role,
-      permissions,
     }
   } catch (error) {
     console.log("Error getting user role:", error)
@@ -152,10 +125,7 @@ export async function getUserRole(): Promise<{
   }
 }
 
-export async function getUserPermissions(): Promise<AppPermission[]> {
-  const userRoleData = await getUserRole()
-  return userRoleData?.permissions || []
-}
+
 
 export async function refreshSession() {
   const supabase = createClient()
@@ -175,10 +145,38 @@ export async function refreshSession() {
   }
 }
 
-export async function hasPermission(permission: AppPermission): Promise<boolean> {
-  const permissions = await getUserPermissions()
-  return permissions.includes(permission)
+// Role-based helper functions
+export async function isAdmin(): Promise<boolean> {
+  const userRole = await getUserRole()
+  return userRole?.role === 'admin'
 }
+
+export async function isCateringProvider(): Promise<boolean> {
+  const userRole = await getUserRole()
+  return userRole?.role === 'catering_provider'
+}
+
+export async function isProviderOwner(): Promise<boolean> {
+  const userRole = await getUserRole()
+  return userRole?.role === 'catering_provider' && userRole?.provider_role === 'owner'
+}
+
+export async function isProviderStaff(): Promise<boolean> {
+  const userRole = await getUserRole()
+  return userRole?.role === 'catering_provider' && userRole?.provider_role === 'staff'
+}
+
+export async function hasRole(role: AppRole): Promise<boolean> {
+  const userRole = await getUserRole()
+  return userRole?.role === role
+}
+
+export async function hasProviderRole(providerRole: ProviderRoleType): Promise<boolean> {
+  const userRole = await getUserRole()
+  return userRole?.role === 'catering_provider' && userRole?.provider_role === providerRole
+}
+
+
 
 export async function debugJwtToken() {
   const supabase = createClient()

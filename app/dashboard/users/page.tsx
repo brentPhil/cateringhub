@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import {
-  useHasPermission,
+  useIsAdmin,
   useUser,
   useUsers,
   useUserRole,
@@ -49,10 +49,10 @@ export default function UsersPage() {
   const { data: userRole, isLoading: roleLoading } = useUserRole();
   const refreshSession = useRefreshSession();
   const {
-    value: canViewUsers,
-    isLoading: permissionLoading,
-    error: permissionError,
-  } = useHasPermission("users.read");
+    value: isAdmin,
+    isLoading: adminLoading,
+    error: adminError,
+  } = useIsAdmin();
   const { data: users = [], isLoading, error } = useUsers();
   const [showSessionRefresh, setShowSessionRefresh] = useState(false);
 
@@ -61,32 +61,24 @@ export default function UsersPage() {
     if (
       !userLoading &&
       !roleLoading &&
-      !permissionLoading &&
+      !adminLoading &&
       user &&
       userRole?.role === "admin" &&
-      canViewUsers === true &&
+      isAdmin === true &&
       (error?.message?.includes("403") ||
         (error as any)?.code === "42501" ||
         error?.message?.toLowerCase().includes("permission denied"))
     ) {
       setShowSessionRefresh(true);
     }
-  }, [
-    userLoading,
-    roleLoading,
-    permissionLoading,
-    user,
-    userRole,
-    canViewUsers,
-    error,
-  ]);
+  }, [userLoading, roleLoading, adminLoading, user, userRole, isAdmin, error]);
 
-  // Redirect if user doesn't have permission (after loading is complete)
+  // Redirect if user doesn't have admin role (after loading is complete)
   useEffect(() => {
-    if (!userLoading && !permissionLoading && user && canViewUsers === false) {
+    if (!userLoading && !adminLoading && user && isAdmin === false) {
       router.push("/dashboard");
     }
-  }, [userLoading, permissionLoading, user, canViewUsers, router]);
+  }, [userLoading, adminLoading, user, isAdmin, router]);
 
   // Helper function to format role display
   const formatRoleDisplay = (userRole: UserRole) => {
@@ -109,7 +101,7 @@ export default function UsersPage() {
   };
 
   // Show loading state while checking authentication
-  if (userLoading || permissionLoading) {
+  if (userLoading || adminLoading) {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-2">
@@ -124,8 +116,8 @@ export default function UsersPage() {
     );
   }
 
-  // Show access denied if user doesn't have permission
-  if (user && canViewUsers === false) {
+  // Show access denied if user doesn't have admin role
+  if (user && isAdmin === false) {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-2">
@@ -136,7 +128,7 @@ export default function UsersPage() {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Access Denied</AlertTitle>
           <AlertDescription>
-            You don&apos;t have permission to view users. Please contact an
+            You don&apos;t have admin access to view users. Please contact an
             administrator.
           </AlertDescription>
         </Alert>
@@ -230,13 +222,13 @@ export default function UsersPage() {
         </Alert>
       )}
 
-      {error || permissionError ? (
+      {error || adminError ? (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>
             {error?.message ||
-              (permissionError ? String(permissionError) : "") ||
+              (adminError ? String(adminError) : "") ||
               "Failed to load users"}
           </AlertDescription>
         </Alert>

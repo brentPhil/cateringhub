@@ -3,7 +3,7 @@
  */
 
 import type { User } from '@supabase/supabase-js'
-import type { Profile, UserRole, AppRole, AppPermission, ProviderRoleType } from './supabase'
+import { AppRole, Profile, ProviderRoleType, UserRole } from './supabase'
 
 // Extended user type with profile and role information
 export interface AuthUser extends User {
@@ -15,7 +15,6 @@ export interface AuthUser extends User {
 export interface UserRoleData {
   role: AppRole
   provider_role?: ProviderRoleType | null
-  permissions: AppPermission[]
 }
 
 // Authentication state
@@ -84,11 +83,7 @@ export interface SessionData {
   user: AuthUser
 }
 
-// Permission check types
-export interface PermissionCheck {
-  permission: AppPermission
-  hasPermission: boolean
-}
+
 
 export interface RoleCheck {
   role: AppRole
@@ -204,9 +199,8 @@ export interface UpdateProfileMutationVariables {
   updates: ProfileUpdateData
 }
 
-// Permission and role utilities
-export type PermissionMap = Record<AppPermission, boolean>
-export type RolePermissions = Record<AppRole, AppPermission[]>
+// Role utilities
+export type RoleMap = Record<AppRole, boolean>
 
 // Provider-specific types
 export interface ProviderProfile extends Profile {
@@ -229,7 +223,6 @@ export interface StaffMember {
   user_id: string
   provider_id: string
   role: ProviderRoleType
-  permissions: AppPermission[]
   invited_at: string
   joined_at?: string
   status: 'pending' | 'active' | 'inactive'
@@ -239,6 +232,5 @@ export interface StaffMember {
 export interface StaffInvitation {
   email: string
   role: ProviderRoleType
-  permissions: AppPermission[]
   message?: string
 }

@@ -1,0 +1,34 @@
+[ ] NAME:Current Task List DESCRIPTION:Root task for conversation **NEW_AGENT** -[ ] NAME:Simplify Authentication System - Remove Complex RBAC DESCRIPTION:Root task for migrating from complex permission-based RBAC to simplified role-based authentication system
+--[x] NAME:Phase 1: Preparation and Analysis DESCRIPTION:Backup current system and analyze dependencies before starting migration
+---[x] NAME:Create database backup DESCRIPTION:Create a full backup of the current Supabase database schema and data before starting migration
+---[x] NAME:Document current permission mappings DESCRIPTION:Document which permissions each role currently has to ensure equivalent access in simplified system
+---[x] NAME:Identify all files using AppPermission type DESCRIPTION:Create comprehensive list of all files that import or use AppPermission type for refactoring
+---[x] NAME:Analyze RLS policies dependencies DESCRIPTION:Review all RLS policies that use has_permission() function to plan role-based replacements
+--[x] NAME:Phase 2: Database Schema Migration DESCRIPTION:Update database schema to remove permission-related tables and functions
+---[x] NAME:Create migration script to drop permission tables DESCRIPTION:Create SQL migration script to safely drop role_permissions and provider_role_permissions tables (ALREADY COMPLETE - tables never existed)
+---[x] NAME:Remove app_permission ENUM type DESCRIPTION:Create migration to drop the app_permission ENUM type after removing all dependencies (ALREADY COMPLETE - enum never existed)
+---[x] NAME:Create has_role function DESCRIPTION:Create new has_role() function to replace has_permission() for role-based access control
+---[x] NAME:Update RLS policies to use role-based checks DESCRIPTION:Replace all RLS policies that use has_permission() with role-based equivalents using has_role() (ALREADY COMPLETE - policies are role-based)
+---[x] NAME:Simplify custom_access_token_hook DESCRIPTION:Update the JWT hook to only set user_role and provider_role claims without permission logic (ALREADY COMPLETE)
+---[x] NAME:Update database grants and permissions DESCRIPTION:Remove grants for dropped tables and functions, update for new simplified schema (ALREADY COMPLETE)
+--[x] NAME:Phase 3: Backend Code Refactoring DESCRIPTION:Update server-side authentication code to use simplified role-based approach
+---[x] NAME:Remove permission-related server actions DESCRIPTION:Remove getUserPermissionsForRole, getUserPermissions, and hasPermission functions from auth actions
+---[x] NAME:Simplify getUserRole function DESCRIPTION:Update getUserRole to return only role and provider_role without permissions array
+---[x] NAME:Create role-based helper functions DESCRIPTION:Create new server-side helper functions for role checking (isAdmin, isCateringProvider, etc.)
+---[x] NAME:Update auth actions imports and types DESCRIPTION:Remove AppPermission imports and update function signatures to use role-based approach
+--[x] NAME:Phase 4: Frontend Code Refactoring DESCRIPTION:Update client-side authentication hooks and components to use role-based checks
+---[x] NAME:Remove AppPermission type from types files DESCRIPTION:Remove AppPermission type definition from types/supabase.ts and types/auth.types.ts
+---[x] NAME:Update authentication hooks DESCRIPTION:Remove useUserPermissions and useHasPermission hooks, replace with role-based equivalents
+---[x] NAME:Create role-based guard components DESCRIPTION:Replace PermissionGuard with RoleGuard and create role-specific guard components
+---[x] NAME:Update navigation components DESCRIPTION:Replace permission-based navigation filtering with role-based filtering in app-sidebar
+---[x] NAME:Update dashboard pages DESCRIPTION:Replace permission checks in dashboard pages (users page, etc.) with role-based checks
+---[x] NAME:Remove permission-related query hooks DESCRIPTION:Remove useRolePermissions, useProviderRolePermissions from use-supabase-query.ts
+---[x] NAME:Update error handling and auth boundaries DESCRIPTION:Update auth error boundary and error handling to work with simplified role system
+--[ ] NAME:Phase 5: Testing and Validation DESCRIPTION:Test the simplified authentication system and validate all functionality works correctly
+---[ ] NAME:Test database migration DESCRIPTION:Run database migration scripts in development environment and verify schema changes
+---[ ] NAME:Test authentication flows DESCRIPTION:Test login, logout, and session management with simplified role system
+---[ ] NAME:Test role-based access control DESCRIPTION:Verify that users can only access features appropriate for their roles
+---[ ] NAME:Test navigation and UI components DESCRIPTION:Ensure navigation items and UI components show/hide correctly based on user roles
+---[ ] NAME:Test edge cases and error handling DESCRIPTION:Test edge cases like role changes, invalid tokens, and error scenarios
+---[ ] NAME:Update documentation DESCRIPTION:Update project documentation to reflect simplified authentication system
+---[ ] NAME:Generate new TypeScript types DESCRIPTION:Generate updated TypeScript types from Supabase after schema changes

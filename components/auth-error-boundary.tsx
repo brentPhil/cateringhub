@@ -157,23 +157,8 @@ export function useAuthErrorHandler() {
   return { handleAuthError };
 }
 
-// Permission guard component
-interface PermissionGuardProps {
-  permission: string;
-  fallback?: ReactNode;
-  children: ReactNode;
-}
-
-export function PermissionGuard({
-  permission,
-  children,
-}: PermissionGuardProps) {
-  // Note: We can't import useHasPermission here due to circular dependency
-  // This component should be used in conjunction with the auth hooks
-  // For now, we'll provide a basic structure that can be enhanced
-
-  return <div data-permission-guard={permission}>{children}</div>;
-}
+// Note: Permission guard has been replaced with role-based guards
+// See components/role-guard.tsx for the new role-based authentication guards
 
 // Loading fallback component
 export function AuthLoadingFallback() {

@@ -7,30 +7,10 @@ export type Json =
   | Json[]
 
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          operationName?: string
-          query?: string
-          variables?: Json
-          extensions?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
+  // Allows to automatically instanciate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "12.2.3 (519615d)"
   }
   public: {
     Tables: {
@@ -64,48 +44,6 @@ export type Database = {
         }
         Relationships: []
       }
-      provider_role_permissions: {
-        Row: {
-          created_at: string | null
-          id: number
-          permission: Database["public"]["Enums"]["app_permission"]
-          provider_role: Database["public"]["Enums"]["provider_role_type"]
-        }
-        Insert: {
-          created_at?: string | null
-          id?: number
-          permission: Database["public"]["Enums"]["app_permission"]
-          provider_role: Database["public"]["Enums"]["provider_role_type"]
-        }
-        Update: {
-          created_at?: string | null
-          id?: number
-          permission?: Database["public"]["Enums"]["app_permission"]
-          provider_role?: Database["public"]["Enums"]["provider_role_type"]
-        }
-        Relationships: []
-      }
-      role_permissions: {
-        Row: {
-          created_at: string | null
-          id: number
-          permission: Database["public"]["Enums"]["app_permission"]
-          role: Database["public"]["Enums"]["app_role"]
-        }
-        Insert: {
-          created_at?: string | null
-          id?: number
-          permission: Database["public"]["Enums"]["app_permission"]
-          role: Database["public"]["Enums"]["app_role"]
-        }
-        Update: {
-          created_at?: string | null
-          id?: number
-          permission?: Database["public"]["Enums"]["app_permission"]
-          role?: Database["public"]["Enums"]["app_role"]
-        }
-        Relationships: []
-      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -114,6 +52,7 @@ export type Database = {
             | Database["public"]["Enums"]["provider_role_type"]
             | null
           role: Database["public"]["Enums"]["app_role"]
+          updated_at: string | null
           user_id: string
         }
         Insert: {
@@ -122,7 +61,8 @@ export type Database = {
           provider_role?:
             | Database["public"]["Enums"]["provider_role_type"]
             | null
-          role: Database["public"]["Enums"]["app_role"]
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string | null
           user_id: string
         }
         Update: {
@@ -132,6 +72,7 @@ export type Database = {
             | Database["public"]["Enums"]["provider_role_type"]
             | null
           role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
@@ -145,33 +86,42 @@ export type Database = {
         Args: { event: Json }
         Returns: Json
       }
-      has_permission: {
+      debug_jwt_claims: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      get_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_provider_role: {
         Args: {
-          requested_permission: Database["public"]["Enums"]["app_permission"]
+          required_provider_role: Database["public"]["Enums"]["provider_role_type"]
         }
         Returns: boolean
       }
+      has_role: {
+        Args: { required_role: Database["public"]["Enums"]["app_role"] }
+        Returns: boolean
+      }
+      is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_provider: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_provider_owner: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      revoke_all_refresh_tokens: {
+        Args: { target_user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
-      app_permission:
-        | "dashboard.access"
-        | "users.read"
-        | "users.write"
-        | "users.delete"
-        | "settings.read"
-        | "settings.write"
-        | "services.create"
-        | "services.read"
-        | "services.update"
-        | "services.delete"
-        | "bookings.read"
-        | "bookings.update"
-        | "calendar.read"
-        | "messages.read"
-        | "messages.create"
-        | "reviews.read"
-        | "reviews.respond"
-        | "analytics.basic"
       app_role: "user" | "admin" | "catering_provider"
       provider_role_type: "owner" | "staff"
     }
@@ -181,21 +131,25 @@ export type Database = {
   }
 }
 
-type DefaultSchema = Database[Extract<keyof Database, "public">]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
@@ -213,14 +167,16 @@ export type Tables<
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
@@ -236,14 +192,16 @@ export type TablesInsert<
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
@@ -259,14 +217,16 @@ export type TablesUpdate<
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
@@ -274,44 +234,23 @@ export type Enums<
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
-      app_permission: [
-        "dashboard.access",
-        "users.read",
-        "users.write",
-        "users.delete",
-        "settings.read",
-        "settings.write",
-        "services.create",
-        "services.read",
-        "services.update",
-        "services.delete",
-        "bookings.read",
-        "bookings.update",
-        "calendar.read",
-        "messages.read",
-        "messages.create",
-        "reviews.read",
-        "reviews.respond",
-        "analytics.basic",
-      ],
       app_role: ["user", "admin", "catering_provider"],
       provider_role_type: ["owner", "staff"],
     },
@@ -321,18 +260,5 @@ export const Constants = {
 // Re-export commonly used types for easier imports
 export type Profile = Tables<'profiles'>
 export type UserRole = Tables<'user_roles'>
-export type RolePermission = Tables<'role_permissions'>
-export type ProviderRolePermission = Tables<'provider_role_permissions'>
 export type AppRole = Database['public']['Enums']['app_role']
-export type AppPermission = Database['public']['Enums']['app_permission']
 export type ProviderRoleType = Database['public']['Enums']['provider_role_type']
-
-// Helper types for database operations
-export type ProfileInsert = TablesInsert<'profiles'>
-export type ProfileUpdate = TablesUpdate<'profiles'>
-export type UserRoleInsert = TablesInsert<'user_roles'>
-export type UserRoleUpdate = TablesUpdate<'user_roles'>
-export type RolePermissionInsert = TablesInsert<'role_permissions'>
-export type RolePermissionUpdate = TablesUpdate<'role_permissions'>
-export type ProviderRolePermissionInsert = TablesInsert<'provider_role_permissions'>
-export type ProviderRolePermissionUpdate = TablesUpdate<'provider_role_permissions'>

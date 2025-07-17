@@ -8,9 +8,7 @@ import type {
   SupabaseError,
   TableName,
   Profile,
-  UserRole,
-  RolePermission,
-  ProviderRolePermission
+  UserRole
 } from "@/types";
 
 // Query keys for actual database entities - following established patterns
@@ -20,10 +18,6 @@ export const queryKeys = {
   profile: (id: string) => ["profiles", id] as const,
   userRoles: ["userRoles"] as const,
   userRole: (userId: string) => ["userRoles", userId] as const,
-  rolePermissions: ["rolePermissions"] as const,
-  rolePermission: (role: string) => ["rolePermissions", role] as const,
-  providerRolePermissions: ["providerRolePermissions"] as const,
-  providerRolePermission: (providerRole: string) => ["providerRolePermissions", providerRole] as const,
   // Generic table queries
   table: (tableName: TableName) => [tableName] as const,
   tableItem: (tableName: TableName, id: string) => [tableName, id] as const,
@@ -264,82 +258,9 @@ export function useUserRolesByUserId(userId: string, options?: QueryOptions & { 
   );
 }
 
-// Role permissions hooks
-export function useRolePermissions(options?: QueryOptions & { enabled?: boolean }) {
-  return useFetchData<RolePermission[]>(
-    "role_permissions",
-    queryKeys.rolePermissions,
-    {
-      ...options,
-      columns: options?.columns || "id, role, permission, created_at",
-      order: options?.order || { column: "role", ascending: true }
-    }
-  );
-}
 
-export function useRolePermissionsByRole(role: string, options?: QueryOptions & { enabled?: boolean }) {
-  return useFetchData<RolePermission[]>(
-    "role_permissions",
-    queryKeys.rolePermission(role),
-    {
-      ...options,
-      filter: { role },
-      enabled: options?.enabled !== false && !!role,
-      columns: options?.columns || "id, role, permission, created_at"
-    }
-  );
-}
-
-// Provider role permissions hooks
-export function useProviderRolePermissions(options?: QueryOptions & { enabled?: boolean }) {
-  return useFetchData<ProviderRolePermission[]>(
-    "provider_role_permissions",
-    queryKeys.providerRolePermissions,
-    {
-      ...options,
-      columns: options?.columns || "id, provider_role, permission, created_at",
-      order: options?.order || { column: "provider_role", ascending: true }
-    }
-  );
-}
-
-export function useProviderRolePermissionsByRole(providerRole: string, options?: QueryOptions & { enabled?: boolean }) {
-  return useFetchData<ProviderRolePermission[]>(
-    "provider_role_permissions",
-    queryKeys.providerRolePermission(providerRole),
-    {
-      ...options,
-      filter: { provider_role: providerRole },
-      enabled: options?.enabled !== false && !!providerRole,
-      columns: options?.columns || "id, provider_role, permission, created_at"
-    }
-  );
-}
 
 // Utility hooks for common operations
-
-// Get all permissions for a specific role (combines role and provider role permissions)
-export function useAllPermissionsForRole(role: string, providerRole?: string, options?: { enabled?: boolean }) {
-  const { data: rolePermissions = [] } = useRolePermissionsByRole(role, { enabled: options?.enabled });
-  const { data: providerPermissions = [] } = useProviderRolePermissionsByRole(
-    providerRole || "",
-    { enabled: options?.enabled !== false && !!providerRole }
-  );
-
-  return useQuery({
-    queryKey: ["allPermissions", role, providerRole],
-    queryFn: () => {
-      const allPermissions = new Set([
-        ...rolePermissions.map(p => p.permission),
-        ...providerPermissions.map(p => p.permission)
-      ]);
-      return Array.from(allPermissions);
-    },
-    enabled: options?.enabled !== false && !!role,
-    staleTime: 5 * 60 * 1000, // 5 minutes - following auth hooks pattern
-    gcTime: 10 * 60 * 1000, // 10 minutes
-  });
-}
 
 // Batch operations for better performance
 export function useBatchInsertData<T>(table: TableName) {

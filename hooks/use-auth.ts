@@ -9,7 +9,6 @@ import type {
   AuthUser,
   Profile,
   AppRole,
-  AppPermission,
   ProviderRoleType,
 } from "@/types";
 
@@ -32,7 +31,6 @@ export const authKeys = {
   user: ["user"] as const,
   profile: (id: string) => ["profile", id] as const,
   userRole: (id: string) => ["userRole", id] as const,
-  permissions: (role: string) => ["permissions", role] as const,
 } as const;
 
 /* ------------------------------------------------------------------ */
@@ -115,7 +113,6 @@ export function useSignOut() {
       // Remove only auth-related caches
       qc.removeQueries({ queryKey: authKeys.user });
       qc.removeQueries({ queryKey: ["userRole"] });
-      qc.removeQueries({ queryKey: ["userPermissions"] });
 
       router.push("/login");
       router.refresh();
@@ -200,82 +197,15 @@ export function useUserRole() {
   });
 }
 
-// -- Permissions ------------------------------------------------------
+// -- Role-based hooks -------------------------------------------------
 
-export function useUserPermissions() {
-  const supabase = getSupabase();
-  const { data: roleData } = useUserRole();
-
-  return useQuery<AppPermission[]>({
-    queryKey: authKeys.permissions(roleData?.role ?? ""),
-    enabled: !!roleData,
-    staleTime: STALE_5_MIN,
-    gcTime: GC_10_MIN,
-    retry: 1,
-    queryFn: async () => {
-      if (!roleData) {
-        console.log("🚫 useUserPermissions: No roleData available");
-        return [];
-      }
-
-      const { role, provider_role } = roleData;
-
-      // Log the role data being used
-      console.log("👤 useUserPermissions - Role Data:", { role, provider_role });
-
-      // Admin and user roles always use role_permissions table
-      // Only catering_provider role uses provider_role_permissions table
-      const table = role === "catering_provider"
-        ? "provider_role_permissions"
-        : "role_permissions";
-
-      const column = role === "catering_provider" ? "provider_role" : "role";
-      const key = role === "catering_provider" ? provider_role : role;
-
-      // Log the query details
-      console.log("🔍 useUserPermissions - Query Details:", {
-        table,
-        column,
-        key,
-        query: `SELECT permission FROM ${table} WHERE ${column} = '${key}'`
-      });
-
-      const { data, error } = await supabase.from(table).select("permission").eq(column, key);
-
-      if (error) {
-        console.error("❌ Error fetching permissions:", error);
-        return [];
-      }
-
-      const permissions = (data ?? []).map((p) => p.permission as AppPermission);
-
-      // Log the fetched permissions
-      console.log("📋 useUserPermissions - Fetched Permissions:", permissions);
-      console.log("🔍 Has users.read permission:", permissions.includes("users.read"));
-
-      return permissions;
-    },
-  });
-}
-
-// -- Convenience hooks ------------------------------------------------
+// -- Role-based convenience hooks ------------------------------------
 
 type HookReturn<T> = { value: T; isLoading: boolean; error: unknown };
 
-export function useHasPermission(permission: AppPermission): HookReturn<boolean> {
-  const { data = [], isLoading, error } = useUserPermissions();
-  const hasPermission = data.includes(permission);
-
-  // Log permission check details
-  console.log(`🔐 useHasPermission('${permission}'):`, {
-    hasPermission,
-    isLoading,
-    error: error?.message || null,
-    allPermissions: data,
-    permissionCount: data.length
-  });
-
-  return { value: hasPermission, isLoading, error };
+export function useIsAdmin(): HookReturn<boolean> {
+  const { data, isLoading, error } = useUserRole();
+  return { value: data?.role === "admin", isLoading, error };
 }
 
 export function useIsProvider(): HookReturn<boolean> {
@@ -283,55 +213,49 @@ export function useIsProvider(): HookReturn<boolean> {
   return { value: data?.role === "catering_provider", isLoading, error };
 }
 
-// -- Admin-only lists -------------------------------------------------
-
-export function useRolePermissions() {
-  const supabase = getSupabase();
-  const { data } = useUserRole();
-
-  return useQuery({
-    queryKey: ["rolePermissions"],
-    enabled: data?.role === "admin",
-    staleTime: STALE_5_MIN,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("role_permissions")
-        .select("*")
-        .order("role, permission", { ascending: true });
-      if (error) throw error;
-      return data;
-    },
-  });
+export function useIsProviderOwner(): HookReturn<boolean> {
+  const { data, isLoading, error } = useUserRole();
+  return {
+    value: data?.role === "catering_provider" && data?.provider_role === "owner",
+    isLoading,
+    error
+  };
 }
 
-export function useProviderRolePermissions() {
-  const supabase = getSupabase();
-  const { data } = useUserRole();
-
-  return useQuery({
-    queryKey: ["providerRolePermissions"],
-    enabled: data?.role === "admin",
-    staleTime: STALE_5_MIN,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("provider_role_permissions")
-        .select("*")
-        .order("provider_role, permission", { ascending: true });
-      if (error) throw error;
-      return data;
-    },
-  });
+export function useIsProviderStaff(): HookReturn<boolean> {
+  const { data, isLoading, error } = useUserRole();
+  return {
+    value: data?.role === "catering_provider" && data?.provider_role === "staff",
+    isLoading,
+    error
+  };
 }
+
+export function useHasRole(role: AppRole): HookReturn<boolean> {
+  const { data, isLoading, error } = useUserRole();
+  return { value: data?.role === role, isLoading, error };
+}
+
+export function useHasProviderRole(providerRole: ProviderRoleType): HookReturn<boolean> {
+  const { data, isLoading, error } = useUserRole();
+  return {
+    value: data?.role === "catering_provider" && data?.provider_role === providerRole,
+    isLoading,
+    error
+  };
+}
+
+
 
 // -- Users list (admin) ----------------------------------------------
 
 export function useUsers() {
   const supabase = getSupabase();
-  const { value: canViewUsers, isLoading } = useHasPermission("users.read");
+  const { value: isAdmin, isLoading } = useIsAdmin();
 
   return useQuery({
     queryKey: ["users"],
-    enabled: !isLoading && canViewUsers,
+    enabled: !isLoading && isAdmin,
     staleTime: 30 * 1000,
     gcTime: 2 * 60 * 1000,
     queryFn: async () => {
@@ -459,14 +383,13 @@ export function useRefreshSession() {
       // Invalidate all auth-related queries
       qc.invalidateQueries({ queryKey: authKeys.user });
       qc.invalidateQueries({ queryKey: ["userRole"] }); // This covers authKeys.userRole
-      qc.invalidateQueries({ queryKey: ["permissions"] }); // This covers authKeys.permissions
       qc.invalidateQueries({ queryKey: ["users"] }); // Refresh users list
 
       // Clear all query cache to ensure fresh data
       qc.clear();
 
       router.refresh();
-      toast.success("Session and JWT refreshed successfully! Admin permissions should now work.");
+      toast.success("Session and JWT refreshed successfully! Admin access should now work.");
     },
     onError: (err: { message: string }) => {
       console.error("❌ Session refresh failed:", err);
