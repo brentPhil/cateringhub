@@ -89,31 +89,40 @@ export const profileSchema = z.object({
   avatar_url: urlSchema,
 })
 
-// Provider onboarding schema
-export const providerOnboardingSchema = z.object({
+// Provider onboarding schemas - Multi-step
+export const providerBusinessInfoSchema = z.object({
   businessName: z.string().min(2, 'Business name must be at least 2 characters'),
-  businessType: z.string().min(1, 'Please select a business type'),
+  businessAddress: z.string().optional(),
+  logo: z.instanceof(File).optional(),
+})
+
+export const providerServiceDetailsSchema = z.object({
   description: z
     .string()
     .min(10, 'Description must be at least 10 characters')
     .max(500, 'Description must be less than 500 characters'),
-  location: z.string().min(1, 'Location is required'),
-  phone: phoneSchema.refine(val => val !== undefined && val !== '', {
-    message: 'Phone number is required',
-  }),
-  website: urlSchema,
-  specialties: z
-    .array(z.string())
-    .min(1, 'Please select at least one specialty')
-    .max(10, 'Maximum 10 specialties allowed'),
   serviceAreas: z
-    .array(z.string())
-    .min(1, 'Please select at least one service area')
-    .max(20, 'Maximum 20 service areas allowed'),
-  providerRole: z.enum(['owner', 'staff'], {
-    required_error: 'Please select a role',
-  }),
+    .array(z.string().min(1, 'Service area cannot be empty'))
+    .min(1, 'At least one service area is required'),
+  sampleMenu: z.instanceof(File).optional(),
 })
+
+export const providerContactInfoSchema = z.object({
+  contactPersonName: z.string().min(2, 'Contact person name must be at least 2 characters'),
+  mobileNumber: phoneSchema.refine(val => val !== undefined && val !== '', {
+    message: 'Mobile number is required',
+  }),
+  socialMediaLinks: z.object({
+    facebook: z.string().url('Please enter a valid Facebook URL').optional().or(z.literal('')),
+    instagram: z.string().url('Please enter a valid Instagram URL').optional().or(z.literal('')),
+    website: z.string().url('Please enter a valid website URL').optional().or(z.literal('')),
+  }).optional(),
+})
+
+// Combined schema for final submission
+export const providerOnboardingSchema = providerBusinessInfoSchema
+  .merge(providerServiceDetailsSchema)
+  .merge(providerContactInfoSchema)
 
 // Contact form schema
 export const contactSchema = z.object({

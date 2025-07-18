@@ -6,7 +6,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 // Decode a JWT payload using base64url decoding
-export function decodeJwtPayload(token: string): Record<string, any> {
+export function decodeJwtPayload(token: string): Record<string, unknown> {
   const payload = token.split('.')[1]
   if (!payload) return {}
 

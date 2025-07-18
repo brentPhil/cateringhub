@@ -75,7 +75,7 @@ export function RoleGuard({
             <AlertTitle>Access Denied</AlertTitle>
             <AlertDescription>
               <p>
-                You don't have the required role ({role}) to access this
+                You don&apos;t have the required role ({role}) to access this
                 content.
               </p>
             </AlertDescription>
@@ -151,8 +151,8 @@ export function ProviderRoleGuard({
             <AlertTitle>Access Denied</AlertTitle>
             <AlertDescription>
               <p>
-                You don't have the required provider role ({providerRole}) to
-                access this content.
+                You don&apos;t have the required provider role ({providerRole})
+                to access this content.
               </p>
             </AlertDescription>
           </Alert>
@@ -321,8 +321,8 @@ export function MultiRoleGuard({
             <AlertTitle>Access Denied</AlertTitle>
             <AlertDescription>
               <p>
-                You don't have any of the required roles ({roles.join(", ")}) to
-                access this content.
+                You don&apos;t have any of the required roles (
+                {roles.join(", ")}) to access this content.
               </p>
             </AlertDescription>
           </Alert>

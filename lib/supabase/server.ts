@@ -10,17 +10,15 @@ export const createClient = cache(async () => {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
+        getAll() {
+          return cookieStore.getAll()
         },
-        set(name: string, value: string, options: Parameters<typeof cookieStore.set>[2]) {
-          cookieStore.set({ name, value, ...options })
-        },
-        remove(name: string) {
-          // Simple implementation that works with the current Supabase version
-          cookieStore.delete(name)
+        setAll(cookies) {
+          cookies.forEach(({ name, value, options }) => {
+            cookieStore.set({ name, value, ...options })
+          })
         },
       },
-    } as any // Type assertion to bypass type mismatch in Supabase SSR package
+    }
   )
 })

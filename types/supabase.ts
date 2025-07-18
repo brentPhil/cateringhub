@@ -69,6 +69,68 @@ export type Database = {
         }
         Relationships: []
       }
+      catering_providers: {
+        Row: {
+          id: string
+          user_id: string
+          business_name: string
+          business_address: string | null
+          logo_url: string | null
+          description: string
+          service_areas: string[]
+          sample_menu_url: string | null
+          contact_person_name: string
+          mobile_number: string
+          social_media_links: Json
+          onboarding_completed: boolean
+          onboarding_step: number
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          business_name: string
+          business_address?: string | null
+          logo_url?: string | null
+          description: string
+          service_areas: string[]
+          sample_menu_url?: string | null
+          contact_person_name: string
+          mobile_number: string
+          social_media_links?: Json
+          onboarding_completed?: boolean
+          onboarding_step?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          business_name?: string
+          business_address?: string | null
+          logo_url?: string | null
+          description?: string
+          service_areas?: string[]
+          sample_menu_url?: string | null
+          contact_person_name?: string
+          mobile_number?: string
+          social_media_links?: Json
+          onboarding_completed?: boolean
+          onboarding_step?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catering_providers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       provider_role_permissions: {
         Row: {
           created_at: string | null

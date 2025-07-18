@@ -150,8 +150,8 @@ export default function ProviderOnboardingPage() {
                       Business Information
                     </Typography>
                     <Typography variant="mutedText" className="text-sm">
-                      Tell us about your catering business, location, and
-                      specialties.
+                      Tell us about your catering business, upload your logo,
+                      and provide your business address.
                     </Typography>
                   </div>
                 </div>
@@ -164,11 +164,11 @@ export default function ProviderOnboardingPage() {
                   </div>
                   <div>
                     <Typography variant="smallText" className="font-medium">
-                      Service Setup
+                      Service Details
                     </Typography>
                     <Typography variant="mutedText" className="text-sm">
-                      Create your first catering service offerings and set your
-                      pricing.
+                      Describe your services, coverage areas, and upload sample
+                      menus.
                     </Typography>
                   </div>
                 </div>
@@ -181,11 +181,11 @@ export default function ProviderOnboardingPage() {
                   </div>
                   <div>
                     <Typography variant="smallText" className="font-medium">
-                      Profile Completion
+                      Contact Information
                     </Typography>
                     <Typography variant="mutedText" className="text-sm">
-                      Complete your provider profile and start accepting
-                      bookings.
+                      Provide contact details and social media links for
+                      customers to reach you.
                     </Typography>
                   </div>
                 </div>
@@ -195,8 +195,10 @@ export default function ProviderOnboardingPage() {
 
           {/* CTA Section */}
           <div className="text-center">
-            <Button size="lg" className="mb-4">
-              Start Provider Onboarding
+            <Button size="lg" className="mb-4" asChild>
+              <Link href="/onboarding/provider/flow">
+                Start Provider Onboarding
+              </Link>
             </Button>
             <Typography variant="mutedText" className="text-sm">
               This will upgrade your account to a catering provider with owner
