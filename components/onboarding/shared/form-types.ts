@@ -3,7 +3,13 @@
  * Eliminates the need for 'as any' casting and improves type safety
  */
 
-import type { UseFormReturn, FieldPath, FieldValues, Control } from "react-hook-form";
+import type {
+  UseFormReturn,
+  FieldPath,
+  FieldValues,
+  Control,
+  ControllerRenderProps,
+} from "react-hook-form";
 import type { z } from "zod";
 import type { ProviderOnboardingFormData } from "@/types/form.types";
 import type { OnboardingFormReturn } from "@/hooks/use-onboarding-form";
@@ -34,7 +40,7 @@ export type FormFieldPath<T extends FieldValues> = FieldPath<T>;
 export type ExtractFormData<T> = T extends BaseOnboardingStepProps<infer U> ? U : never;
 
 // Base props for all onboarding step components
-export interface BaseOnboardingStepProps<TData extends Record<string, any>> {
+export interface BaseOnboardingStepProps<TData extends Record<string, unknown>> {
   data: Partial<TData>;
   onDataChange: (data: Partial<TData>) => void;
   form?: OnboardingFormInstance;
@@ -84,7 +90,9 @@ export interface TypedFormFieldProps<
   control: Control<TFieldValues>;
   name: TName;
   config: FormFieldConfig;
-  render: (field: any) => React.ReactNode;
+  render: (
+    field: ControllerRenderProps<TFieldValues, TName>
+  ) => React.ReactNode;
   disabled?: boolean;
 }
 
@@ -101,7 +109,7 @@ export interface FormStepValidation {
 // Performance optimization types
 export interface MemoizedFormCallbacks<TData> {
   onDataChange: (data: Partial<TData>) => void;
-  onFieldChange: (name: keyof TData, value: any) => void;
+  onFieldChange: (name: keyof TData, value: TData[keyof TData]) => void;
   onFieldBlur: (name: keyof TData) => void;
 }
 

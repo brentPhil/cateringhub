@@ -43,10 +43,13 @@ export default function ProviderDashboardPlaceholder() {
               </Typography>
               <div className="flex gap-4 justify-center">
                 <Button asChild>
-                  <Link href="/dashboard">Go to Dashboard</Link>
+                  <Link href="/provider/dashboard/profile">View Profile</Link>
                 </Button>
                 <Button variant="outline" asChild>
                   <Link href="/onboarding/provider">View Onboarding</Link>
+                </Button>
+                <Button variant="ghost" asChild>
+                  <Link href="/dashboard">Dashboard</Link>
                 </Button>
               </div>
             </CardContent>
