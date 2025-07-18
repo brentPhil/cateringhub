@@ -10,7 +10,7 @@ import { getInitials, getAvatarUrl } from "@/lib/utils/avatar";
 import { useQueryState, parseAsStringLiteral } from "nuqs";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import { useUser, useProfile, useUserRole } from "@/hooks/use-auth";
+import { useUser, useUserRole } from "@/hooks/use-auth";
 
 // Define valid tab values
 const TABS = ["profile", "account", "permissions"] as const;
@@ -25,11 +25,12 @@ interface RolePermission {
 }
 
 // Custom hook for role permissions using TanStack Query directly
-function useRolePermissions() {
+function useRolePermissions(enabled: boolean = true) {
   const supabase = createClient();
 
   return useQuery<RolePermission[]>({
     queryKey: ["role_permissions"],
+    enabled,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("role_permissions")
@@ -46,12 +47,17 @@ function useRolePermissions() {
 }
 
 export default function SettingsPage() {
-  // Use existing auth hooks
+  // Use the main user hook which includes profile data
   const { data: user, isLoading: userLoading } = useUser();
-  const { data: profile, isLoading: profileLoading } = useProfile();
   const { data: userRoleData, isLoading: userRoleLoading } = useUserRole();
+
+  // Derive user role early to conditionally load permissions
+  const userRole = userRoleData?.role || null;
+  const isAdmin = userRole === "admin";
+
+  // Only load role permissions if user is admin to avoid unnecessary queries
   const { data: rolePermissions, isLoading: permissionsLoading } =
-    useRolePermissions();
+    useRolePermissions(isAdmin);
 
   // Use nuqs to manage the active tab in the URL
   const [activeTab, setActiveTab] = useQueryState(
@@ -59,10 +65,10 @@ export default function SettingsPage() {
     parseAsStringLiteral(TABS).withDefault("profile")
   );
 
-  // Derive loading state and user role from hooks
+  // Derive loading state and profile from hooks
   const isLoading =
-    userLoading || profileLoading || userRoleLoading || permissionsLoading;
-  const userRole = userRoleData?.role || null;
+    userLoading || userRoleLoading || (isAdmin && permissionsLoading);
+  const profile = user?.profile || null;
 
   // Show loading state if data is still loading
   if (isLoading) {

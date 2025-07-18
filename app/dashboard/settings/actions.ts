@@ -12,7 +12,7 @@ interface ProfileUpdateData {
 }
 
 export async function updateProfile(data: ProfileUpdateData) {
-  const supabase = createClient()
+  const supabase = await createClient()
   
   if (!data.id) {
     throw new Error('User ID is required')

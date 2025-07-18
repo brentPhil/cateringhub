@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { AppRole, ProviderRoleType } from '@/types'
 
 export async function login(formData: FormData) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const data = {
     email: formData.get('email') as string,
@@ -24,7 +24,7 @@ export async function login(formData: FormData) {
 }
 
 export async function signInWithGoogle() {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
@@ -42,7 +42,7 @@ export async function signInWithGoogle() {
 }
 
 export async function signInWithFacebook() {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'facebook',
@@ -59,7 +59,7 @@ export async function signInWithFacebook() {
 }
 
 export async function signup(formData: FormData) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const data = {
     email: formData.get('email') as string,
@@ -81,7 +81,7 @@ export async function signup(formData: FormData) {
 }
 
 export async function signout() {
-  const supabase = createClient()
+  const supabase = await createClient()
   await supabase.auth.signOut()
   revalidatePath('/', 'layout')
   redirect('/login')
@@ -93,7 +93,7 @@ export async function getUserRole(): Promise<{
   role: AppRole;
   provider_role: ProviderRoleType | null;
 } | null> {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   try {
     const { data: { session }, error } = await supabase.auth.getSession()
@@ -128,7 +128,7 @@ export async function getUserRole(): Promise<{
 
 
 export async function refreshSession() {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   try {
     const { data, error } = await supabase.auth.refreshSession()
@@ -180,7 +180,7 @@ export async function hasProviderRole(providerRole: ProviderRoleType): Promise<b
 
 // Debug function - should be removed in production
 export async function debugJwtToken() {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   try {
     const { data: { session }, error } = await supabase.auth.getSession()
@@ -218,7 +218,7 @@ export async function debugJwtToken() {
 }
 
 export async function forceJwtRefresh(): Promise<boolean> {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   try {
     console.log("🔄 Forcing JWT refresh...")
@@ -259,7 +259,7 @@ export async function forceJwtRefresh(): Promise<boolean> {
 }
 
 export async function testSupabaseConnection(): Promise<boolean> {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   try {
     console.log("🧪 Testing Supabase connection...")
