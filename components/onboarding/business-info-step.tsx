@@ -51,10 +51,10 @@ const FORM_CONFIGS = {
     autoComplete: "street-address",
   },
   logo: {
-    label: "Business Logo",
+    label: "Business Logo (Optional)",
     placeholder: "Upload your business logo",
     description:
-      "Upload your business logo to make your profile more professional. Recommended size: 400x400px or larger, PNG/JPG format.",
+      "Optional: Add your logo now or upload it later from your profile settings. Recommended size: 400x400px or larger, PNG/JPG format.",
   },
 } as const;
 

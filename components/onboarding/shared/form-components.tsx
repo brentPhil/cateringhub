@@ -139,16 +139,19 @@ export function TextField<
       config={config}
       disabled={disabled}
     >
-      {(field) => (
-        <Input
-          {...field}
-          type={type}
-          placeholder={config.placeholder}
-          autoComplete={config.autoComplete}
-          disabled={disabled}
-          aria-invalid={field.hasError}
-        />
-      )}
+      {(field) => {
+        const { hasError, ...inputProps } = field
+        return (
+          <Input
+            {...inputProps}
+            type={type}
+            placeholder={config.placeholder}
+            autoComplete={config.autoComplete}
+            disabled={disabled}
+            aria-invalid={hasError}
+          />
+        )
+      }}
     </TypedFormField>
   );
 }
@@ -187,17 +190,20 @@ export function TextareaField<
       config={config}
       disabled={disabled}
     >
-      {(field) => (
-        <Textarea
-          {...field}
-          placeholder={config.placeholder}
-          style={{ minHeight }}
-          className={resize ? "" : "resize-none"}
-          disabled={disabled}
-          rows={rows}
-          aria-invalid={field.hasError}
-        />
-      )}
+      {(field) => {
+        const { hasError, ...textareaProps } = field
+        return (
+          <Textarea
+            {...textareaProps}
+            placeholder={config.placeholder}
+            style={{ minHeight }}
+            className={resize ? "" : "resize-none"}
+            disabled={disabled}
+            rows={rows}
+            aria-invalid={hasError}
+          />
+        )
+      }}
     </TypedFormField>
   );
 }

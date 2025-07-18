@@ -45,10 +45,10 @@ const FORM_CONFIGS = {
     required: true,
   },
   sampleMenu: {
-    label: "Sample Menu",
+    label: "Sample Menu (Optional)",
     placeholder: "Upload a sample menu or food photos",
     description:
-      "Upload a sample menu, price list, or photos of your food. This helps customers understand your offerings. (Images or PDF, max 10MB)",
+      "Optional: Share a sample menu or food photos now or add them later. (Images or PDF, max 10MB)",
   },
 } as const;
 
