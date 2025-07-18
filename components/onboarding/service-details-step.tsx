@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Form } from "@/components/ui/form";
+import type { Control, UseFormReturn, FieldValues } from "react-hook-form";
 import { z } from "zod";
 import { providerServiceDetailsSchema } from "@/lib/validations";
 import type { OnboardingFormReturn } from "@/hooks/use-onboarding-form";
@@ -76,12 +77,18 @@ export const ServiceDetailsStep = React.memo<ServiceDetailsStepProps>(
     );
 
     // Use the dynamic array hook for service areas management
-    const serviceAreasManager = useDynamicArray(form, "serviceAreas");
+    const serviceAreasManager = useDynamicArray(
+      form as unknown as UseFormReturn<FieldValues>,
+      "serviceAreas"
+    );
 
     // Memoize form props to prevent unnecessary re-renders
-    const formProps = React.useMemo(() => form as any, [form]);
+    const formProps = React.useMemo(
+      () => form as unknown as UseFormReturn<ServiceDetailsFormData>,
+      [form]
+    );
     const controlProps = React.useMemo(
-      () => form.control as any,
+      () => form.control as unknown as Control<ServiceDetailsFormData>,
       [form.control]
     );
 
