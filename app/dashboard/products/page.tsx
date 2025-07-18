@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   usePaginationState,
   useSortingState,
@@ -25,18 +25,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Typography } from "@/components/ui/typography";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  LayoutGrid,
-  List,
-  Search,
-  ArrowUpDown,
-  ChevronLeft,
-  ChevronRight,
-  AlertCircle,
-  Plus,
-} from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { LoadingState } from "@/components/ui/loading-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PaginationControls } from "@/components/ui/pagination-controls";
+import { LayoutGrid, List, Search, ArrowUpDown, Plus } from "lucide-react";
 
 // Define product type
 interface Product {
@@ -155,11 +148,14 @@ export default function ProductsPage() {
     };
   }, [filteredProducts, page, pageSize, isLoading]);
 
-  // Handle search form submission
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setQuery(searchInput || null);
-  };
+  // Handle search form submission - memoized to prevent unnecessary re-renders
+  const handleSearch = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      setQuery(searchInput || null);
+    },
+    [searchInput, setQuery]
+  );
 
   // Calculate total pages
   const totalPages = useMemo(() => {
@@ -168,6 +164,22 @@ export default function ProductsPage() {
       ? Math.ceil(processedData.totalCount / pageSizeNum)
       : 0;
   }, [processedData, pageSize]);
+
+  // Memoized event handlers to prevent unnecessary re-renders
+  const handleSearchInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setSearchInput(e.target.value);
+    },
+    [setSearchInput]
+  );
+
+  const handleGridViewClick = useCallback(() => {
+    setViewMode("grid");
+  }, [setViewMode]);
+
+  const handleListViewClick = useCallback(() => {
+    setViewMode("list");
+  }, [setViewMode]);
 
   // Convert state values to proper types for rendering
   const pageNum = typeof page === "number" ? page : 1;
@@ -193,7 +205,7 @@ export default function ProductsPage() {
           <Input
             placeholder="Search products..."
             value={searchInputStr}
-            onChange={(e) => setSearchInput(e.target.value)}
+            onChange={handleSearchInputChange}
             className="w-full md:w-80"
           />
           <Button type="submit" variant="secondary">
@@ -211,7 +223,7 @@ export default function ProductsPage() {
               className={`rounded-r-none ${
                 viewModeStr === "grid" ? "bg-muted" : ""
               }`}
-              onClick={() => setViewMode("grid")}
+              onClick={handleGridViewClick}
               aria-label="Grid view"
             >
               <LayoutGrid className="h-4 w-4" />
@@ -222,7 +234,7 @@ export default function ProductsPage() {
               className={`rounded-l-none ${
                 viewModeStr === "list" ? "bg-muted" : ""
               }`}
-              onClick={() => setViewMode("list")}
+              onClick={handleListViewClick}
               aria-label="List view"
             >
               <List className="h-4 w-4" />
@@ -256,56 +268,36 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* Loading state with skeletons */}
+      {/* Loading state */}
       {isLoading && (
-        <div
-          className={
-            viewModeStr === "grid"
-              ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-              : "space-y-4"
-          }
-        >
-          {Array.from({ length: Math.min(pageSizeNum, 3) }).map((_, index) => (
-            <Card key={index} className="overflow-hidden">
-              <CardHeader>
-                <Skeleton className="h-6 w-3/4 mb-2" />
-                <Skeleton className="h-4 w-1/2" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-4 w-full mb-2" />
-                <Skeleton className="h-4 w-full mb-2" />
-                <Skeleton className="h-6 w-1/4 mt-4" />
-              </CardContent>
-              <CardFooter className="flex justify-between">
-                <Skeleton className="h-9 w-20" />
-                <Skeleton className="h-9 w-24" />
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
+        <LoadingState
+          variant={viewModeStr === "grid" ? "card" : "list"}
+          count={Math.min(pageSizeNum, 6)}
+          showFooter={true}
+        />
       )}
 
       {/* Error state */}
       {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>
-            Failed to load products: {(error as Error).message}
-          </AlertDescription>
-        </Alert>
+        <ErrorState
+          variant="alert"
+          error={error}
+          showRetry={true}
+          onRetry={() => window.location.reload()}
+        />
       )}
 
       {/* Products grid/list */}
       {!isLoading && processedData && (
         <>
           {processedData.products.length === 0 ? (
-            <div className="text-center py-8">
-              <Typography variant="h5">No products found</Typography>
-              <Typography variant="mutedText">
-                Try adjusting your search or filters
-              </Typography>
-            </div>
+            <EmptyState
+              title="No products found"
+              description="Try adjusting your search or filters to find what you're looking for."
+              actionLabel="Add Product"
+              onAction={() => console.log("Add product clicked")}
+              variant="page"
+            />
           ) : (
             <div
               className={
@@ -338,51 +330,18 @@ export default function ProductsPage() {
           )}
 
           {/* Pagination */}
-          <div className="flex items-center justify-between mt-6">
-            <div className="flex items-center gap-2">
-              <Select
-                value={pageSizeNum.toString()}
-                onValueChange={(value) => setPageSize(parseInt(value))}
-              >
-                <SelectTrigger className="w-[100px]">
-                  <SelectValue placeholder="Page size" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">10</SelectItem>
-                  <SelectItem value="25">25</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                  <SelectItem value="100">100</SelectItem>
-                </SelectContent>
-              </Select>
-              <Typography variant="smallText">
-                Showing {processedData.products.length} of{" "}
-                {processedData.totalCount} products
-              </Typography>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setPage(pageNum - 1)}
-                disabled={pageNum <= 1}
-                aria-label="Previous page"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Typography variant="smallText">
-                Page {pageNum} of {totalPagesNum || 1}
-              </Typography>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setPage(pageNum + 1)}
-                disabled={pageNum >= totalPagesNum}
-                aria-label="Next page"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
+          <div className="mt-6">
+            <PaginationControls
+              currentPage={pageNum}
+              totalPages={totalPagesNum}
+              pageSize={pageSizeNum}
+              totalItems={processedData.totalCount}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+              pageSizeOptions={[10, 25, 50, 100]}
+              showPageSizeSelector={true}
+              showInfo={true}
+            />
           </div>
         </>
       )}

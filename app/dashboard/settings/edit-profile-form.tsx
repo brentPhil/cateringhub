@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -35,42 +35,51 @@ export function EditProfileForm({ user, profile }: EditProfileFormProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
-  // Default values from the existing profile
-  const defaultValues: Partial<ProfileFormData> = {
-    full_name: profile?.full_name ?? "",
-    username: profile?.username ?? "",
-    bio: profile?.bio ?? "",
-    avatar_url: profile?.avatar_url ?? "",
-  };
+  // Default values from the existing profile - memoized to prevent unnecessary re-renders
+  const defaultValues: Partial<ProfileFormData> = useMemo(
+    () => ({
+      full_name: profile?.full_name ?? "",
+      username: profile?.username ?? "",
+      bio: profile?.bio ?? "",
+      avatar_url: profile?.avatar_url ?? "",
+    }),
+    [profile]
+  );
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
     defaultValues,
   });
 
-  async function onSubmit(data: ProfileFormData) {
-    setIsLoading(true);
+  // Memoized submit handler to prevent unnecessary re-renders
+  const onSubmit = useCallback(
+    async (data: ProfileFormData) => {
+      setIsLoading(true);
 
-    try {
-      await updateProfile({
-        id: user?.id,
-        full_name: data.full_name,
-        username: data.username || undefined,
-        bio: data.bio || undefined,
-        avatar_url: data.avatar_url || undefined,
-      });
+      try {
+        await updateProfile({
+          id: user?.id,
+          full_name: data.full_name,
+          username: data.username || undefined,
+          bio: data.bio || undefined,
+          avatar_url: data.avatar_url || undefined,
+        });
 
-      toast.success("Your profile has been updated successfully.");
+        toast.success("Your profile has been updated successfully.");
 
-      // Use router.refresh() to refresh the page data without losing URL state
-      router.refresh();
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to update profile. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  }
+        // Use router.refresh() to refresh the page data without losing URL state
+        router.refresh();
+      } catch (error) {
+        if (process.env.NODE_ENV === "development") {
+          console.error(error);
+        }
+        toast.error("Failed to update profile. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [user?.id, toast, router]
+  );
 
   return (
     <Form {...form}>

@@ -34,7 +34,11 @@ function UserProviderInner({ children }: { children: ReactNode }) {
   // Handle error state with better error UI
   if (userError || profileError) {
     const error = userError || profileError;
-    console.error("Error loading user data:", error);
+
+    // Only log in development mode
+    if (process.env.NODE_ENV === "development") {
+      console.error("Error loading user data:", error);
+    }
 
     return (
       <div className="min-h-screen flex items-center justify-center p-4">

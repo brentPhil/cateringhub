@@ -1,7 +1,12 @@
 "use client";
 
 import React, { ReactNode } from "react";
-import { useUser, useUserRole, useIsAdmin, useIsProvider, useIsProviderOwner, useIsProviderStaff, useHasRole, useHasProviderRole } from "@/hooks/use-auth";
+import {
+  useUser,
+  useUserRole,
+  useHasRole,
+  useHasProviderRole,
+} from "@/hooks/use-auth";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Lock, LogIn } from "lucide-react";
@@ -69,7 +74,10 @@ export function RoleGuard({
             <Lock className="h-4 w-4" />
             <AlertTitle>Access Denied</AlertTitle>
             <AlertDescription>
-              <p>You don't have the required role ({role}) to access this content.</p>
+              <p>
+                You don't have the required role ({role}) to access this
+                content.
+              </p>
             </AlertDescription>
           </Alert>
         </div>
@@ -96,7 +104,8 @@ export function ProviderRoleGuard({
   redirectTo = "/login",
 }: ProviderRoleGuardProps) {
   const { data: user, isLoading: isUserLoading } = useUser();
-  const { value: hasProviderRole, isLoading: isRoleLoading } = useHasProviderRole(providerRole);
+  const { value: hasProviderRole, isLoading: isRoleLoading } =
+    useHasProviderRole(providerRole);
   const router = useRouter();
 
   // Show loading state while checking authentication
@@ -141,7 +150,10 @@ export function ProviderRoleGuard({
             <Lock className="h-4 w-4" />
             <AlertTitle>Access Denied</AlertTitle>
             <AlertDescription>
-              <p>You don't have the required provider role ({providerRole}) to access this content.</p>
+              <p>
+                You don't have the required provider role ({providerRole}) to
+                access this content.
+              </p>
             </AlertDescription>
           </Alert>
         </div>
@@ -153,7 +165,12 @@ export function ProviderRoleGuard({
 }
 
 // Convenience guard components for specific roles
-export function AdminGuard({ children, fallback, requireAuth = true, redirectTo = "/login" }: {
+export function AdminGuard({
+  children,
+  fallback,
+  requireAuth = true,
+  redirectTo = "/login",
+}: {
   children: ReactNode;
   fallback?: ReactNode;
   requireAuth?: boolean;
@@ -171,7 +188,12 @@ export function AdminGuard({ children, fallback, requireAuth = true, redirectTo 
   );
 }
 
-export function ProviderGuard({ children, fallback, requireAuth = true, redirectTo = "/login" }: {
+export function ProviderGuard({
+  children,
+  fallback,
+  requireAuth = true,
+  redirectTo = "/login",
+}: {
   children: ReactNode;
   fallback?: ReactNode;
   requireAuth?: boolean;
@@ -189,7 +211,12 @@ export function ProviderGuard({ children, fallback, requireAuth = true, redirect
   );
 }
 
-export function ProviderOwnerGuard({ children, fallback, requireAuth = true, redirectTo = "/login" }: {
+export function ProviderOwnerGuard({
+  children,
+  fallback,
+  requireAuth = true,
+  redirectTo = "/login",
+}: {
   children: ReactNode;
   fallback?: ReactNode;
   requireAuth?: boolean;
@@ -207,7 +234,12 @@ export function ProviderOwnerGuard({ children, fallback, requireAuth = true, red
   );
 }
 
-export function ProviderStaffGuard({ children, fallback, requireAuth = true, redirectTo = "/login" }: {
+export function ProviderStaffGuard({
+  children,
+  fallback,
+  requireAuth = true,
+  redirectTo = "/login",
+}: {
   children: ReactNode;
   fallback?: ReactNode;
   requireAuth?: boolean;
@@ -288,7 +320,10 @@ export function MultiRoleGuard({
             <Lock className="h-4 w-4" />
             <AlertTitle>Access Denied</AlertTitle>
             <AlertDescription>
-              <p>You don't have any of the required roles ({roles.join(", ")}) to access this content.</p>
+              <p>
+                You don't have any of the required roles ({roles.join(", ")}) to
+                access this content.
+              </p>
             </AlertDescription>
           </Alert>
         </div>

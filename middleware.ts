@@ -11,9 +11,9 @@ const PUBLIC_ROUTES = [
 ]
 
 // List of routes that should be accessible to authenticated users without redirect
-const AUTHENTICATED_ROUTES = [
-  '/onboarding/provider'
-]
+// const AUTHENTICATED_ROUTES = [
+//   '/onboarding/provider'
+// ] // TODO: Use this when implementing more complex routing logic
 
 export async function middleware(request: NextRequest) {
   // Get the pathname from the URL
@@ -27,10 +27,7 @@ export async function middleware(request: NextRequest) {
     pathname === route || pathname === `${route}/`
   )
 
-  // Check if the current path is in the authenticated routes list
-  const isAuthenticatedRoute = AUTHENTICATED_ROUTES.some(route =>
-    pathname === route || pathname.startsWith(`${route}/`)
-  )
+  // Note: AUTHENTICATED_ROUTES are handled by individual page components
 
   // Only check authentication for public routes
   if (isPublicRoute) {

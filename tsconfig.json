@@ -21,14 +21,14 @@
     "paths": {
       "@/*": ["./*"]
     },
-    // Enhanced type checking (temporarily relaxed for migration)
-    "noImplicitAny": false,
+    // Enhanced type checking - gradually enabling strict mode
+    "noImplicitAny": true,
     "noImplicitReturns": true,
     "noImplicitThis": true,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
-    "exactOptionalPropertyTypes": false,
-    "noUncheckedIndexedAccess": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "exactOptionalPropertyTypes": false, // Keep disabled for now due to library compatibility
+    "noUncheckedIndexedAccess": false, // Keep disabled for now to avoid breaking changes
     "noImplicitOverride": true,
     "allowUnusedLabels": false,
     "allowUnreachableCode": false,

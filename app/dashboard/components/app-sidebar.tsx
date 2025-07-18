@@ -71,7 +71,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: profile, isLoading: isProfileLoading } = useProfile();
 
   // Get user role to filter navigation items
-  const { value: isAdmin, isLoading: isAdminLoading } = useIsAdmin();
+  const { value: isAdmin } = useIsAdmin();
 
   // Filter navigation items based on roles
   const navItems = allNavItems.filter((item) => {

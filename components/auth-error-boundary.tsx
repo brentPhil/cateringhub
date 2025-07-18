@@ -36,11 +36,14 @@ export class AuthErrorBoundary extends Component<
   }
 
   override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error(
-      "Authentication Error Boundary caught an error:",
-      error,
-      errorInfo
-    );
+    // Only log in development mode
+    if (process.env.NODE_ENV === "development") {
+      console.error(
+        "Authentication Error Boundary caught an error:",
+        error,
+        errorInfo
+      );
+    }
 
     // Call the onError callback if provided
     if (this.props.onError) {
@@ -58,7 +61,7 @@ export class AuthErrorBoundary extends Component<
   }
 
   handleRetry = () => {
-    this.setState({ hasError: false, error: undefined, errorInfo: undefined });
+    this.setState({ hasError: false });
     window.location.reload();
   };
 
@@ -131,7 +134,10 @@ export class AuthErrorBoundary extends Component<
 // Hook-based error boundary for functional components
 export function useAuthErrorHandler() {
   const handleAuthError = React.useCallback((error: Error) => {
-    console.error("Authentication error:", error);
+    // Only log in development mode
+    if (process.env.NODE_ENV === "development") {
+      console.error("Authentication error:", error);
+    }
 
     // Handle specific authentication errors
     if (error.message.includes("JWT")) {

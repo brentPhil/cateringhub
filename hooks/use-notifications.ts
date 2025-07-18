@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
+// import { createClient } from "@/lib/supabase/client"; // TODO: Uncomment when notifications table is ready
 import { toast } from "sonner";
 
 // Define notification type
@@ -25,8 +25,8 @@ export const notificationKeys = {
 
 // Get all notifications for the current user
 export function useNotifications() {
-  const supabase = createClient();
-  
+  // const supabase = createClient(); // TODO: Implement when notifications table is ready
+
   return useQuery({
     queryKey: notificationKeys.lists(),
     queryFn: async () => {
@@ -81,10 +81,10 @@ export function useNotifications() {
 // Mark a notification as read
 export function useMarkNotificationAsRead() {
   const queryClient = useQueryClient();
-  const supabase = createClient();
-  
+  // const supabase = createClient(); // TODO: Implement when notifications table is ready
+
   return useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async (_id: string) => {
       // In a real implementation, you would update the notifications table
       // For now, we'll just simulate success
       
@@ -131,7 +131,7 @@ export function useMarkNotificationAsRead() {
 // Mark all notifications as read
 export function useMarkAllNotificationsAsRead() {
   const queryClient = useQueryClient();
-  const supabase = createClient();
+  // const supabase = createClient(); // TODO: Implement when notifications table is ready
   
   return useMutation({
     mutationFn: async () => {

@@ -148,7 +148,7 @@ export interface StorageFileObject {
 }
 
 // Edge function types
-export interface EdgeFunctionInvocation<T = unknown, R = unknown> {
+export interface EdgeFunctionInvocation<T = unknown> {
   functionName: string
   body?: T
   headers?: Record<string, string>
@@ -161,7 +161,7 @@ export interface EdgeFunctionResponse<T = unknown> {
 }
 
 // Database function types
-export interface DatabaseFunction<T = unknown, R = unknown> {
+export interface DatabaseFunction<T = unknown> {
   name: string
   args: T
 }

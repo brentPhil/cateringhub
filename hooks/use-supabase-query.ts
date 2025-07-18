@@ -319,7 +319,10 @@ export function useRealtimeSubscription<T>(
               filter: options?.filter
             },
             (payload: any) => {
-              console.log(`Real-time change in ${table}:`, payload);
+              // Only log in development mode
+              if (process.env.NODE_ENV === "development") {
+                console.log(`Real-time change in ${table}:`, payload);
+              }
 
               // Invalidate relevant queries to refetch data
               queryClient.invalidateQueries({ queryKey: queryKeys.table(table) });

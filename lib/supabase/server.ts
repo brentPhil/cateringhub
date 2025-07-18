@@ -16,10 +16,11 @@ export const createClient = cache(async () => {
         set(name: string, value: string, options: Parameters<typeof cookieStore.set>[2]) {
           cookieStore.set({ name, value, ...options })
         },
-        remove(name: string, options: Parameters<typeof cookieStore.delete>[1]) {
-          cookieStore.delete(name, options)
+        remove(name: string) {
+          // Simple implementation that works with the current Supabase version
+          cookieStore.delete(name)
         },
       },
-    }
+    } as any // Type assertion to bypass type mismatch in Supabase SSR package
   )
 })

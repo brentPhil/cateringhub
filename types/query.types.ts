@@ -2,8 +2,7 @@
  * TanStack Query (React Query) related type definitions
  */
 
-import type { UseQueryOptions, UseMutationOptions, UseInfiniteQueryOptions } from '@tanstack/react-query'
-import type { SupabaseResponse, SupabaseError, QueryOptions, TableName } from './api.types'
+import type { SupabaseError, QueryOptions, TableName } from './api.types'
 
 // Query key types
 export type QueryKey = readonly unknown[]

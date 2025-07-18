@@ -49,7 +49,7 @@ export default async function DashboardPage() {
             {userRoleData?.role === "catering_provider" &&
               userRoleData?.provider_role && (
                 <Typography variant="smallText">
-                  <span className="font-medium">Provider Type:</span>{" "}
+                  <span className="font-medium">Provider Type:</span>{" "}   
                   {userRoleData.provider_role}
                 </Typography>
               )}

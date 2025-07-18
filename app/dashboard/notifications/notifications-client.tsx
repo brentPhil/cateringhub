@@ -1,20 +1,27 @@
 "use client";
 
-import { 
-  useNotifications, 
-  useMarkNotificationAsRead, 
-  useMarkAllNotificationsAsRead 
+import { useCallback, useMemo } from "react";
+import {
+  useNotifications,
+  useMarkNotificationAsRead,
+  useMarkAllNotificationsAsRead,
 } from "@/hooks/use-notifications";
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardFooter,
+} from "@/components/ui/card";
 import { Typography } from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  BellIcon, 
-  CheckIcon, 
-  AlertCircleIcon, 
+import {
+  BellIcon,
+  CheckIcon,
+  AlertCircleIcon,
   CheckCircleIcon,
-  ClockIcon
+  ClockIcon,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -29,20 +36,25 @@ export default function NotificationsClient() {
   const { data: notifications, isLoading, isError, error } = useNotifications();
   const markAsRead = useMarkNotificationAsRead();
   const markAllAsRead = useMarkAllNotificationsAsRead();
-  
-  // Count unread notifications
-  const unreadCount = notifications?.filter(n => !n.read).length || 0;
-  
-  // Handle marking a notification as read
-  const handleMarkAsRead = (id: string) => {
-    markAsRead.mutate(id);
-  };
-  
-  // Handle marking all notifications as read
-  const handleMarkAllAsRead = () => {
+
+  // Count unread notifications - memoized to prevent unnecessary recalculations
+  const unreadCount = useMemo(() => {
+    return notifications?.filter((n) => !n.read).length || 0;
+  }, [notifications]);
+
+  // Handle marking a notification as read - memoized to prevent unnecessary re-renders
+  const handleMarkAsRead = useCallback(
+    (id: string) => {
+      markAsRead.mutate(id);
+    },
+    [markAsRead]
+  );
+
+  // Handle marking all notifications as read - memoized to prevent unnecessary re-renders
+  const handleMarkAllAsRead = useCallback(() => {
     markAllAsRead.mutate();
-  };
-  
+  }, [markAllAsRead]);
+
   // Loading state
   if (isLoading) {
     return (
@@ -50,7 +62,7 @@ export default function NotificationsClient() {
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Notifications</h1>
         </div>
-        
+
         <div className="grid gap-6">
           {[1, 2, 3].map((i) => (
             <Card key={i}>
@@ -70,7 +82,7 @@ export default function NotificationsClient() {
       </div>
     );
   }
-  
+
   // Error state
   if (isError) {
     return (
@@ -78,18 +90,20 @@ export default function NotificationsClient() {
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Notifications</h1>
         </div>
-        
+
         <Alert variant="destructive">
           <AlertCircleIcon className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>
-            {error instanceof Error ? error.message : "Failed to load notifications"}
+            {error instanceof Error
+              ? error.message
+              : "Failed to load notifications"}
           </AlertDescription>
         </Alert>
       </div>
     );
   }
-  
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -101,11 +115,11 @@ export default function NotificationsClient() {
             </span>
           )}
         </div>
-        
+
         {unreadCount > 0 && (
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleMarkAllAsRead}
             disabled={markAllAsRead.isPending}
           >
@@ -127,13 +141,27 @@ export default function NotificationsClient() {
       <div className="grid gap-6">
         {notifications && notifications.length > 0 ? (
           notifications.map((notification) => (
-            <Card 
-              key={notification.id} 
-              className={notification.read ? "opacity-80 hover:opacity-100 transition-opacity" : ""}
+            <Card
+              key={notification.id}
+              className={
+                notification.read
+                  ? "opacity-80 hover:opacity-100 transition-opacity"
+                  : ""
+              }
             >
               <CardHeader className="flex flex-row items-center gap-4 pb-2">
-                <div className={`p-2 rounded-full ${notification.read ? "bg-muted" : "bg-primary/10"}`}>
-                  <BellIcon className={`h-5 w-5 ${notification.read ? "text-muted-foreground" : "text-primary"}`} />
+                <div
+                  className={`p-2 rounded-full ${
+                    notification.read ? "bg-muted" : "bg-primary/10"
+                  }`}
+                >
+                  <BellIcon
+                    className={`h-5 w-5 ${
+                      notification.read
+                        ? "text-muted-foreground"
+                        : "text-primary"
+                    }`}
+                  />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
@@ -143,23 +171,30 @@ export default function NotificationsClient() {
                         <span className="ml-2 inline-flex h-2 w-2 rounded-full bg-primary"></span>
                       )}
                     </CardTitle>
-                    <Typography variant="smallText" className="text-muted-foreground">
-                      {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                    <Typography
+                      variant="smallText"
+                      className="text-muted-foreground"
+                    >
+                      {formatDistanceToNow(new Date(notification.created_at), {
+                        addSuffix: true,
+                      })}
                     </Typography>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <Typography variant="smallText">{notification.message}</Typography>
+                <Typography variant="smallText">
+                  {notification.message}
+                </Typography>
               </CardContent>
               {!notification.read && (
                 <CardFooter className="flex justify-end pt-0">
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => handleMarkAsRead(notification.id)}
                           disabled={markAsRead.isPending}
                         >
@@ -183,7 +218,10 @@ export default function NotificationsClient() {
               <Typography variant="lead" className="text-center">
                 No notifications yet
               </Typography>
-              <Typography variant="smallText" className="text-muted-foreground text-center">
+              <Typography
+                variant="smallText"
+                className="text-muted-foreground text-center"
+              >
                 When you receive notifications, they will appear here.
               </Typography>
             </CardContent>

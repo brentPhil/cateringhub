@@ -3,7 +3,6 @@
  */
 
 import type { LucideIcon } from 'lucide-react'
-import type { VariantProps } from 'class-variance-authority'
 
 // Base component props
 export interface BaseProps {
