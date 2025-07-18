@@ -1,6 +1,10 @@
 "use client";
 
-import { useForm, UseFormReturn } from "react-hook-form";
+import {
+  useForm,
+  UseFormReturn,
+  type FieldPath,
+} from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useCallback } from "react";
 import {
@@ -21,10 +25,25 @@ export const FORM_STEPS = {
 export type FormStep = typeof FORM_STEPS[keyof typeof FORM_STEPS];
 
 // Step-specific field mappings
-export const STEP_FIELDS = {
-  [FORM_STEPS.BUSINESS_INFO]: ['businessName', 'businessAddress', 'logo'] as const,
-  [FORM_STEPS.SERVICE_DETAILS]: ['description', 'serviceAreas', 'sampleMenu'] as const,
-  [FORM_STEPS.CONTACT_INFO]: ['contactPersonName', 'mobileNumber', 'socialMediaLinks'] as const,
+export const STEP_FIELDS: Record<
+  FormStep,
+  readonly (keyof ProviderOnboardingData)[]
+> = {
+  [FORM_STEPS.BUSINESS_INFO]: [
+    "businessName",
+    "businessAddress",
+    "logo",
+  ],
+  [FORM_STEPS.SERVICE_DETAILS]: [
+    "description",
+    "serviceAreas",
+    "sampleMenu",
+  ],
+  [FORM_STEPS.CONTACT_INFO]: [
+    "contactPersonName",
+    "mobileNumber",
+    "socialMediaLinks",
+  ],
 } as const;
 
 // Step validation schemas
@@ -99,7 +118,7 @@ export function useOnboardingForm(options: UseOnboardingFormOptions = {}): Onboa
 
   // Initialize form with combined schema
   const form = useForm<ProviderOnboardingData>({
-    resolver: zodResolver(providerOnboardingSchema) as any,
+    resolver: zodResolver<ProviderOnboardingData>(providerOnboardingSchema),
     defaultValues: defaultValues as ProviderOnboardingData,
     mode: "onChange",
   });
@@ -205,7 +224,7 @@ export function useOnboardingForm(options: UseOnboardingFormOptions = {}): Onboa
 
   const validateStep = useCallback(async (step: FormStep): Promise<boolean> => {
     const stepFields = STEP_FIELDS[step];
-    const result = await trigger(stepFields as any);
+    const result = await trigger(stepFields as FieldPath<ProviderOnboardingData>[]);
     return result;
   }, [trigger]);
 
@@ -214,9 +233,9 @@ export function useOnboardingForm(options: UseOnboardingFormOptions = {}): Onboa
     const stepFields = STEP_FIELDS[step];
     const values = getValues();
     const stepData: Partial<ProviderOnboardingData> = {};
-    
+
     stepFields.forEach(field => {
-      (stepData as any)[field] = (values as any)[field];
+      stepData[field] = values[field];
     });
     
     return stepData;
@@ -227,10 +246,14 @@ export function useOnboardingForm(options: UseOnboardingFormOptions = {}): Onboa
     
     stepFields.forEach(field => {
       if (field in data) {
-        setValue(field as keyof ProviderOnboardingData, data[field as keyof ProviderOnboardingData] as any, {
-          shouldValidate: true,
-          shouldDirty: true,
-        });
+        setValue(
+          field,
+          data[field] as ProviderOnboardingData[keyof ProviderOnboardingData],
+          {
+            shouldValidate: true,
+            shouldDirty: true,
+          }
+        );
       }
     });
   }, [setValue]);
@@ -289,17 +312,20 @@ export function useOnboardingForm(options: UseOnboardingFormOptions = {}): Onboa
       const stepFields = STEP_FIELDS[step];
       const defaultStepData: Partial<ProviderOnboardingData> = {};
 
-      stepFields.forEach(field => {
-        (defaultStepData as any)[field] = (DEFAULT_VALUES as any)[field];
+    stepFields.forEach(field => {
+        defaultStepData[field] = DEFAULT_VALUES[field];
       });
 
       // Reset only the fields for this step
       stepFields.forEach(field => {
-        setValue(field as keyof ProviderOnboardingData,
-          defaultStepData[field as keyof ProviderOnboardingData] as any, {
-          shouldValidate: true,
-          shouldDirty: true,
-        });
+        setValue(
+          field,
+          defaultStepData[field] as ProviderOnboardingData[keyof ProviderOnboardingData],
+          {
+            shouldValidate: true,
+            shouldDirty: true,
+          }
+        );
       });
     } catch (error) {
       console.warn(`Failed to reset step ${step}:`, error);
