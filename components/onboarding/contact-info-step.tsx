@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Form } from "@/components/ui/form";
+import type { UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 import { providerContactInfoSchema } from "@/lib/validations";
 import type { OnboardingFormReturn } from "@/hooks/use-onboarding-form";
@@ -13,7 +14,7 @@ import {
   InfoSection,
   FormSection,
 } from "./shared/form-components";
-import type { BaseOnboardingStepProps } from "./shared/form-types";
+import type { BaseOnboardingStepProps, OnboardingFormControl } from "./shared/form-types";
 
 // Type-safe form data definition
 type ContactInfoFormData = z.infer<typeof providerContactInfoSchema>;
@@ -67,9 +68,12 @@ export const ContactInfoStep = React.memo<ContactInfoStepProps>(
     );
 
     // Memoize form props to prevent unnecessary re-renders
-    const formProps = React.useMemo(() => form as any, [form]);
+    const formProps = React.useMemo(
+      () => form as unknown as UseFormReturn<ContactInfoFormData>,
+      [form]
+    );
     const controlProps = React.useMemo(
-      () => form.control as any,
+      () => form.control as unknown as OnboardingFormControl,
       [form.control]
     );
 

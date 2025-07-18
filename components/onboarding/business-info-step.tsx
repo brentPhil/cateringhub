@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Form } from "@/components/ui/form";
+import type { Control, UseFormReturn } from "react-hook-form";
 import { providerBusinessInfoSchema } from "@/lib/validations";
 import type { ProviderOnboardingFormData } from "@/types/form.types";
 import type { OnboardingFormReturn } from "@/hooks/use-onboarding-form";
@@ -50,10 +51,10 @@ const FORM_CONFIGS = {
     autoComplete: "street-address",
   },
   logo: {
-    label: "Business Logo",
+    label: "Business Logo (Optional)",
     placeholder: "Upload your business logo",
     description:
-      "Upload your business logo to make your profile more professional. Recommended size: 400x400px or larger, PNG/JPG format.",
+      "Optional: Add your logo now or upload it later from your profile settings. Recommended size: 400x400px or larger, PNG/JPG format.",
   },
 } as const;
 
@@ -81,9 +82,12 @@ export const BusinessInfoStep = React.memo<BusinessInfoStepProps>(
     );
 
     // Memoize form props to prevent unnecessary re-renders
-    const formProps = React.useMemo(() => form as any, [form]);
+    const formProps = React.useMemo(
+      () => form as unknown as UseFormReturn<BusinessInfoFormData>,
+      [form]
+    );
     const controlProps = React.useMemo(
-      () => form.control as any,
+      () => form.control as unknown as Control<BusinessInfoFormData>,
       [form.control]
     );
 

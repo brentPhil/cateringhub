@@ -4,7 +4,13 @@
  */
 
 import * as React from "react";
-import { useForm, type UseFormReturn, type FieldValues, type DefaultValues } from "react-hook-form";
+import {
+  useForm,
+  type UseFormReturn,
+  type FieldValues,
+  type DefaultValues,
+  type FieldPath,
+} from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { z } from "zod";
 import { useOnboardingErrorHandler } from "../onboarding-error-boundary";
@@ -15,17 +21,16 @@ import type {
 
 // Generic form hook for onboarding steps
 export function useOnboardingStepForm<
-  TData extends FieldValues,
-  TSchema extends z.ZodType<TData>
+  TData extends FieldValues
 >(
-  schema: TSchema,
+  schema: z.ZodType<TData, z.ZodTypeDef, TData>,
   data: Partial<TData>,
   onDataChange: (data: Partial<TData>) => void,
   unifiedForm?: OnboardingFormInstance
 ) {
   // Create local form with proper typing and memoized defaults
   const localForm = useForm<TData>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver<TData>(schema),
     defaultValues: React.useMemo(() => {
       // Create default values from schema and provided data
       const defaults = {} as TData;
@@ -56,22 +61,38 @@ export function useOnboardingStepForm<
   const activeForm = unifiedForm ?? localForm;
 
   // Memoized callbacks to prevent unnecessary re-renders
-  const callbacks = React.useMemo(() => ({
-    onDataChange: React.useCallback((newData: Partial<TData>) => {
+  const onDataChangeCb = React.useCallback(
+    (newData: Partial<TData>) => {
       onDataChange(newData);
-    }, [onDataChange]),
+    },
+    [onDataChange]
+  );
 
-    onFieldChange: React.useCallback((name: keyof TData, value: any) => {
+  const onFieldChange = React.useCallback(
+    (name: keyof TData, value: TData[keyof TData]) => {
       const currentData = activeForm.getValues();
       const updatedData = { ...currentData, [name]: value };
       onDataChange(updatedData as Partial<TData>);
-    }, [activeForm, onDataChange]),
+    },
+    [activeForm, onDataChange]
+  );
 
-    onFieldBlur: React.useCallback((name: keyof TData) => {
+  const onFieldBlur = React.useCallback(
+    (name: keyof TData) => {
       // Trigger validation for the specific field
-      activeForm.trigger(name as any);
-    }, [activeForm]),
-  }), [onDataChange, activeForm]);
+      activeForm.trigger(name as FieldPath<TData>);
+    },
+    [activeForm]
+  );
+
+  const callbacks = React.useMemo(
+    () => ({
+      onDataChange: onDataChangeCb,
+      onFieldChange,
+      onFieldBlur,
+    }),
+    [onDataChangeCb, onFieldChange, onFieldBlur]
+  );
 
   // Optimized effect with proper dependencies and cleanup
   React.useEffect(() => {
@@ -114,7 +135,7 @@ export function useOnboardingStepForm<
 
 // Hook for managing dynamic arrays (like service areas) with optimized performance
 export function useDynamicArray<T = string>(
-  form: UseFormReturn<any>,
+  form: UseFormReturn<FieldValues>,
   fieldName: string,
   validator?: (value: T) => boolean
 ) {
@@ -142,8 +163,8 @@ export function useDynamicArray<T = string>(
   }, [fieldName, setValue, getValues, validator]);
 
   const removeItem = React.useCallback((index: number) => {
-    const currentItems = getValues(fieldName) || [];
-    const updatedItems = currentItems.filter((_: any, i: number) => i !== index);
+    const currentItems = (getValues(fieldName) || []) as T[];
+    const updatedItems = currentItems.filter((_, i) => i !== index);
     setValue(fieldName, updatedItems, { shouldValidate: true });
   }, [fieldName, setValue, getValues]);
 
@@ -171,7 +192,7 @@ export function useDynamicArray<T = string>(
 
 // Hook for file upload handling
 export function useFileUpload(
-  form: UseFormReturn<any>,
+  form: UseFormReturn<FieldValues>,
   fieldName: string,
   config: {
     maxSize?: number;
@@ -257,7 +278,7 @@ export function useFileUpload(
 }
 
 // Helper function to get default values for different field types
-function getDefaultValueForField(zodField: any): any {
+function getDefaultValueForField(zodField: unknown): unknown {
   if (!zodField) return undefined;
 
   // Handle ZodOptional
@@ -277,7 +298,7 @@ function getDefaultValueForField(zodField: any): any {
       return [];
     case "ZodObject":
       const shape = zodField._def.shape();
-      const obj: any = {};
+      const obj: Record<string, unknown> = {};
       Object.keys(shape).forEach(key => {
         obj[key] = getDefaultValueForField(shape[key]);
       });
