@@ -18,6 +18,8 @@ export interface ProgressStepsProps {
   className?: string;
   orientation?: "horizontal" | "vertical";
   size?: "sm" | "md" | "lg";
+  onStepClick?: (step: number) => void;
+  allowStepNavigation?: boolean;
 }
 
 export function ProgressSteps({
@@ -27,6 +29,8 @@ export function ProgressSteps({
   className,
   orientation = "horizontal",
   size = "md",
+  onStepClick,
+  allowStepNavigation = false,
 }: ProgressStepsProps) {
   const sizeClasses = {
     sm: {
@@ -57,8 +61,10 @@ export function ProgressSteps({
           const isCurrent = stepNumber === currentStep;
           const isPending = stepNumber > currentStep && !isCompleted;
 
-          return (
-            <div key={step.id} className="flex items-start space-x-3">
+          const canNavigate =
+            allowStepNavigation && (isCompleted || isCurrent) && onStepClick;
+          const stepContent = (
+            <>
               {/* Step Circle */}
               <div
                 className={cn(
@@ -69,7 +75,8 @@ export function ProgressSteps({
                       isCompleted || isCurrent,
                     "bg-muted border-muted-foreground/25 text-muted-foreground":
                       isPending,
-                  }
+                  },
+                  canNavigate && "cursor-pointer hover:scale-105"
                 )}
               >
                 {isCompleted ? (
@@ -82,11 +89,16 @@ export function ProgressSteps({
               {/* Step Content */}
               <div className="flex-1 min-w-0">
                 <div
-                  className={cn("font-medium", classes.title, {
-                    "text-primary": isCurrent,
-                    "text-foreground": isCompleted,
-                    "text-muted-foreground": isPending,
-                  })}
+                  className={cn(
+                    "font-medium",
+                    classes.title,
+                    {
+                      "text-primary": isCurrent,
+                      "text-foreground": isCompleted,
+                      "text-muted-foreground": isPending,
+                    },
+                    canNavigate && "cursor-pointer hover:text-primary"
+                  )}
                 >
                   {step.title}
                   {step.optional && (
@@ -106,6 +118,29 @@ export function ProgressSteps({
                   </div>
                 )}
               </div>
+            </>
+          );
+
+          return (
+            <div key={step.id} className="flex items-start space-x-3">
+              {canNavigate ? (
+                <div
+                  className="flex items-start space-x-3 cursor-pointer transition-all hover:bg-muted/50 rounded-lg p-2 -m-2"
+                  onClick={() => onStepClick(stepNumber)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onStepClick(stepNumber);
+                    }
+                  }}
+                >
+                  {stepContent}
+                </div>
+              ) : (
+                stepContent
+              )}
             </div>
           );
         })}
@@ -122,56 +157,87 @@ export function ProgressSteps({
         const isPending = stepNumber > currentStep && !isCompleted;
         const isLast = index === steps.length - 1;
 
-        return (
-          <React.Fragment key={step.id}>
-            <div className="flex flex-col items-center space-y-2">
-              {/* Step Circle */}
+        const canNavigate =
+          allowStepNavigation && (isCompleted || isCurrent) && onStepClick;
+        const stepContent = (
+          <>
+            {/* Step Circle */}
+            <div
+              className={cn(
+                "flex items-center justify-center rounded-full border-2 font-medium transition-colors",
+                classes.circle,
+                {
+                  "bg-primary border-primary text-primary-foreground":
+                    isCompleted || isCurrent,
+                  "bg-muted border-muted-foreground/25 text-muted-foreground":
+                    isPending,
+                },
+                canNavigate && "cursor-pointer hover:scale-105"
+              )}
+            >
+              {isCompleted ? (
+                <Check className="w-4 h-4" />
+              ) : (
+                <span>{stepNumber}</span>
+              )}
+            </div>
+
+            {/* Step Content */}
+            <div className="text-center">
               <div
                 className={cn(
-                  "flex items-center justify-center rounded-full border-2 font-medium transition-colors",
-                  classes.circle,
+                  "font-medium",
+                  classes.title,
                   {
-                    "bg-primary border-primary text-primary-foreground":
-                      isCompleted || isCurrent,
-                    "bg-muted border-muted-foreground/25 text-muted-foreground":
-                      isPending,
-                  }
-                )}
-              >
-                {isCompleted ? (
-                  <Check className="w-4 h-4" />
-                ) : (
-                  <span>{stepNumber}</span>
-                )}
-              </div>
-
-              {/* Step Content */}
-              <div className="text-center">
-                <div
-                  className={cn("font-medium", classes.title, {
                     "text-primary": isCurrent,
                     "text-foreground": isCompleted,
                     "text-muted-foreground": isPending,
-                  })}
-                >
-                  {step.title}
-                  {step.optional && (
-                    <span className="ml-1 text-muted-foreground text-xs">
-                      (optional)
-                    </span>
-                  )}
-                </div>
-                {step.description && (
-                  <div
-                    className={cn(
-                      "text-muted-foreground mt-1 max-w-24",
-                      classes.description
-                    )}
-                  >
-                    {step.description}
-                  </div>
+                  },
+                  canNavigate && "cursor-pointer hover:text-primary"
+                )}
+              >
+                {step.title}
+                {step.optional && (
+                  <span className="ml-1 text-muted-foreground text-xs">
+                    (optional)
+                  </span>
                 )}
               </div>
+            </div>
+          </>
+        );
+
+        return (
+          <React.Fragment key={step.id}>
+            <div className="flex flex-col items-center space-y-2">
+              {canNavigate ? (
+                <div
+                  className="flex flex-col items-center space-y-2 cursor-pointer transition-all hover:bg-muted/50 rounded-lg p-2 -m-2"
+                  onClick={() => onStepClick(stepNumber)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onStepClick(stepNumber);
+                    }
+                  }}
+                >
+                  {stepContent}
+                </div>
+              ) : (
+                stepContent
+              )}
+              {step.description && (
+                <div
+                  className={cn(
+                    "text-muted-foreground mt-1 max-w-24",
+                    classes.description
+                  )}
+                >
+                  {step.description}
+                </div>
+              )}
             </div>
 
             {/* Connector Line */}

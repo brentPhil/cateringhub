@@ -41,7 +41,8 @@ export async function updateSession(request: NextRequest) {
   }
 
   // if user is not signed in and the current path is not / redirect the user to /
-  if (!user && request.nextUrl.pathname !== '/' && !request.nextUrl.pathname.startsWith('/login') && !request.nextUrl.pathname.startsWith('/signup') && !request.nextUrl.pathname.startsWith('/auth')) {
+  // Allow access to onboarding routes for unauthenticated users (they handle their own auth redirects)
+  if (!user && request.nextUrl.pathname !== '/' && !request.nextUrl.pathname.startsWith('/login') && !request.nextUrl.pathname.startsWith('/signup') && !request.nextUrl.pathname.startsWith('/auth') && !request.nextUrl.pathname.startsWith('/onboarding')) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 

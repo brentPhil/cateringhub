@@ -93,7 +93,13 @@ export const profileSchema = z.object({
 export const providerBusinessInfoSchema = z.object({
   businessName: z.string().min(2, 'Business name must be at least 2 characters'),
   businessAddress: z.string().optional(),
-  logo: z.instanceof(File).optional(),
+  logo: z
+    .any()
+    .refine(
+      (file) => !file || (typeof File !== 'undefined' && file instanceof File),
+      'Must be a valid file'
+    )
+    .optional(),
 })
 
 export const providerServiceDetailsSchema = z.object({
@@ -104,14 +110,21 @@ export const providerServiceDetailsSchema = z.object({
   serviceAreas: z
     .array(z.string().min(1, 'Service area cannot be empty'))
     .min(1, 'At least one service area is required'),
-  sampleMenu: z.instanceof(File).optional(),
+  sampleMenu: z
+    .any()
+    .refine(
+      (file) => !file || (typeof File !== 'undefined' && file instanceof File),
+      'Must be a valid file'
+    )
+    .optional(),
 })
 
 export const providerContactInfoSchema = z.object({
   contactPersonName: z.string().min(2, 'Contact person name must be at least 2 characters'),
-  mobileNumber: phoneSchema.refine(val => val !== undefined && val !== '', {
-    message: 'Mobile number is required',
-  }),
+  mobileNumber: z
+    .string()
+    .min(1, 'Mobile number is required')
+    .regex(/^\+?[1-9]\d{1,14}$/, 'Please enter a valid phone number'),
   socialMediaLinks: z.object({
     facebook: z.string().url('Please enter a valid Facebook URL').optional().or(z.literal('')),
     instagram: z.string().url('Please enter a valid Instagram URL').optional().or(z.literal('')),
@@ -123,6 +136,46 @@ export const providerContactInfoSchema = z.object({
 export const providerOnboardingSchema = providerBusinessInfoSchema
   .merge(providerServiceDetailsSchema)
   .merge(providerContactInfoSchema)
+
+// Enhanced schema for the streamlined onboarding flow with comprehensive validation
+export const simpleProviderOnboardingSchema = z.object({
+  businessName: z
+    .string()
+    .min(2, 'Business name must be at least 2 characters')
+    .max(100, 'Business name must be less than 100 characters')
+    .regex(/^[a-zA-Z0-9\s&'-]+$/, 'Business name contains invalid characters')
+    .refine(val => val.trim().length > 0, 'Business name cannot be empty'),
+  description: z
+    .string()
+    .min(10, 'Description must be at least 10 characters')
+    .max(500, 'Description must be less than 500 characters')
+    .refine(val => val.trim().length >= 10, 'Description must contain meaningful content'),
+  serviceAreas: z
+    .string()
+    .min(1, 'Service areas are required')
+    .refine(val => {
+      const areas = val.split(',').map(area => area.trim()).filter(area => area.length > 0);
+      return areas.length > 0;
+    }, 'Please provide at least one service area')
+    .refine(val => {
+      const areas = val.split(',').map(area => area.trim()).filter(area => area.length > 0);
+      return areas.every(area => area.length >= 2);
+    }, 'Each service area must be at least 2 characters'),
+  contactPersonName: z
+    .string()
+    .min(2, 'Contact person name must be at least 2 characters')
+    .max(50, 'Contact person name must be less than 50 characters')
+    .regex(/^[a-zA-Z\s'-]+$/, 'Contact person name can only contain letters, spaces, hyphens, and apostrophes')
+    .refine(val => val.trim().length > 0, 'Contact person name cannot be empty'),
+  mobileNumber: z
+    .string()
+    .min(1, 'Mobile number is required')
+    .regex(/^[\+]?[0-9\s\-\(\)]+$/, 'Please enter a valid mobile number')
+    .refine(val => {
+      const cleaned = val.replace(/[\s\-\(\)]/g, '');
+      return cleaned.length >= 10 && cleaned.length <= 15;
+    }, 'Mobile number must be between 10-15 digits'),
+})
 
 // Contact form schema
 export const contactSchema = z.object({
@@ -193,7 +246,11 @@ export const accountSettingsSchema = z.object({
 // File upload schema
 export const fileUploadSchema = z.object({
   file: z
-    .instanceof(File)
+    .any()
+    .refine(
+      (file) => typeof File !== 'undefined' && file instanceof File,
+      'Must be a valid file'
+    )
     .refine(file => file.size <= 5 * 1024 * 1024, 'File size must be less than 5MB')
     .refine(
       file => ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type),

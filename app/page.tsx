@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Typography } from "@/components/ui/typography";
 import { Separator } from "@/components/ui/separator";
 import { LandingNavigation } from "@/components/landing-navigation";
+import { BecomeProviderButton } from "@/components/become-provider-button";
 
 export default function Home() {
   return (
@@ -18,9 +19,7 @@ export default function Home() {
           operations, manage inventory, and delight your customers.
         </Typography>
         <div className="flex gap-4 flex-col sm:flex-row">
-          <Button size="lg" asChild>
-            <Link href="/onboarding/provider">Become a Provider</Link>
-          </Button>
+          <BecomeProviderButton />
           <Button size="lg" variant="outline" asChild>
             <Link href="/signup">Get Started</Link>
           </Button>

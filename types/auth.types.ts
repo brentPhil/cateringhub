@@ -90,18 +90,8 @@ export interface RoleCheck {
   hasRole: boolean
 }
 
-// Provider onboarding data
-export interface ProviderOnboardingData {
-  businessName: string
-  businessType: string
-  description: string
-  location: string
-  phone: string
-  website?: string
-  specialties: string[]
-  serviceAreas: string[]
-  providerRole: ProviderRoleType
-}
+// Re-export provider onboarding data from form types
+export type { ProviderOnboardingFormData as ProviderOnboardingData } from '@/types/form.types'
 
 // User invitation data
 export interface UserInvitationData {

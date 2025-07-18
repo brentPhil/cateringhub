@@ -4,6 +4,8 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProgressSteps, type Step } from "@/components/ui/progress-steps";
+import { SuccessAnimation } from "@/components/ui/success-animation";
+import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface MultiStepFormProps {
@@ -13,6 +15,7 @@ export interface MultiStepFormProps {
   onNext: () => void;
   onPrevious: () => void;
   onSubmit: () => void;
+  onStepClick?: (step: number) => void;
   canGoNext: boolean;
   canGoPrevious: boolean;
   isSubmitting?: boolean;
@@ -22,6 +25,10 @@ export interface MultiStepFormProps {
   description?: string;
   showProgress?: boolean;
   progressOrientation?: "horizontal" | "vertical";
+  completedSteps?: number[];
+  allowStepNavigation?: boolean;
+  showSuccessAnimation?: boolean;
+  onStepComplete?: (step: number) => void;
 }
 
 export function MultiStepForm({
@@ -30,6 +37,7 @@ export function MultiStepForm({
   onNext,
   onPrevious,
   onSubmit,
+  onStepClick,
   canGoNext,
   canGoPrevious,
   isSubmitting = false,
@@ -39,12 +47,37 @@ export function MultiStepForm({
   description,
   showProgress = true,
   progressOrientation = "horizontal",
+  completedSteps: providedCompletedSteps,
+  allowStepNavigation = true,
+  showSuccessAnimation = true,
+  onStepComplete,
 }: MultiStepFormProps) {
   const isLastStep = currentStep === steps.length;
-  const completedSteps = Array.from(
-    { length: currentStep - 1 },
-    (_, i) => i + 1
-  );
+  const completedSteps =
+    providedCompletedSteps ||
+    Array.from({ length: currentStep - 1 }, (_, i) => i + 1);
+
+  const [showingSuccessAnimation, setShowingSuccessAnimation] =
+    React.useState(false);
+  const [, setAnimatingStep] = React.useState<number | null>(null);
+
+  // Handle step completion animation
+  const handleNext = () => {
+    if (showSuccessAnimation && canGoNext) {
+      setAnimatingStep(currentStep);
+      setShowingSuccessAnimation(true);
+
+      setTimeout(() => {
+        onNext();
+        onStepComplete?.(currentStep);
+        setShowingSuccessAnimation(false);
+        setAnimatingStep(null);
+      }, 1000);
+    } else {
+      onNext();
+      onStepComplete?.(currentStep);
+    }
+  };
 
   return (
     <div className={cn("w-full max-w-4xl mx-auto", className)}>
@@ -68,6 +101,8 @@ export function MultiStepForm({
             currentStep={currentStep}
             completedSteps={completedSteps}
             orientation={progressOrientation}
+            onStepClick={onStepClick}
+            allowStepNavigation={allowStepNavigation}
           />
         </div>
       )}
@@ -106,18 +141,40 @@ export function MultiStepForm({
               {!isLastStep ? (
                 <Button
                   type="button"
-                  onClick={onNext}
-                  disabled={!canGoNext || isSubmitting}
+                  onClick={handleNext}
+                  disabled={
+                    !canGoNext || isSubmitting || showingSuccessAnimation
+                  }
+                  className="min-w-[100px]"
                 >
-                  Next
+                  {showingSuccessAnimation ? (
+                    <>
+                      <SuccessAnimation
+                        variant="check"
+                        size="sm"
+                        className="mr-2"
+                      />
+                      Completed!
+                    </>
+                  ) : (
+                    "Next"
+                  )}
                 </Button>
               ) : (
                 <Button
                   type="submit"
                   onClick={onSubmit}
                   disabled={!canGoNext || isSubmitting}
+                  className="min-w-[180px]"
                 >
-                  {isSubmitting ? "Submitting..." : "Complete Onboarding"}
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    "Complete Onboarding"
+                  )}
                 </Button>
               )}
             </div>

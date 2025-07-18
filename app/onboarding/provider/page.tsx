@@ -19,7 +19,7 @@ import { useUser, useIsProvider } from "@/hooks/use-auth";
 export default function ProviderOnboardingPage() {
   const router = useRouter();
   const { data: user, isLoading: isUserLoading } = useUser();
-  const isProvider = useIsProvider();
+  const { isLoading: isProviderLoading } = useIsProvider();
 
   // Redirect if not logged in
   useEffect(() => {
@@ -30,15 +30,11 @@ export default function ProviderOnboardingPage() {
     }
   }, [user, isUserLoading, router]);
 
-  // Redirect if already a provider
-  useEffect(() => {
-    if (isProvider) {
-      router.push("/dashboard");
-    }
-  }, [isProvider, router]);
+  // Note: Redirect for existing providers is now handled by the BecomeProviderButton component
+  // This allows existing providers to view the onboarding page if they navigate here directly
 
   // Show loading while checking authentication
-  if (isUserLoading || !user) {
+  if (isUserLoading || isProviderLoading || !user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -47,11 +43,6 @@ export default function ProviderOnboardingPage() {
         </div>
       </div>
     );
-  }
-
-  // Don't render if user is already a provider (will redirect)
-  if (isProvider) {
-    return null;
   }
 
   return (

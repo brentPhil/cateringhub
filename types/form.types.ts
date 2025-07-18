@@ -130,17 +130,26 @@ export interface ChangePasswordFormData {
   confirmPassword: string
 }
 
-// Provider onboarding form
+// Provider onboarding form - consolidated type
 export interface ProviderOnboardingFormData {
+  // Business Information (Step 1)
   businessName: string
-  businessType: string
+  businessAddress?: string
+  logo?: File | string
+
+  // Service Details (Step 2)
   description: string
-  location: string
-  phone: string
-  website?: string
-  specialties: string[]
   serviceAreas: string[]
-  providerRole: 'owner' | 'staff'
+  sampleMenu?: File | string
+
+  // Contact Information (Step 3)
+  contactPersonName: string
+  mobileNumber: string
+  socialMediaLinks?: {
+    facebook?: string
+    instagram?: string
+    website?: string
+  }
 }
 
 // Contact form
