@@ -5,6 +5,13 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  transpilePackages: [
+    "@supabase/supabase-js",
+    "@supabase/ssr",
+    "@supabase/auth-ui-react",
+    "@supabase/auth-ui-shared",
+    "@supabase-cache-helpers/postgrest-react-query",
+  ],
 };
 
 export default nextConfig;
