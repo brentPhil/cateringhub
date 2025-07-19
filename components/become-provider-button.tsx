@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
-import { useUser, useIsProvider } from "@/hooks/use-auth";
+import { useAuthInfo } from "@/hooks/use-auth";
 
 interface BecomeProviderButtonProps {
   size?: "default" | "sm" | "lg" | "icon";
@@ -21,15 +21,14 @@ export function BecomeProviderButton({
 }: BecomeProviderButtonProps) {
   const [isNavigating, setIsNavigating] = useState(false);
   const router = useRouter();
-  const { data: user, isLoading: isUserLoading } = useUser();
-  const { value: isProvider, isLoading: isProviderLoading } = useIsProvider();
+  const { user, isProvider, isLoading: authLoading } = useAuthInfo();
 
   const handleClick = async () => {
     setIsNavigating(true);
 
     try {
       // Wait for auth checks to complete if still loading
-      if (isUserLoading || isProviderLoading) {
+      if (authLoading) {
         // Let the loading states resolve
         return;
       }
@@ -54,7 +53,7 @@ export function BecomeProviderButton({
     }
   };
 
-  const isLoading = isUserLoading || isProviderLoading || isNavigating;
+  const isLoading = authLoading || isNavigating;
 
   return (
     <Button 

@@ -9,7 +9,7 @@ import {
   MultiStepForm,
   useMultiStepForm,
 } from "@/components/ui/multi-step-form";
-import { useUser, useIsProvider } from "@/hooks/use-auth";
+import { useAuthInfo } from "@/hooks/use-auth";
 import {
   useCreateProvider,
   useProviderStatus,
@@ -126,8 +126,7 @@ function useFormRecovery() {
 
 export default function ProviderOnboardingFlowPage() {
   const router = useRouter();
-  const { data: user, isLoading: isUserLoading } = useUser();
-  const { value: isProvider } = useIsProvider();
+  const { user, isProvider, isLoading: authLoading } = useAuthInfo();
 
   // TanStack Query hooks
   const createProviderMutation = useCreateProvider();
@@ -363,7 +362,7 @@ export default function ProviderOnboardingFlowPage() {
 
   // Simple redirect logic
   React.useEffect(() => {
-    if (isUserLoading || isCheckingProvider) return;
+    if (authLoading || isCheckingProvider) return;
 
     if (!user) {
       router.push(
@@ -378,7 +377,7 @@ export default function ProviderOnboardingFlowPage() {
     }
   }, [
     user,
-    isUserLoading,
+    authLoading,
     isProvider,
     isExistingProvider,
     isCheckingProvider,
@@ -386,7 +385,7 @@ export default function ProviderOnboardingFlowPage() {
   ]);
 
   // Show loading state with skeleton loaders
-  if (isUserLoading || isCheckingProvider) {
+  if (authLoading || isCheckingProvider) {
     return (
       <div className="min-h-screen bg-background">
         {/* Header Skeleton */}

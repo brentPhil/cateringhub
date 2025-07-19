@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ChefHat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Typography } from "@/components/ui/typography";
-import { useUser, useIsProvider } from "@/hooks/use-auth";
+import { useAuthInfo } from "@/hooks/use-auth";
 
 function NavigationSkeleton() {
   return (
@@ -16,8 +16,7 @@ function NavigationSkeleton() {
 }
 
 export function LandingNavigation() {
-  const { data: user, isLoading } = useUser();
-  const { value: isProvider } = useIsProvider();
+  const { user, isProvider, isLoading } = useAuthInfo();
 
   let rightContent: React.ReactNode;
 

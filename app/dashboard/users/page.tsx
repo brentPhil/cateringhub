@@ -1,13 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import {
-  useIsAdmin,
-  useUser,
-  useUsers,
-  useUserRole,
-  useRefreshSession,
-} from "@/hooks/use-auth";
+import { useUsers, useRefreshSession, useAuthInfo } from "@/hooks/use-auth";
 import type { AppRole, ProviderRoleType } from "@/types";
 import {
   Table,
@@ -45,25 +39,23 @@ type UserWithRoles = {
 
 export default function UsersPage() {
   const router = useRouter();
-  const { data: user, isLoading: userLoading } = useUser();
-  const { data: userRole, isLoading: roleLoading } = useUserRole();
-  const refreshSession = useRefreshSession();
   const {
-    value: isAdmin,
-    isLoading: adminLoading,
-    error: adminError,
-  } = useIsAdmin();
+    user,
+    role: userRole,
+    isAdmin,
+    isLoading: authLoading,
+    error: authError,
+  } = useAuthInfo();
+  const refreshSession = useRefreshSession();
   const { data: users = [], isLoading, error } = useUsers();
   const [showSessionRefresh, setShowSessionRefresh] = useState(false);
 
   // Check if user needs to refresh session (has admin role but database access fails)
   useEffect(() => {
     if (
-      !userLoading &&
-      !roleLoading &&
-      !adminLoading &&
+      !authLoading &&
       user &&
-      userRole?.role === "admin" &&
+      userRole === "admin" &&
       isAdmin === true &&
       (error?.message?.includes("403") ||
         (error as { code?: string })?.code === "42501" ||
@@ -71,14 +63,14 @@ export default function UsersPage() {
     ) {
       setShowSessionRefresh(true);
     }
-  }, [userLoading, roleLoading, adminLoading, user, userRole, isAdmin, error]);
+  }, [authLoading, user, userRole, isAdmin, error]);
 
   // Redirect if user doesn't have admin role (after loading is complete)
   useEffect(() => {
-    if (!userLoading && !adminLoading && user && isAdmin === false) {
+    if (!authLoading && user && isAdmin === false) {
       router.push("/dashboard");
     }
-  }, [userLoading, adminLoading, user, isAdmin, router]);
+  }, [authLoading, user, isAdmin, router]);
 
   // Helper function to format role display
   const formatRoleDisplay = (userRole: UserRole) => {
@@ -101,7 +93,7 @@ export default function UsersPage() {
   };
 
   // Show loading state while checking authentication
-  if (userLoading || adminLoading) {
+  if (authLoading) {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-2">
@@ -145,7 +137,7 @@ export default function UsersPage() {
         </div>
 
         {/* Debug Tools - Only show for admin users */}
-        {userRole?.role === "admin" && (
+        {userRole === "admin" && (
           <div className="flex gap-2">
             <Button
               variant="outline"
@@ -222,13 +214,13 @@ export default function UsersPage() {
         </Alert>
       )}
 
-      {error || adminError ? (
+      {error || authError ? (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>
             {error?.message ||
-              (adminError ? String(adminError) : "") ||
+              (authError ? String(authError) : "") ||
               "Failed to load users"}
           </AlertDescription>
         </Alert>
