@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Form } from "@/components/ui/form";
+import type { Control, UseFormReturn, FieldValues } from "react-hook-form";
 import { z } from "zod";
 import { providerServiceDetailsSchema } from "@/lib/validations";
 import type { OnboardingFormReturn } from "@/hooks/use-onboarding-form";
@@ -44,10 +45,10 @@ const FORM_CONFIGS = {
     required: true,
   },
   sampleMenu: {
-    label: "Sample Menu",
+    label: "Sample Menu (Optional)",
     placeholder: "Upload a sample menu or food photos",
     description:
-      "Upload a sample menu, price list, or photos of your food. This helps customers understand your offerings. (Images or PDF, max 10MB)",
+      "Optional: Share a sample menu or food photos now or add them later. (Images or PDF, max 10MB)",
   },
 } as const;
 
@@ -76,12 +77,18 @@ export const ServiceDetailsStep = React.memo<ServiceDetailsStepProps>(
     );
 
     // Use the dynamic array hook for service areas management
-    const serviceAreasManager = useDynamicArray(form, "serviceAreas");
+    const serviceAreasManager = useDynamicArray(
+      form as unknown as UseFormReturn<FieldValues>,
+      "serviceAreas"
+    );
 
     // Memoize form props to prevent unnecessary re-renders
-    const formProps = React.useMemo(() => form as any, [form]);
+    const formProps = React.useMemo(
+      () => form as unknown as UseFormReturn<ServiceDetailsFormData>,
+      [form]
+    );
     const controlProps = React.useMemo(
-      () => form.control as any,
+      () => form.control as unknown as Control<ServiceDetailsFormData>,
       [form.control]
     );
 

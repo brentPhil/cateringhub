@@ -3,17 +3,12 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import {
-  ChefHat,
-  ArrowLeft,
-  Users,
-  Calendar,
-  MessageSquare,
-} from "lucide-react";
+import { Users, Calendar, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Typography } from "@/components/ui/typography";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { ProviderHeader } from "@/components/provider-header";
 import { useUser, useIsProvider } from "@/hooks/use-auth";
 
 export default function ProviderOnboardingPage() {
@@ -47,21 +42,7 @@ export default function ProviderOnboardingPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ChefHat className="h-6 w-6" />
-            <Typography variant="h5">CateringHub</Typography>
-          </div>
-          <Button variant="ghost" asChild>
-            <Link href="/dashboard" className="flex items-center gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              Back to Dashboard
-            </Link>
-          </Button>
-        </div>
-      </header>
+      <ProviderHeader />
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-12">

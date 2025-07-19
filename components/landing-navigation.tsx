@@ -27,9 +27,14 @@ export function LandingNavigation() {
     rightContent = (
       <div className="flex items-center gap-4">
         {!isProvider && (
-          <Button variant="outline" asChild>
-            <Link href="/onboarding/provider">Become a Provider</Link>
-          </Button>
+          <>
+            <Button variant="outline" asChild>
+              <Link href="/home">Home</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/onboarding/provider">Become a Provider</Link>
+            </Button>
+          </>
         )}
         <Button asChild>
           <Link href="/dashboard">Dashboard</Link>

@@ -24,7 +24,7 @@ export interface FileUploadProps {
 }
 
 // Helper function to safely check if value is a File instance
-const isFileInstance = (value: any): value is File => {
+const isFileInstance = (value: unknown): value is File => {
   // First check if File constructor exists and is callable
   if (typeof File === "undefined" || typeof File !== "function") {
     // Fallback: duck typing check for File-like objects
