@@ -8,9 +8,6 @@ const nextConfig: NextConfig = {
   transpilePackages: [
     "@supabase/supabase-js",
     "@supabase/ssr",
-    "@supabase/auth-ui-react",
-    "@supabase/auth-ui-shared",
-    "@supabase-cache-helpers/postgrest-react-query",
   ],
 };
 
