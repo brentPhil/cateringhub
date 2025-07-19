@@ -1,6 +1,6 @@
 "use client";
 
-import React, { ReactNode } from "react";
+import React, { ReactNode, useMemo } from "react";
 import { useUser, useProfile } from "@/hooks/use-auth";
 import { getAvatarUrl } from "@/lib/utils/avatar";
 import {
@@ -25,6 +25,31 @@ function UserProviderInner({ children }: { children: ReactNode }) {
     isLoading: isProfileLoading,
     error: profileError,
   } = useProfile();
+
+  // Prepare user data for components
+  const userData = useMemo(() => {
+    if (!user) return null;
+    const userName = profile?.full_name || user.email?.split("@")[0] || "User";
+    return {
+      id: user.id,
+      name: userName,
+      email: user.email || "",
+      avatar: getAvatarUrl(profile?.avatar_url, userName),
+    };
+  }, [user, profile?.full_name, profile?.avatar_url]);
+
+  const childrenWithProps = useMemo(() => {
+    if (!userData) return children;
+    return React.Children.map(children, (child) => {
+      if (React.isValidElement(child)) {
+        return React.cloneElement(
+          child as React.ReactElement<{ user?: typeof userData }>,
+          { user: userData }
+        );
+      }
+      return child;
+    });
+  }, [children, userData]);
 
   // Handle loading state
   if (isUserLoading || isProfileLoading) {
@@ -60,34 +85,10 @@ function UserProviderInner({ children }: { children: ReactNode }) {
     );
   }
 
-  // If no user, don't render children (user is not authenticated)
-  if (!user) {
+  if (!userData) {
     return null;
   }
 
-  // Prepare user data for components
-  const userName = profile?.full_name || user.email?.split("@")[0] || "User";
-  const userData = {
-    id: user.id,
-    name: userName,
-    email: user.email || "",
-    avatar: getAvatarUrl(profile?.avatar_url, userName),
-  };
-
   // Clone children with user prop
-  return (
-    <>
-      {React.Children.map(children, (child) => {
-        if (React.isValidElement(child)) {
-          return React.cloneElement(
-            child as React.ReactElement<{ user?: typeof userData }>,
-            {
-              user: userData,
-            }
-          );
-        }
-        return child;
-      })}
-    </>
-  );
+  return <>{childrenWithProps}</>;
 }

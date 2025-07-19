@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
@@ -23,7 +23,7 @@ export function BecomeProviderButton({
   const router = useRouter();
   const { user, isProvider, isLoading: authLoading } = useAuthInfo();
 
-  const handleClick = async () => {
+  const handleClick = useCallback(async () => {
     setIsNavigating(true);
 
     try {
@@ -51,7 +51,7 @@ export function BecomeProviderButton({
     } finally {
       setIsNavigating(false);
     }
-  };
+  }, [authLoading, isProvider, router, user]);
 
   const isLoading = authLoading || isNavigating;
 
