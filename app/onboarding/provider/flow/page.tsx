@@ -19,6 +19,7 @@ import { ProviderHeader } from "@/components/provider-header";
 import { useOnboardingForm, FORM_STEPS } from "@/hooks/use-onboarding-form";
 import { providerOnboardingSchema } from "@/lib/validations";
 import type { ProviderOnboardingFormData } from "@/types/form.types";
+import { IS_DEV } from "@/lib/constants";
 
 // Lazy load step components for better bundle splitting with error boundaries
 const BusinessInfoStep = React.lazy(() =>
@@ -99,7 +100,7 @@ function useFormRecovery() {
         }
       }
     } catch (error) {
-      console.warn("Failed to load saved form data:", error);
+      if (IS_DEV) console.warn("Failed to load saved form data:", error);
       localStorage.removeItem(FORM_STORAGE_KEY);
       localStorage.removeItem(FORM_TIMESTAMP_KEY);
     }
@@ -327,7 +328,7 @@ export default function ProviderOnboardingFlowPage() {
         router.push("/dashboard");
       },
       onError: (error) => {
-        console.error("Error submitting onboarding:", error);
+        if (IS_DEV) console.error("Error submitting onboarding:", error);
 
         // More specific error messages
         const errorMessage =

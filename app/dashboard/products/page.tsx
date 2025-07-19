@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { IS_DEV } from "@/lib/constants";
 import {
   usePaginationState,
   useSortingState,
@@ -181,6 +182,10 @@ export default function ProductsPage() {
     setViewMode("list");
   }, [setViewMode]);
 
+  const handleAddProduct = useCallback(() => {
+    if (IS_DEV) console.log("Add product clicked");
+  }, []);
+
   // Convert state values to proper types for rendering
   const pageNum = typeof page === "number" ? page : 1;
   const pageSizeNum = typeof pageSize === "number" ? pageSize : 10;
@@ -193,7 +198,7 @@ export default function ProductsPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <Typography variant="h4">Products</Typography>
-        <Button>
+        <Button onClick={handleAddProduct}>
           <Plus className="h-4 w-4 mr-2" />
           Add Product
         </Button>
@@ -295,7 +300,7 @@ export default function ProductsPage() {
               title="No products found"
               description="Try adjusting your search or filters to find what you're looking for."
               actionLabel="Add Product"
-              onAction={() => console.log("Add product clicked")}
+              onAction={handleAddProduct}
               variant="page"
             />
           ) : (

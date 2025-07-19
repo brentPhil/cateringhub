@@ -17,12 +17,13 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2, AlertCircle, Users, RefreshCw, Bug } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   debugJwtToken,
   forceJwtRefresh,
   testSupabaseConnection,
 } from "@/app/auth/actions";
+import { IS_DEV } from "@/lib/constants";
 
 // Define types for our data
 type UserRole = {
@@ -49,6 +50,24 @@ export default function UsersPage() {
   const refreshSession = useRefreshSession();
   const { data: users = [], isLoading, error } = useUsers();
   const [showSessionRefresh, setShowSessionRefresh] = useState(false);
+
+  const handleDebugJwt = useCallback(async () => {
+    if (IS_DEV) console.log("🔍 Debug JWT Token clicked");
+    await debugJwtToken();
+  }, []);
+
+  const handleForceRefresh = useCallback(async () => {
+    if (IS_DEV) console.log("🔄 Force JWT Refresh clicked");
+    const success = await forceJwtRefresh();
+    if (success) {
+      window.location.reload();
+    }
+  }, []);
+
+  const handleTestConnection = useCallback(async () => {
+    if (IS_DEV) console.log("🧪 Test Connection clicked");
+    await testSupabaseConnection();
+  }, []);
 
   // Check if user needs to refresh session (has admin role but database access fails)
   useEffect(() => {
@@ -139,27 +158,14 @@ export default function UsersPage() {
         {/* Debug Tools - Only show for admin users */}
         {userRole === "admin" && (
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={async () => {
-                console.log("🔍 Debug JWT Token clicked");
-                await debugJwtToken();
-              }}
-            >
+            <Button variant="outline" size="sm" onClick={handleDebugJwt}>
               <Bug className="h-4 w-4 mr-2" />
               Debug JWT
             </Button>
             <Button
               variant="outline"
               size="sm"
-              onClick={async () => {
-                console.log("🔄 Force JWT Refresh clicked");
-                const success = await forceJwtRefresh();
-                if (success) {
-                  window.location.reload();
-                }
-              }}
+              onClick={handleForceRefresh}
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               Force Refresh
@@ -167,10 +173,7 @@ export default function UsersPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={async () => {
-                console.log("🧪 Test Connection clicked");
-                await testSupabaseConnection();
-              }}
+              onClick={handleTestConnection}
             >
               🧪 Test Connection
             </Button>

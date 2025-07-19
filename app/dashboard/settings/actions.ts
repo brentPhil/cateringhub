@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { IS_DEV } from '@/lib/constants'
 
 interface ProfileUpdateData {
   id?: string | undefined
@@ -34,7 +35,7 @@ export async function updateProfile(data: ProfileUpdateData) {
     .eq('id', id)
 
   if (error) {
-    console.error('Error updating profile:', error)
+    if (IS_DEV) console.error('Error updating profile:', error)
     throw new Error('Failed to update profile')
   }
 
