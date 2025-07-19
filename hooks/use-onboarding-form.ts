@@ -118,7 +118,7 @@ export function useOnboardingForm(options: UseOnboardingFormOptions = {}): Onboa
 
   // Initialize form with combined schema
   const form = useForm<ProviderOnboardingData>({
-    resolver: zodResolver<ProviderOnboardingData>(providerOnboardingSchema),
+    resolver: zodResolver(providerOnboardingSchema),
     defaultValues: defaultValues as ProviderOnboardingData,
     mode: "onChange",
   });
@@ -235,7 +235,7 @@ export function useOnboardingForm(options: UseOnboardingFormOptions = {}): Onboa
     const stepData: Partial<ProviderOnboardingData> = {};
 
     stepFields.forEach(field => {
-      stepData[field] = values[field];
+      stepData[field] = values[field] as any;
     });
     
     return stepData;
@@ -313,14 +313,14 @@ export function useOnboardingForm(options: UseOnboardingFormOptions = {}): Onboa
       const defaultStepData: Partial<ProviderOnboardingData> = {};
 
     stepFields.forEach(field => {
-        defaultStepData[field] = DEFAULT_VALUES[field];
+        defaultStepData[field] = DEFAULT_VALUES[field] as any;
       });
 
       // Reset only the fields for this step
       stepFields.forEach(field => {
         setValue(
           field,
-          defaultStepData[field] as ProviderOnboardingData[keyof ProviderOnboardingData],
+          defaultStepData[field] as any,
           {
             shouldValidate: true,
             shouldDirty: true,
