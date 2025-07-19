@@ -2,11 +2,8 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { ArrowLeft, ChefHat } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Typography } from "@/components/ui/typography";
 import { LoadingState } from "@/components/ui/loading-state";
 import {
   MultiStepForm,
@@ -18,6 +15,7 @@ import {
   useProviderStatus,
   type ProviderOnboardingData,
 } from "@/hooks/use-provider-onboarding";
+import { ProviderHeader } from "@/components/provider-header";
 import { useOnboardingForm, FORM_STEPS } from "@/hooks/use-onboarding-form";
 import { providerOnboardingSchema } from "@/lib/validations";
 import type { ProviderOnboardingFormData } from "@/types/form.types";
@@ -471,25 +469,7 @@ export default function ProviderOnboardingFlowPage() {
         </div>
       )}
 
-      {/* Header */}
-      <header className="border-b border-border">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ChefHat className="h-6 w-6" />
-            <Typography variant="h5">CateringHub</Typography>
-          </div>
-
-          <Button variant="ghost" asChild>
-            <Link
-              href="/onboarding/provider"
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Link>
-          </Button>
-        </div>
-      </header>
+      <ProviderHeader backHref="/onboarding/provider" backLabel="Back" />
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
