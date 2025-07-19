@@ -19,6 +19,8 @@ import { AppRole, ProviderRoleType } from "@/types/supabase";
 const STALE_10_MIN = 10 * 60 * 1000;
 const GC_30_MIN = 30 * 60 * 1000;
 
+const IS_DEV = process.env.NODE_ENV !== "production";
+
 // Create a singleton Supabase client to prevent recreation on every render
 let supabaseClient: ReturnType<typeof createClient> | null = null;
 
@@ -321,12 +323,12 @@ export function useRefreshSession() {
 
   return useMutation({
     mutationFn: async () => {
-      console.log("🔄 Starting session refresh...");
+      if (IS_DEV) console.log("🔄 Starting session refresh...");
 
       // First, let's check the current session
       const { data: currentSession } = await supabase.auth.getSession();
       if (currentSession.session) {
-        console.log("📋 Current JWT Claims (before refresh):");
+        if (IS_DEV) console.log("📋 Current JWT Claims (before refresh):");
         try {
           const currentDecoded = jwtDecode<{
             user_role?: AppRole;
@@ -336,7 +338,7 @@ export function useRefreshSession() {
             exp?: number;
           }>(currentSession.session.access_token);
 
-          console.log({
+          if (IS_DEV) console.log({
             user_role: currentDecoded.user_role,
             provider_role: currentDecoded.provider_role,
             email: currentDecoded.email,
@@ -348,14 +350,14 @@ export function useRefreshSession() {
       }
 
       // Force a complete session refresh to get fresh JWT with updated claims
-      console.log("🔄 Calling supabase.auth.refreshSession()...");
+      if (IS_DEV) console.log("🔄 Calling supabase.auth.refreshSession()...");
       const { error } = await supabase.auth.refreshSession();
       if (error) {
         console.error("❌ Refresh session error:", error);
         throw error;
       }
 
-      console.log("✅ Session refresh completed");
+      if (IS_DEV) console.log("✅ Session refresh completed");
 
       // Wait a moment for the new JWT to be available
       await new Promise(resolve => setTimeout(resolve, 1500));
@@ -372,7 +374,7 @@ export function useRefreshSession() {
       }
 
       // Log the new JWT claims for debugging
-      console.log("🆕 New JWT Claims (after refresh):");
+      if (IS_DEV) console.log("🆕 New JWT Claims (after refresh):");
       try {
         const decoded = jwtDecode<{
           user_role?: AppRole;
@@ -382,7 +384,7 @@ export function useRefreshSession() {
           exp?: number;
         }>(sessionData.session.access_token);
 
-        console.log({
+        if (IS_DEV) console.log({
           user_role: decoded.user_role,
           provider_role: decoded.provider_role,
           email: decoded.email,
@@ -394,7 +396,7 @@ export function useRefreshSession() {
           console.warn("⚠️ Expected admin role but got:", decoded.user_role);
           throw new Error(`Expected admin role but JWT contains: ${decoded.user_role || 'no role'}`);
         } else {
-          console.log("✅ Admin role confirmed in JWT");
+          if (IS_DEV) console.log("✅ Admin role confirmed in JWT");
         }
       } catch (err) {
         console.error("Failed to decode refreshed JWT:", err);
@@ -404,7 +406,7 @@ export function useRefreshSession() {
       return sessionData;
     },
     onSuccess: () => {
-      console.log("🎉 Session refresh successful, invalidating queries...");
+      if (IS_DEV) console.log("🎉 Session refresh successful, invalidating queries...");
 
       // Only invalidate specific auth-related queries instead of clearing everything
       qc.invalidateQueries({ queryKey: authKeys.user });
