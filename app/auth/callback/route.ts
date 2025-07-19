@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { IS_DEV } from '@/lib/constants'
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,7 +11,7 @@ export async function GET(request: NextRequest) {
 
     // Handle OAuth error
     if (error) {
-      console.error('OAuth error:', error, error_description)
+      if (IS_DEV) console.error('OAuth error:', error, error_description)
       return NextResponse.redirect(
         new URL(`/login?error=${encodeURIComponent(error_description || error)}`, request.url)
       )
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
       const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
       if (error) {
-        console.error('Error exchanging code for session:', error.message)
+        if (IS_DEV) console.error('Error exchanging code for session:', error.message)
         return NextResponse.redirect(
           new URL(`/login?error=${encodeURIComponent(error.message)}`, request.url)
         )
@@ -81,7 +82,7 @@ export async function GET(request: NextRequest) {
           }
         } catch (profileError) {
           // Log but don't fail the auth flow if profile update fails
-          console.error('Error updating profile with OAuth data:', profileError)
+          if (IS_DEV) console.error('Error updating profile with OAuth data:', profileError)
         }
       }
     }
@@ -90,7 +91,7 @@ export async function GET(request: NextRequest) {
     const redirectTo = requestUrl.searchParams.get('redirect') || '/dashboard'
     return NextResponse.redirect(new URL(redirectTo, request.url))
   } catch (err) {
-    console.error('Unexpected error in auth callback:', err)
+    if (IS_DEV) console.error('Unexpected error in auth callback:', err)
     return NextResponse.redirect(
       new URL('/login?error=An+unexpected+error+occurred', request.url)
     )

@@ -11,6 +11,8 @@ import type {
   UserRole
 } from "@/types";
 
+const IS_DEV = process.env.NODE_ENV !== "production";
+
 // Query keys for actual database entities - following established patterns
 export const queryKeys = {
   // Core data tables
@@ -319,8 +321,7 @@ export function useRealtimeSubscription<T>(
               filter: options?.filter
             },
             (payload: any) => {
-              // Only log in development mode
-              if (process.env.NODE_ENV === "development") {
+              if (IS_DEV) {
                 console.log(`Real-time change in ${table}:`, payload);
               }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
+import { IS_DEV } from "@/lib/constants";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -70,7 +71,7 @@ export function EditProfileForm({ user, profile }: EditProfileFormProps) {
         // Use router.refresh() to refresh the page data without losing URL state
         router.refresh();
       } catch (error) {
-        if (process.env.NODE_ENV === "development") {
+        if (IS_DEV) {
           console.error(error);
         }
         toast.error("Failed to update profile. Please try again.");

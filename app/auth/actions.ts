@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import type { AppRole, ProviderRoleType } from '@/types'
+import { IS_DEV } from '@/lib/constants'
 
 export async function login(formData: FormData) {
   const supabase = await createClient()
@@ -99,7 +100,7 @@ export async function getUserRole(): Promise<{
     const { data: { session }, error } = await supabase.auth.getSession()
 
     if (error || !session) {
-      console.log("No session available:", error?.message || "Session is null")
+      if (IS_DEV) console.log("No session available:", error?.message || "Session is null")
       return null
     }
 
@@ -120,7 +121,7 @@ export async function getUserRole(): Promise<{
       provider_role,
     }
   } catch (error) {
-    console.log("Error getting user role:", error)
+    if (IS_DEV) console.log("Error getting user role:", error)
     return null
   }
 }
@@ -134,13 +135,13 @@ export async function refreshSession() {
     const { data, error } = await supabase.auth.refreshSession()
 
     if (error) {
-      console.error("Error refreshing session:", error)
+      if (IS_DEV) console.error("Error refreshing session:", error)
       throw error
     }
 
     return data
   } catch (error) {
-    console.error("Error refreshing session:", error)
+    if (IS_DEV) console.error("Error refreshing session:", error)
     throw error
   }
 }
@@ -199,7 +200,7 @@ export async function debugJwtToken() {
 
     const decoded = JSON.parse(atob(payload)) as Record<string, unknown>
 
-    console.log("🔍 JWT Token Debug Info:", {
+    if (IS_DEV) console.log("🔍 JWT Token Debug Info:", {
       user_role: decoded.user_role,
       provider_role: decoded.provider_role,
       sub: decoded.sub,
@@ -212,7 +213,7 @@ export async function debugJwtToken() {
 
     return decoded
   } catch (error) {
-    console.error("❌ Error debugging JWT token:", error)
+    if (IS_DEV) console.error("❌ Error debugging JWT token:", error)
     return null
   }
 }
@@ -221,22 +222,22 @@ export async function forceJwtRefresh(): Promise<boolean> {
   const supabase = await createClient()
 
   try {
-    console.log("🔄 Forcing JWT refresh...")
+    if (IS_DEV) console.log("🔄 Forcing JWT refresh...")
 
     // First, let's check the current configuration
-    console.log("🔧 Supabase Configuration Check:")
-    console.log("- URL:", process.env.NEXT_PUBLIC_SUPABASE_URL?.substring(0, 30) + "...")
-    console.log("- Anon Key:", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.substring(0, 30) + "...")
+    if (IS_DEV) console.log("🔧 Supabase Configuration Check:")
+    if (IS_DEV) console.log("- URL:", process.env.NEXT_PUBLIC_SUPABASE_URL?.substring(0, 30) + "...")
+    if (IS_DEV) console.log("- Anon Key:", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.substring(0, 30) + "...")
 
     // Refresh the session to get a new JWT with updated claims
     const { error } = await supabase.auth.refreshSession()
 
     if (error) {
-      console.error("❌ Failed to refresh session:", error)
+      if (IS_DEV) console.error("❌ Failed to refresh session:", error)
       return false
     }
 
-    console.log("✅ Session refresh completed")
+    if (IS_DEV) console.log("✅ Session refresh completed")
 
     // Wait a moment for the new JWT to be available
     await new Promise(resolve => setTimeout(resolve, 1000))
@@ -245,15 +246,15 @@ export async function forceJwtRefresh(): Promise<boolean> {
     const newToken = await debugJwtToken()
 
     if (newToken && newToken.user_role === 'admin') {
-      console.log("✅ JWT refresh successful - admin role confirmed")
+      if (IS_DEV) console.log("✅ JWT refresh successful - admin role confirmed")
       return true
     } else {
-      console.warn("⚠️ JWT refresh completed but admin role not found")
-      console.log("🔍 Current JWT claims:", newToken)
+      if (IS_DEV) console.warn("⚠️ JWT refresh completed but admin role not found")
+      if (IS_DEV) console.log("🔍 Current JWT claims:", newToken)
       return false
     }
   } catch (error) {
-    console.error("❌ Error during JWT refresh:", error)
+    if (IS_DEV) console.error("❌ Error during JWT refresh:", error)
     return false
   }
 }
@@ -262,18 +263,18 @@ export async function testSupabaseConnection(): Promise<boolean> {
   const supabase = await createClient()
 
   try {
-    console.log("🧪 Testing Supabase connection...")
+    if (IS_DEV) console.log("🧪 Testing Supabase connection...")
 
     // Test basic connection
     const { data, error } = await supabase.auth.getSession()
 
     if (error) {
-      console.error("❌ Connection test failed:", error)
+      if (IS_DEV) console.error("❌ Connection test failed:", error)
       return false
     }
 
-    console.log("✅ Supabase connection successful")
-    console.log("📊 Session data:", {
+    if (IS_DEV) console.log("✅ Supabase connection successful")
+    if (IS_DEV) console.log("📊 Session data:", {
       hasSession: !!data.session,
       hasUser: !!data.session?.user,
       userEmail: data.session?.user?.email,
@@ -282,7 +283,7 @@ export async function testSupabaseConnection(): Promise<boolean> {
 
     return true
   } catch (error) {
-    console.error("❌ Connection test error:", error)
+    if (IS_DEV) console.error("❌ Connection test error:", error)
     return false
   }
 }
