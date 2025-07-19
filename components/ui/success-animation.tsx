@@ -4,7 +4,7 @@ import * as React from "react";
 import { Check, CheckCircle, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface SuccessAnimationProps {
+export interface SuccessAnimationProps {
   variant?: "check" | "checkCircle" | "sparkles";
   size?: "sm" | "md" | "lg";
   className?: string;
@@ -85,6 +85,8 @@ interface SuccessMessageProps {
   description?: string;
   showIcon?: boolean;
   className?: string;
+  animate?: boolean;
+  onAnimationComplete?: () => void;
 }
 
 export function SuccessMessage({
@@ -92,8 +94,31 @@ export function SuccessMessage({
   description,
   showIcon = true,
   className,
+  animate = true,
+  onAnimationComplete,
 }: SuccessMessageProps) {
-  const isVisible = true;
+  const [isVisible, setIsVisible] = React.useState(false);
+
+  React.useEffect(() => {
+    if (animate) {
+      const timer = setTimeout(() => {
+        setIsVisible(true);
+      }, 100);
+
+      const completeTimer = setTimeout(() => {
+        onAnimationComplete?.();
+      }, 2000);
+
+      return () => {
+        clearTimeout(timer);
+        clearTimeout(completeTimer);
+      };
+    } else {
+      setIsVisible(true);
+    }
+    // Return undefined for the else case
+    return undefined;
+  }, [animate, onAnimationComplete]);
 
   return (
     <div
@@ -136,9 +161,18 @@ export function StepCompletionAnimation({
   className,
   onComplete,
 }: StepCompletionAnimationProps) {
-  const phase: "initial" | "checking" | "complete" = "complete";
+  const [phase, setPhase] = React.useState<"initial" | "checking" | "complete">("initial");
+
   React.useEffect(() => {
-    onComplete?.();
+    const timer1 = setTimeout(() => setPhase("checking"), 200);
+    const timer2 = setTimeout(() => setPhase("complete"), 800);
+    const timer3 = setTimeout(() => onComplete?.(), 1500);
+
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      clearTimeout(timer3);
+    };
   }, [onComplete]);
 
   return (

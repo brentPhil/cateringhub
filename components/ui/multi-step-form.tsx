@@ -5,11 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProgressSteps, type Step } from "@/components/ui/progress-steps";
 import dynamic from "next/dynamic";
+import type { SuccessAnimationProps } from "@/components/ui/success-animation";
 
 // Lazy load the success animation to reduce initial bundle size
-const SuccessAnimation = dynamic(() => import("@/components/ui/success-animation"), {
-  ssr: false,
-});
+const SuccessAnimation = dynamic<SuccessAnimationProps>(
+  () =>
+    import("@/components/ui/success-animation").then((mod) => mod.SuccessAnimation),
+  { ssr: false }
+);
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
