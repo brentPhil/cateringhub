@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { IS_DEV } from "@/lib/constants";
 import {
   usePaginationState,
@@ -108,28 +109,24 @@ export default function ProductsPage() {
     []
   );
 
-  // Simulate loading and data processing
-  const [isLoading, setIsLoading] = useState(true);
-  const [error] = useState<Error | null>(null);
-
-  useEffect(() => {
-    // Simulate API call delay
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, []);
+  // Simulate fetching products
+  const { data: fetchedProducts = mockProducts, isLoading, error } = useQuery({
+    queryKey: ["products", "mock"],
+    queryFn: () =>
+      new Promise<Product[]>((resolve) =>
+        setTimeout(() => resolve(mockProducts), 1000)
+      ),
+  });
 
   // Filter products based on search query
   const filteredProducts = useMemo(() => {
-    if (!query) return mockProducts;
-    return mockProducts.filter(
+    if (!query) return fetchedProducts;
+    return fetchedProducts.filter(
       (product) =>
         product.name.toLowerCase().includes(query.toLowerCase()) ||
         product.description.toLowerCase().includes(query.toLowerCase())
     );
-  }, [query, mockProducts]);
+  }, [query, fetchedProducts]);
 
   // Process the data to match the expected format
   const processedData = useMemo(() => {

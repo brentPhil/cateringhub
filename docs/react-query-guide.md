@@ -41,18 +41,18 @@ if (!user) return <div>Not authenticated</div>;
 return <div>Hello, {user.email}</div>;
 ```
 
-### useProfile
+### Accessing profile data
 
-Fetches the user's profile data:
+Profile information is available on the `user` object returned by `useUser()`:
 
 ```tsx
-const { data: profile, isLoading, error } = useProfile();
+const { data: user, isLoading, error } = useUser();
 
 if (isLoading) return <div>Loading...</div>;
 if (error) return <div>Error: {error.message}</div>;
-if (!profile) return <div>No profile found</div>;
+if (!user?.profile) return <div>No profile found</div>;
 
-return <div>Hello, {profile.full_name}</div>;
+return <div>Hello, {user.profile.full_name}</div>;
 ```
 
 ### useSignOut

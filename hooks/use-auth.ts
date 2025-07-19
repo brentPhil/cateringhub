@@ -109,23 +109,6 @@ export function useUser() {
   });
 }
 
-// -- Profile ----------------------------------------------------------
-// Note: Profile data is now included in useUser() hook for better performance
-// This hook is kept for backward compatibility and specific profile operations
-export function useProfile() {
-  const { data: user, isLoading: userLoading, error: userError } = useUser();
-
-  return {
-    data: user?.profile || null,
-    isLoading: userLoading,
-    error: userError,
-    refetch: () => {
-      // This will be handled by the useUser hook refetch
-      console.warn("useProfile refetch - consider using useUser refetch instead");
-    }
-  };
-}
-
 // -- Sign out ---------------------------------------------------------
 
 export function useSignOut() {
