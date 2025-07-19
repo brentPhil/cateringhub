@@ -2,16 +2,35 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 18 or later
+- [pnpm](https://pnpm.io) package manager
+
+### Installation
+
+Install dependencies with pnpm:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
+```
+
+### Environment Variables
+
+Create a `.env.local` file in the project root and add your Supabase credentials:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=<your_project_url>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<your_anon_key>
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+```
+
+### Running the Development Server
+
+Start the Next.js development server:
+
+```bash
 pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
