@@ -313,13 +313,13 @@ export function useRealtimeSubscription<T>(
         const channel = supabase
           .channel(`${table}_changes`)
           .on(
-            'postgres_changes',
+            'postgres_changes' as any,
             {
               event: options?.event || '*',
               schema: 'public',
               table: table,
               filter: options?.filter
-            },
+            } as any,
             (payload: any) => {
               if (IS_DEV) {
                 console.log(`Real-time change in ${table}:`, payload);
