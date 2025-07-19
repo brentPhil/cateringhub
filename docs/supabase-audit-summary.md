@@ -24,7 +24,6 @@ The Supabase integration audit has been successfully completed with significant 
 **Resolution:**
 - ✅ Enhanced `useUser()` hook to include profile data automatically
 - ✅ Improved error handling with proper fallback mechanisms
-- ✅ Streamlined `useProfile()` hook to use cached user data
 - ✅ Cleaned up JWT decoding logic and removed debug logs
 - ✅ Added proper TypeScript types throughout
 

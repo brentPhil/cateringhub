@@ -28,13 +28,19 @@ const isFileInstance = (value: unknown): value is File => {
   // First check if File constructor exists and is callable
   if (typeof File === "undefined" || typeof File !== "function") {
     // Fallback: duck typing check for File-like objects
+    const fileLike = value as {
+      name?: unknown;
+      size?: unknown;
+      type?: unknown;
+      lastModified?: unknown;
+    };
     return (
-      value &&
+      value !== null &&
       typeof value === "object" &&
-      typeof value.name === "string" &&
-      typeof value.size === "number" &&
-      typeof value.type === "string" &&
-      typeof value.lastModified === "number"
+      typeof fileLike.name === "string" &&
+      typeof fileLike.size === "number" &&
+      typeof fileLike.type === "string" &&
+      typeof fileLike.lastModified === "number"
     );
   }
 

@@ -8,8 +8,6 @@ import {
   parseAsArrayOf,
   type Parser
 } from "nuqs";
-import { useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
 
 // Common sort orders
 export const SORT_ORDERS = ["asc", "desc"] as const;
@@ -31,22 +29,13 @@ export function useQueryStateWithReactQuery<T>(
     onValueChange?: (value: T) => void;
   }
 ) {
-  const queryClient = useQueryClient();
   const [value, setValue] = useQueryState(key, parser);
 
-  // When the URL parameter changes, invalidate relevant queries
-  useEffect(() => {
-    if (options?.queryKeys && options.queryKeys.length > 0) {
-      options.queryKeys.forEach(queryKey => {
-        queryClient.invalidateQueries({ queryKey: [queryKey] });
-      });
-    }
-
-    // Call the onValueChange callback if provided
-    if (options?.onValueChange && value !== null) {
-      options.onValueChange(value);
-    }
-  }, [value, queryClient, options]);
+  // Invoke callback when value changes; consumers can include the state
+  // in their React Query keys instead of manual invalidation.
+  if (options?.onValueChange && value !== null) {
+    options.onValueChange(value);
+  }
 
   return [value, setValue] as const;
 }

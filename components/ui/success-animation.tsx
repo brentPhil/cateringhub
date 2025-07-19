@@ -4,7 +4,7 @@ import * as React from "react";
 import { Check, CheckCircle, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface SuccessAnimationProps {
+export interface SuccessAnimationProps {
   variant?: "check" | "checkCircle" | "sparkles";
   size?: "sm" | "md" | "lg";
   className?: string;

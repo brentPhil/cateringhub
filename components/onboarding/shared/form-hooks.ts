@@ -9,7 +9,6 @@ import {
   type UseFormReturn,
   type FieldValues,
   type DefaultValues,
-  type FieldPath,
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { z } from "zod";
@@ -30,7 +29,9 @@ export function useOnboardingStepForm<
 ) {
   // Create local form with proper typing and memoized defaults
   const localForm = useForm<TData>({
-    resolver: zodResolver<TData>(schema),
+    // zodResolver expects specific schema types; casting for generic usage
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(schema as any),
     defaultValues: React.useMemo(() => {
       // Create default values from schema and provided data
       const defaults = {} as TData;
@@ -40,7 +41,9 @@ export function useOnboardingStepForm<
         const shape = schema._def.shape();
         Object.keys(shape).forEach((key) => {
           const fieldKey = key as keyof TData;
-          defaults[fieldKey] = data[fieldKey] ?? getDefaultValueForField(shape[key]);
+          defaults[fieldKey] = (
+            data[fieldKey] ?? getDefaultValueForField(shape[key])
+          ) as TData[keyof TData];
         });
       } else {
         // Fallback: use provided data as defaults
@@ -80,7 +83,8 @@ export function useOnboardingStepForm<
   const onFieldBlur = React.useCallback(
     (name: keyof TData) => {
       // Trigger validation for the specific field
-      activeForm.trigger(name as FieldPath<TData>);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      activeForm.trigger(name as any);
     },
     [activeForm]
   );
@@ -278,16 +282,25 @@ export function useFileUpload(
 }
 
 // Helper function to get default values for different field types
+type MaybeZodField = {
+  _def?: {
+    typeName?: string;
+    innerType?: unknown;
+    shape?: () => Record<string, unknown>;
+  };
+};
+
 function getDefaultValueForField(zodField: unknown): unknown {
-  if (!zodField) return undefined;
+  const field = zodField as MaybeZodField;
+  if (!field) return undefined;
 
   // Handle ZodOptional
-  if (zodField._def?.typeName === "ZodOptional") {
-    return getDefaultValueForField(zodField._def.innerType);
+  if (field._def?.typeName === "ZodOptional") {
+    return getDefaultValueForField(field._def.innerType);
   }
 
   // Handle different Zod types
-  switch (zodField._def?.typeName) {
+  switch (field._def?.typeName) {
     case "ZodString":
       return "";
     case "ZodNumber":
@@ -297,7 +310,7 @@ function getDefaultValueForField(zodField: unknown): unknown {
     case "ZodArray":
       return [];
     case "ZodObject":
-      const shape = zodField._def.shape();
+      const shape = field._def?.shape?.() || {};
       const obj: Record<string, unknown> = {};
       Object.keys(shape).forEach(key => {
         obj[key] = getDefaultValueForField(shape[key]);

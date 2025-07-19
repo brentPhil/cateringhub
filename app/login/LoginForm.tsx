@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
@@ -23,21 +23,14 @@ import { useToast } from "@/hooks/useToast";
 export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
   const searchParams = useSearchParams();
+  const initialError = searchParams.get("error");
+  const [error, setError] = useState<string | null>(
+    initialError ? decodeURIComponent(initialError) : null
+  );
+  const router = useRouter();
   const { toast } = useToast();
   const supabase = createClient();
-
-  // Handle URL error parameter on mount
-  useEffect(() => {
-    const errorParam = searchParams.get("error");
-    if (errorParam) {
-      const errorMessage = decodeURIComponent(errorParam);
-      setError(errorMessage);
-      toast.error(errorMessage || "An error occurred during authentication");
-    }
-  }, [toast, searchParams]);
 
   // Email/Password login mutation
   const { mutate: login, isPending: isLoginPending } = useMutation({

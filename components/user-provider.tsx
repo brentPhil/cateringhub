@@ -1,7 +1,7 @@
 "use client";
 
 import React, { ReactNode, useMemo } from "react";
-import { useUser, useProfile } from "@/hooks/use-auth";
+import { useUser } from "@/hooks/use-auth";
 import { getAvatarUrl } from "@/lib/utils/avatar";
 import {
   AuthErrorBoundary,
@@ -20,23 +20,18 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
 function UserProviderInner({ children }: { children: ReactNode }) {
   const { data: user, isLoading: isUserLoading, error: userError } = useUser();
-  const {
-    data: profile,
-    isLoading: isProfileLoading,
-    error: profileError,
-  } = useProfile();
 
   // Prepare user data for components
   const userData = useMemo(() => {
     if (!user) return null;
-    const userName = profile?.full_name || user.email?.split("@")[0] || "User";
+    const userName = user.profile?.full_name || user.email?.split("@")[0] || "User";
     return {
       id: user.id,
       name: userName,
       email: user.email || "",
-      avatar: getAvatarUrl(profile?.avatar_url, userName),
+      avatar: getAvatarUrl(user.profile?.avatar_url, userName),
     };
-  }, [user, profile?.full_name, profile?.avatar_url]);
+  }, [user]);
 
   const childrenWithProps = useMemo(() => {
     if (!userData) return children;
@@ -52,13 +47,13 @@ function UserProviderInner({ children }: { children: ReactNode }) {
   }, [children, userData]);
 
   // Handle loading state
-  if (isUserLoading || isProfileLoading) {
+  if (isUserLoading) {
     return <AuthLoadingFallback />;
   }
 
   // Handle error state with better error UI
-  if (userError || profileError) {
-    const error = userError || profileError;
+  if (userError) {
+    const error = userError;
 
     // Only log in development mode
     if (process.env.NODE_ENV === "development") {

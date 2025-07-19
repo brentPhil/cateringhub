@@ -6,7 +6,7 @@ import {
   type FieldPath,
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useCallback } from "react";
+import React, { useEffect, useCallback } from "react";
 import {
   providerBusinessInfoSchema,
   providerServiceDetailsSchema,
@@ -155,12 +155,12 @@ export function useOnboardingForm(options: UseOnboardingFormOptions = {}): Onboa
 
 
 
-  // Load data from storage on mount
-  useEffect(() => {
-    if (enableAutoSave) {
-      loadFromStorage();
-    }
-  }, [enableAutoSave, loadFromStorage]);
+  // Load data from storage once when enabled
+  const hasLoadedRef = React.useRef(false);
+  if (enableAutoSave && !hasLoadedRef.current && typeof window !== "undefined") {
+    loadFromStorage();
+    hasLoadedRef.current = true;
+  }
 
   // Auto-save to storage when data changes (debounced)
   useEffect(() => {

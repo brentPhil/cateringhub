@@ -6,20 +6,13 @@ import { toast } from "sonner";
 import type {
   QueryOptions,
   SupabaseError,
-  TableName,
-  Profile,
-  UserRole
+  TableName
 } from "@/types";
 
 const IS_DEV = process.env.NODE_ENV !== "production";
 
 // Query keys for actual database entities - following established patterns
 export const queryKeys = {
-  // Core data tables
-  profiles: ["profiles"] as const,
-  profile: (id: string) => ["profiles", id] as const,
-  userRoles: ["userRoles"] as const,
-  userRole: (userId: string) => ["userRoles", userId] as const,
   // Generic table queries
   table: (tableName: TableName) => [tableName] as const,
   tableItem: (tableName: TableName, id: string) => [tableName, id] as const,
@@ -199,58 +192,7 @@ export function useDeleteData(table: TableName, id: string) {
   });
 }
 
-// Specialized hooks for actual database tables - following Supabase patterns
-
-// Profile-specific hooks
-export function useProfiles(options?: QueryOptions & { enabled?: boolean }) {
-  return useFetchData<Profile[]>(
-    "profiles",
-    queryKeys.profiles,
-    {
-      ...options,
-      columns: options?.columns || "id, full_name, username, bio, avatar_url, created_at, updated_at"
-    }
-  );
-}
-
-export function useProfile(id: string, options?: QueryOptions & { enabled?: boolean }) {
-  return useFetchData<Profile>(
-    "profiles",
-    queryKeys.profile(id),
-    {
-      ...options,
-      filter: { id },
-      single: true,
-      enabled: options?.enabled !== false && !!id,
-      columns: options?.columns || "id, full_name, username, bio, avatar_url, created_at, updated_at"
-    }
-  );
-}
-
-// User roles hooks
-export function useUserRoles(options?: QueryOptions & { enabled?: boolean }) {
-  return useFetchData<UserRole[]>(
-    "user_roles",
-    queryKeys.userRoles,
-    {
-      ...options,
-      columns: options?.columns || "id, user_id, role, provider_role, created_at"
-    }
-  );
-}
-
-export function useUserRolesByUserId(userId: string, options?: QueryOptions & { enabled?: boolean }) {
-  return useFetchData<UserRole[]>(
-    "user_roles",
-    queryKeys.userRole(userId),
-    {
-      ...options,
-      filter: { user_id: userId },
-      enabled: options?.enabled !== false && !!userId,
-      columns: options?.columns || "id, user_id, role, provider_role, created_at"
-    }
-  );
-}
+// Specialized hooks were removed in favor of using `useFetchData` directly.
 
 
 

@@ -17,7 +17,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2, AlertCircle, Users, RefreshCw, Bug } from "lucide-react";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useCallback } from "react";
 import {
   debugJwtToken,
   forceJwtRefresh,
@@ -49,7 +49,14 @@ export default function UsersPage() {
   } = useAuthInfo();
   const refreshSession = useRefreshSession();
   const { data: users = [], isLoading, error } = useUsers();
-  const [showSessionRefresh, setShowSessionRefresh] = useState(false);
+  const showSessionRefresh =
+    !authLoading &&
+    user &&
+    userRole === "admin" &&
+    isAdmin === true &&
+    (error?.message?.includes("403") ||
+      (error as { code?: string })?.code === "42501" ||
+      error?.message?.toLowerCase().includes("permission denied"));
 
   const handleDebugJwt = useCallback(async () => {
     if (IS_DEV) console.log("🔍 Debug JWT Token clicked");
@@ -69,20 +76,6 @@ export default function UsersPage() {
     await testSupabaseConnection();
   }, []);
 
-  // Check if user needs to refresh session (has admin role but database access fails)
-  useEffect(() => {
-    if (
-      !authLoading &&
-      user &&
-      userRole === "admin" &&
-      isAdmin === true &&
-      (error?.message?.includes("403") ||
-        (error as { code?: string })?.code === "42501" ||
-        error?.message?.toLowerCase().includes("permission denied"))
-    ) {
-      setShowSessionRefresh(true);
-    }
-  }, [authLoading, user, userRole, isAdmin, error]);
 
   // Redirect if user doesn't have admin role (after loading is complete)
   useEffect(() => {
@@ -201,7 +194,6 @@ export default function UsersPage() {
               <Button
                 onClick={() => {
                   refreshSession.mutate();
-                  setShowSessionRefresh(false);
                 }}
                 variant="default"
                 size="sm"
