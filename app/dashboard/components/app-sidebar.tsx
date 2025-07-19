@@ -23,7 +23,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { NavUser } from "@/app/dashboard/components/nav-user";
-import { useUser, useProfile, useIsAdmin } from "@/hooks/use-auth";
+import { useAuthInfo } from "@/hooks/use-auth";
 import {
   Tooltip,
   TooltipContent,
@@ -67,11 +67,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     },
   ];
 
-  const { data: user, isLoading: isUserLoading } = useUser();
-  const { data: profile, isLoading: isProfileLoading } = useProfile();
-
-  // Get user role to filter navigation items
-  const { value: isAdmin } = useIsAdmin();
+  const { user, profile, isAdmin, isLoading: authLoading } = useAuthInfo();
 
   // Filter navigation items based on roles
   const navItems = allNavItems.filter((item) => {
@@ -136,7 +132,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
-        {userData && !isUserLoading && !isProfileLoading && (
+        {userData && !authLoading && (
           <NavUser user={userData} />
         )}
       </SidebarFooter>

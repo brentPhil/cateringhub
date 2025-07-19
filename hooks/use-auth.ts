@@ -153,23 +153,15 @@ export function useSignOut() {
 
 export function useUserRole() {
   const supabase = getSupabase();
-  const { data: user } = useUser();
-
-  // Memoize the query key to prevent unnecessary re-renders
-  const queryKey = useMemo(() =>
-    authKeys.userRole(user?.id ?? "unknown"),
-    [user?.id]
-  );
 
   return useQuery<{ role: AppRole; provider_role: ProviderRoleType | null } | null>({
-    queryKey,
-    enabled: !!user,
+    queryKey: authKeys.userRole("current"),
+    // We directly check the session in the query function so the hook does not
+    // depend on useUser(), avoiding an extra render cycle
     staleTime: STALE_10_MIN,
     gcTime: GC_30_MIN,
     retry: 1,
     queryFn: async () => {
-      if (!user) return null;
-
       const { data: sessionData, error } = await supabase.auth.getSession();
       if (error || !sessionData.session) return null;
 
@@ -246,6 +238,37 @@ export function useHasProviderRole(providerRole: ProviderRoleType): HookReturn<b
     isLoading,
     error
   };
+}
+
+// -- Combined auth info ------------------------------------------------
+
+/**
+ * Convenience hook that aggregates user, profile and role information
+ * into a single object to avoid multiple hook invocations in components.
+ */
+export function useAuthInfo() {
+  const userQuery = useUser();
+  const roleQuery = useUserRole();
+
+  const info = useMemo(() => {
+    const role = roleQuery.data?.role;
+    const providerRole = roleQuery.data?.provider_role;
+
+    return {
+      user: userQuery.data,
+      profile: userQuery.data?.profile || null,
+      role,
+      providerRole,
+      isAdmin: role === "admin",
+      isProvider: role === "catering_provider",
+      isProviderOwner: role === "catering_provider" && providerRole === "owner",
+      isProviderStaff: role === "catering_provider" && providerRole === "staff",
+      isLoading: userQuery.isLoading || roleQuery.isLoading,
+      error: userQuery.error || roleQuery.error,
+    };
+  }, [userQuery.data, roleQuery.data, userQuery.isLoading, roleQuery.isLoading, userQuery.error, roleQuery.error]);
+
+  return info;
 }
 
 

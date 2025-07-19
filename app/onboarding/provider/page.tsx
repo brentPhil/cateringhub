@@ -9,27 +9,26 @@ import { Typography } from "@/components/ui/typography";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ProviderHeader } from "@/components/provider-header";
-import { useUser, useIsProvider } from "@/hooks/use-auth";
+import { useAuthInfo } from "@/hooks/use-auth";
 
 export default function ProviderOnboardingPage() {
   const router = useRouter();
-  const { data: user, isLoading: isUserLoading } = useUser();
-  const { isLoading: isProviderLoading } = useIsProvider();
+  const { user, isLoading: authLoading } = useAuthInfo();
 
   // Redirect if not logged in
   useEffect(() => {
-    if (!isUserLoading && !user) {
+    if (!authLoading && !user) {
       router.push(
         "/login?redirect=" + encodeURIComponent("/onboarding/provider")
       );
     }
-  }, [user, isUserLoading, router]);
+  }, [user, authLoading, router]);
 
   // Note: Redirect for existing providers is now handled by the BecomeProviderButton component
   // This allows existing providers to view the onboarding page if they navigate here directly
 
   // Show loading while checking authentication
-  if (isUserLoading || isProviderLoading || !user) {
+  if (authLoading || !user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">

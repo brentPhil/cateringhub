@@ -1,12 +1,7 @@
 "use client";
 
 import React, { ReactNode } from "react";
-import {
-  useUser,
-  useUserRole,
-  useHasRole,
-  useHasProviderRole,
-} from "@/hooks/use-auth";
+import { useAuthInfo, useHasRole, useHasProviderRole } from "@/hooks/use-auth";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Lock, LogIn } from "lucide-react";
@@ -28,12 +23,12 @@ export function RoleGuard({
   requireAuth = true,
   redirectTo = "/login",
 }: RoleGuardProps) {
-  const { data: user, isLoading: isUserLoading } = useUser();
+  const { user, isLoading: authLoading } = useAuthInfo();
   const { value: hasRole, isLoading: isRoleLoading } = useHasRole(role);
   const router = useRouter();
 
   // Show loading state while checking authentication
-  if (isUserLoading || isRoleLoading) {
+  if (authLoading || isRoleLoading) {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
@@ -103,13 +98,13 @@ export function ProviderRoleGuard({
   requireAuth = true,
   redirectTo = "/login",
 }: ProviderRoleGuardProps) {
-  const { data: user, isLoading: isUserLoading } = useUser();
+  const { user, isLoading: authLoading } = useAuthInfo();
   const { value: hasProviderRole, isLoading: isRoleLoading } =
     useHasProviderRole(providerRole);
   const router = useRouter();
 
   // Show loading state while checking authentication
-  if (isUserLoading || isRoleLoading) {
+  if (authLoading || isRoleLoading) {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
@@ -273,12 +268,11 @@ export function MultiRoleGuard({
   requireAuth = true,
   redirectTo = "/login",
 }: MultiRoleGuardProps) {
-  const { data: user, isLoading: isUserLoading } = useUser();
-  const { data: userRole, isLoading: isRoleLoading } = useUserRole();
+  const { user, role: userRole, isLoading: authLoading } = useAuthInfo();
   const router = useRouter();
 
   // Show loading state while checking authentication
-  if (isUserLoading || isRoleLoading) {
+  if (authLoading) {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
@@ -311,7 +305,7 @@ export function MultiRoleGuard({
   }
 
   // Check if user has any of the required roles
-  const hasAnyRole = userRole && roles.includes(userRole.role);
+  const hasAnyRole = userRole && roles.includes(userRole);
   if (!hasAnyRole) {
     return (
       fallback || (

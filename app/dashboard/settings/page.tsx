@@ -10,7 +10,7 @@ import { getInitials, getAvatarUrl } from "@/lib/utils/avatar";
 import { useQueryState, parseAsStringLiteral } from "nuqs";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import { useUser, useUserRole } from "@/hooks/use-auth";
+import { useAuthInfo } from "@/hooks/use-auth";
 
 // Define valid tab values
 const TABS = ["profile", "account", "permissions"] as const;
@@ -47,13 +47,7 @@ function useRolePermissions(enabled: boolean = true) {
 }
 
 export default function SettingsPage() {
-  // Use the main user hook which includes profile data
-  const { data: user, isLoading: userLoading } = useUser();
-  const { data: userRoleData, isLoading: userRoleLoading } = useUserRole();
-
-  // Derive user role early to conditionally load permissions
-  const userRole = userRoleData?.role || null;
-  const isAdmin = userRole === "admin";
+  const { user, role: userRole, isAdmin, isLoading: authLoading } = useAuthInfo();
 
   // Only load role permissions if user is admin to avoid unnecessary queries
   const { data: rolePermissions, isLoading: permissionsLoading } =
@@ -66,8 +60,7 @@ export default function SettingsPage() {
   );
 
   // Derive loading state and profile from hooks
-  const isLoading =
-    userLoading || userRoleLoading || (isAdmin && permissionsLoading);
+  const isLoading = authLoading || (isAdmin && permissionsLoading);
   const profile = user?.profile || null;
 
   // Show loading state if data is still loading
