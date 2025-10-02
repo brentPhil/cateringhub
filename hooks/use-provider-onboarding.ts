@@ -49,15 +49,28 @@ export async function uploadFile(
   path: string
 ): Promise<string> {
   const supabase = createClient();
-  
+
+  // Sanitize the file path to remove spaces and special characters
+  const sanitizedPath = path.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9\-_.\/]/g, '');
+
+  console.log('Uploading file:', {
+    originalPath: path,
+    sanitizedPath,
+    fileName: file.name,
+    fileSize: file.size,
+    fileType: file.type,
+  });
+
   const { data, error } = await supabase.storage
     .from(bucket)
-    .upload(path, file, {
+    .upload(sanitizedPath, file, {
       cacheControl: '3600',
-      upsert: false
+      upsert: false,
+      contentType: file.type,
     });
 
   if (error) {
+    console.error('Upload error:', error);
     throw new Error(`Failed to upload file: ${error.message}`);
   }
 
@@ -66,6 +79,7 @@ export async function uploadFile(
     .from(bucket)
     .getPublicUrl(data.path);
 
+  console.log('File uploaded successfully:', urlData.publicUrl);
   return urlData.publicUrl;
 }
 
@@ -81,9 +95,13 @@ export async function createCateringProvider(
     throw new Error("User not authenticated");
   }
 
-  // Backend validation using the same schema
-  const { simpleProviderOnboardingSchema } = await import("@/lib/validations");
-  const validationResult = simpleProviderOnboardingSchema.safeParse(data);
+  // Determine if this is simple or full onboarding data
+  const isSimpleData = !('logo' in data) && !('sampleMenu' in data);
+
+  // Backend validation using the appropriate schema based on data type
+  const { simpleProviderOnboardingSchema, providerOnboardingSchema } = await import("@/lib/validations");
+  const validationSchema = isSimpleData ? simpleProviderOnboardingSchema : providerOnboardingSchema;
+  const validationResult = validationSchema.safeParse(data);
 
   if (!validationResult.success) {
     const errors = validationResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`);
@@ -95,9 +113,6 @@ export async function createCateringProvider(
   if (existingProvider) {
     throw new Error("Provider profile already exists");
   }
-
-  // Determine if this is simple or full onboarding data
-  const isSimpleData = !('logo' in data) && !('sampleMenu' in data);
 
   // Additional business logic validation
   const serviceAreasArray = Array.isArray(data.serviceAreas)
@@ -242,7 +257,7 @@ export async function createCateringProvider(
 
 export async function checkExistingProvider(): Promise<boolean> {
   const supabase = createClient();
-  
+
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user) {
     return false;
@@ -252,7 +267,12 @@ export async function checkExistingProvider(): Promise<boolean> {
     .from('catering_providers')
     .select('id')
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle(); // Use maybeSingle() instead of single() to avoid errors when no rows found
+
+  // If error and it's not a "no rows" error, log it
+  if (error && error.code !== 'PGRST116') {
+    console.error('Error checking existing provider:', error);
+  }
 
   return !error && !!data;
 }

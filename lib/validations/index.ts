@@ -94,12 +94,14 @@ export const providerBusinessInfoSchema = z.object({
   businessName: z.string().min(2, 'Business name must be at least 2 characters'),
   businessAddress: z.string().optional(),
   logo: z
-    .any()
-    .refine(
-      (file) => !file || (typeof File !== 'undefined' && file instanceof File),
-      'Must be a valid file'
-    )
-    .optional(),
+    .union([
+      z.instanceof(File),
+      z.string(),
+      z.undefined(),
+      z.null(),
+    ])
+    .optional()
+    .nullable(),
 })
 
 export const providerServiceDetailsSchema = z.object({
@@ -111,12 +113,14 @@ export const providerServiceDetailsSchema = z.object({
     .array(z.string().min(1, 'Service area cannot be empty'))
     .min(1, 'At least one service area is required'),
   sampleMenu: z
-    .any()
-    .refine(
-      (file) => !file || (typeof File !== 'undefined' && file instanceof File),
-      'Must be a valid file'
-    )
-    .optional(),
+    .union([
+      z.instanceof(File),
+      z.string(),
+      z.undefined(),
+      z.null(),
+    ])
+    .optional()
+    .nullable(),
 })
 
 export const providerContactInfoSchema = z.object({
@@ -124,11 +128,21 @@ export const providerContactInfoSchema = z.object({
   mobileNumber: z
     .string()
     .min(1, 'Mobile number is required')
-    .regex(/^\+?[1-9]\d{1,14}$/, 'Please enter a valid phone number'),
+    .regex(/^[\+]?[0-9\s\-\(\)]+$/, 'Please enter a valid mobile number (numbers, spaces, dashes, and parentheses only)')
+    .refine(val => {
+      const cleaned = val.replace(/[\s\-\(\)\+]/g, '');
+      return cleaned.length >= 10 && cleaned.length <= 15;
+    }, 'Mobile number must be between 10-15 digits'),
   socialMediaLinks: z.object({
-    facebook: z.string().url('Please enter a valid Facebook URL').optional().or(z.literal('')),
-    instagram: z.string().url('Please enter a valid Instagram URL').optional().or(z.literal('')),
-    website: z.string().url('Please enter a valid website URL').optional().or(z.literal('')),
+    facebook: z.string().optional().refine(val => !val || val === '' || z.string().url().safeParse(val).success, {
+      message: 'Please enter a valid Facebook URL or leave empty'
+    }),
+    instagram: z.string().optional().refine(val => !val || val === '' || z.string().url().safeParse(val).success, {
+      message: 'Please enter a valid Instagram URL or leave empty'
+    }),
+    website: z.string().optional().refine(val => !val || val === '' || z.string().url().safeParse(val).success, {
+      message: 'Please enter a valid website URL or leave empty'
+    }),
   }).optional(),
 })
 

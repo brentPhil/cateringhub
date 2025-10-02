@@ -74,6 +74,26 @@ const FORM_STORAGE_KEY = "onboarding-form-data";
 const FORM_TIMESTAMP_KEY = "onboarding-form-timestamp";
 const FORM_DATA_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours
 
+// Step names for error messages - extracted to avoid duplication
+const STEP_NAMES = [
+  "Business Information",
+  "Service Details",
+  "Contact Information",
+] as const;
+
+// Helper function to format field names for user-friendly error messages
+function formatFieldName(fieldName: string): string {
+  // Handle nested fields like "socialMediaLinks.facebook"
+  const parts = fieldName.split(".");
+  const lastPart = parts[parts.length - 1];
+
+  // Convert camelCase to Title Case with spaces
+  return lastPart
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (str) => str.toUpperCase())
+    .trim();
+}
+
 // Custom hook for form recovery
 function useFormRecovery() {
   const [recoveryData, setRecoveryData] = React.useState<{
@@ -107,7 +127,7 @@ function useFormRecovery() {
   }, []);
 
   const recoverData = React.useCallback(() => {
-    setRecoveryData((prev) => ({ ...prev, showPrompt: false }));
+    setRecoveryData({ data: recoveryData.data, showPrompt: false });
     return recoveryData.data;
   }, [recoveryData.data]);
 
@@ -134,6 +154,9 @@ export default function ProviderOnboardingFlowPage() {
   const { data: isExistingProvider, isLoading: isCheckingProvider } =
     useProviderStatus();
 
+  // Computed loading state
+  const isLoading = authLoading || isCheckingProvider;
+
   // Form recovery hook
   const { showRecoveryPrompt, recoverData, discardData } = useFormRecovery();
 
@@ -149,7 +172,7 @@ export default function ProviderOnboardingFlowPage() {
     autoSaveKey: FORM_STORAGE_KEY,
   });
 
-  // Memoized step validation - now using the dedicated hook
+  // Memoized step validation - depends on form errors for optimal re-computation
   const stepValidation = React.useMemo(() => {
     const validation: Record<number, boolean> = {
       1: onboardingForm.isStepValid(FORM_STEPS.BUSINESS_INFO),
@@ -157,7 +180,7 @@ export default function ProviderOnboardingFlowPage() {
       3: onboardingForm.isStepValid(FORM_STEPS.CONTACT_INFO),
     };
     return validation;
-  }, [onboardingForm]);
+  }, [onboardingForm.formState.errors, onboardingForm.isStepValid]);
 
   // Recovery functions with proper memoization
   const handleRecoverData = React.useCallback(() => {
@@ -176,17 +199,14 @@ export default function ProviderOnboardingFlowPage() {
   // Memoized data change handlers to prevent unnecessary re-renders
   const handleDataChange = React.useCallback(
     (data: Partial<ProviderOnboardingFormData>) => {
+      const { setValue } = onboardingForm;
       Object.entries(data).forEach(([key, value]) => {
-        onboardingForm.setValue(
-          key as keyof ProviderOnboardingFormData,
-          value,
-          {
-            shouldValidate: true,
-          }
-        );
+        setValue(key as keyof ProviderOnboardingFormData, value, {
+          shouldValidate: true,
+        });
       });
     },
-    [onboardingForm]
+    [onboardingForm.setValue]
   );
 
   // Optimized step content rendering with lazy loading, memoization, and error boundaries
@@ -241,85 +261,118 @@ export default function ProviderOnboardingFlowPage() {
     }
   }, [currentStep, onboardingForm, handleDataChange]);
 
-  // Memoized handlers to prevent unnecessary re-renders - MUST be before any conditional returns
+  // Improved navigation handler with detailed error feedback
   const handleNext = React.useCallback(() => {
     if (stepValidation[currentStep]) {
       nextStep();
     } else {
-      // More specific error messages based on current step
-      const stepNames = [
-        "Business Information",
-        "Service Details",
-        "Contact Information",
-      ];
-      toast.error(
-        `Please complete all required fields in ${
-          stepNames[currentStep - 1]
-        } before continuing.`
-      );
-    }
-  }, [stepValidation, currentStep, nextStep]);
+      // Get specific errors for the current step (cast to FormStep type)
+      const stepErrors = onboardingForm.getStepErrors(currentStep as 1 | 2 | 3);
+      const errorFields = Object.keys(stepErrors);
 
-  // Enhanced form submission with improved validation
+      if (errorFields.length > 0) {
+        // Show the first error to guide the user with formatted field name
+        const firstErrorField = errorFields[0];
+        const firstError = stepErrors[firstErrorField];
+        const errorMessage = firstError?.message || "This field has an error";
+        const formattedFieldName = formatFieldName(firstErrorField);
+
+        toast.error(`${formattedFieldName}: ${errorMessage}`);
+      } else {
+        // Fallback to generic message
+        toast.error(
+          `Please complete all required fields in ${
+            STEP_NAMES[currentStep - 1]
+          } before continuing.`
+        );
+      }
+    }
+  }, [stepValidation, currentStep, nextStep, onboardingForm]);
+
+  // Simplified form submission with streamlined validation
   const handleSubmit = React.useCallback(async () => {
-    if (!stepValidation[currentStep]) {
-      toast.error("Please complete all required fields.");
-      return;
-    }
-
+    // Check if user already has a provider profile
     if (isExistingProvider) {
       toast.error("You are already a catering provider.");
       router.push("/dashboard");
       return;
     }
 
-    // Validate all steps before submission using the onboarding hook
+    // Validate all steps before submission
     const allStepsValid = Object.values(stepValidation).every(Boolean);
     if (!allStepsValid) {
       const invalidSteps = Object.entries(stepValidation)
         .filter(([, isValid]) => !isValid)
-        .map(([step]) => {
-          const stepNames = [
-            "Business Information",
-            "Service Details",
-            "Contact Information",
-          ];
-          return stepNames[parseInt(step) - 1];
-        });
-      toast.error(`Please complete: ${invalidSteps.join(", ")}`);
+        .map(([step]) => STEP_NAMES[parseInt(step) - 1]);
+      toast.error(
+        `Please complete the following steps: ${invalidSteps.join(", ")}`
+      );
       return;
     }
 
-    // Get form data and validate using the onboarding hook
+    // Get form data and perform final validation
     const formData = onboardingForm.getValues();
+
+    // Log form data for debugging
+    if (IS_DEV) {
+      console.log("Form data before validation:", {
+        businessName: formData.businessName,
+        businessAddress: formData.businessAddress,
+        logo: formData.logo
+          ? formData.logo instanceof File
+            ? `File: ${formData.logo.name}`
+            : formData.logo
+          : undefined,
+        description: formData.description,
+        serviceAreas: formData.serviceAreas,
+        sampleMenu: formData.sampleMenu
+          ? formData.sampleMenu instanceof File
+            ? `File: ${formData.sampleMenu.name}`
+            : formData.sampleMenu
+          : undefined,
+        contactPersonName: formData.contactPersonName,
+        mobileNumber: formData.mobileNumber,
+        socialMediaLinks: formData.socialMediaLinks,
+      });
+    }
+
     const validationResult = providerOnboardingSchema.safeParse(formData);
 
     if (!validationResult.success) {
-      toast.error("Please fix the validation errors before submitting.");
+      // Log detailed errors in development for debugging
+      if (IS_DEV) {
+        console.error("Validation errors:", validationResult.error.errors);
+        console.error(
+          "Full validation error:",
+          JSON.stringify(validationResult.error, null, 2)
+        );
+      }
+
+      // Show user-friendly error message with specific field issues
+      const firstError = validationResult.error.errors[0];
+      const fieldPath = firstError.path.join(".");
+      const formattedFieldName = formatFieldName(fieldPath);
+      toast.error(`${formattedFieldName}: ${firstError.message}`);
       return;
     }
 
-    // Validate service areas
-    if (!formData.serviceAreas || formData.serviceAreas.length === 0) {
-      toast.error("Please provide at least one service area.");
-      return;
-    }
-
+    // Prepare submission data with trimmed strings
     const submissionData: ProviderOnboardingData = {
       businessName: formData.businessName.trim(),
       businessAddress: formData.businessAddress?.trim(),
-      logo: formData.logo,
+      logo: formData.logo || undefined,
       description: formData.description.trim(),
       serviceAreas: formData.serviceAreas,
-      sampleMenu: formData.sampleMenu,
+      sampleMenu: formData.sampleMenu || undefined,
       contactPersonName: formData.contactPersonName.trim(),
       mobileNumber: formData.mobileNumber.trim(),
-      socialMediaLinks: formData.socialMediaLinks,
+      socialMediaLinks: formData.socialMediaLinks || undefined,
     };
 
+    // Submit the form
     createProviderMutation.mutate(submissionData, {
       onSuccess: () => {
-        // Clear saved form data on successful submission using the hook
+        // Clear saved form data on successful submission
         onboardingForm.clearStorage();
 
         toast.success(
@@ -330,9 +383,10 @@ export default function ProviderOnboardingFlowPage() {
       onError: (error) => {
         if (IS_DEV) console.error("Error submitting onboarding:", error);
 
-        // More specific error messages
+        // Provide specific error messages based on error type
         const errorMessage =
           error instanceof Error ? error.message : "Unknown error occurred";
+
         if (errorMessage.includes("duplicate")) {
           toast.error(
             "You already have a provider profile. Redirecting to dashboard..."
@@ -354,7 +408,6 @@ export default function ProviderOnboardingFlowPage() {
     });
   }, [
     stepValidation,
-    currentStep,
     isExistingProvider,
     onboardingForm,
     createProviderMutation,
@@ -363,7 +416,7 @@ export default function ProviderOnboardingFlowPage() {
 
   // Simple redirect logic
   React.useEffect(() => {
-    if (authLoading || isCheckingProvider) return;
+    if (isLoading) return;
 
     if (!user) {
       router.push(
@@ -376,17 +429,10 @@ export default function ProviderOnboardingFlowPage() {
       router.push("/dashboard");
       return;
     }
-  }, [
-    user,
-    authLoading,
-    isProvider,
-    isExistingProvider,
-    isCheckingProvider,
-    router,
-  ]);
+  }, [user, isLoading, isProvider, isExistingProvider, router]);
 
   // Show loading state with skeleton loaders
-  if (authLoading || isCheckingProvider) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
         {/* Header Skeleton */}
@@ -479,7 +525,7 @@ export default function ProviderOnboardingFlowPage() {
           onNext={handleNext}
           onPrevious={previousStep}
           onSubmit={handleSubmit}
-          canGoNext={stepValidation[currentStep] || false}
+          canGoNext={stepValidation[currentStep]}
           canGoPrevious={canGoPrevious}
           isSubmitting={createProviderMutation.isPending}
           title="Provider Onboarding"

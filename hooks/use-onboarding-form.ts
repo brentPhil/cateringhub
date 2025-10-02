@@ -175,21 +175,55 @@ export function useOnboardingForm(options: UseOnboardingFormOptions = {}): Onboa
     return undefined;
   }, [watchedValues, enableAutoSave, formState.isDirty, saveToStorage]);
 
-  // Step validation functions (defined before use)
+  // Simplified step validation with clear logic
   const isStepValid = useCallback((step: FormStep): boolean => {
     const stepFields = STEP_FIELDS[step];
     const errors = formState.errors;
+    const values = getValues();
 
-    // Check if any step fields have errors
-    return !stepFields.some(field => {
-      if (field === 'socialMediaLinks') {
-        return errors.socialMediaLinks?.facebook ||
-               errors.socialMediaLinks?.instagram ||
-               errors.socialMediaLinks?.website;
+    // Define optional fields that don't need to be filled
+    const optionalFields = new Set(['businessAddress', 'logo', 'sampleMenu', 'socialMediaLinks']);
+
+    // Check each field in the step
+    for (const field of stepFields) {
+      // Skip optional fields
+      if (optionalFields.has(field)) {
+        continue;
       }
-      return errors[field as keyof typeof errors];
-    });
-  }, [formState.errors]);
+
+      // Check for validation errors
+      if (field === 'socialMediaLinks') {
+        // Social media links are optional, but if filled, must be valid
+        if (errors.socialMediaLinks?.facebook ||
+            errors.socialMediaLinks?.instagram ||
+            errors.socialMediaLinks?.website) {
+          return false;
+        }
+      } else if (errors[field as keyof typeof errors]) {
+        return false;
+      }
+
+      // Check if required field has a value
+      const value = values[field];
+
+      // For arrays (like serviceAreas), must have at least one item
+      if (Array.isArray(value) && value.length === 0) {
+        return false;
+      }
+
+      // For strings, must not be empty after trimming
+      if (typeof value === 'string' && value.trim().length === 0) {
+        return false;
+      }
+
+      // For other types, must not be null/undefined
+      if (value == null) {
+        return false;
+      }
+    }
+
+    return true;
+  }, [formState.errors, getValues]);
 
   // Notify parent of data changes
   useEffect(() => {
@@ -211,16 +245,31 @@ export function useOnboardingForm(options: UseOnboardingFormOptions = {}): Onboa
   const getStepErrors = useCallback((step: FormStep): Record<string, any> => {
     const stepFields = STEP_FIELDS[step];
     const errors = formState.errors;
+    const values = getValues();
     const stepErrors: Record<string, any> = {};
-    
+
     stepFields.forEach(field => {
+      // Add validation errors
       if (errors[field as keyof typeof errors]) {
         stepErrors[field] = errors[field as keyof typeof errors];
       }
+
+      // Add missing required field errors
+      const optionalFields = new Set(['businessAddress', 'logo', 'sampleMenu', 'socialMediaLinks']);
+      if (!optionalFields.has(field)) {
+        const value = values[field];
+        if (Array.isArray(value) && value.length === 0) {
+          stepErrors[field] = { message: 'This field is required' };
+        } else if (typeof value === 'string' && value.trim().length === 0) {
+          stepErrors[field] = { message: 'This field is required' };
+        } else if (value == null) {
+          stepErrors[field] = { message: 'This field is required' };
+        }
+      }
     });
-    
+
     return stepErrors;
-  }, [formState.errors]);
+  }, [formState.errors, getValues]);
 
   const validateStep = useCallback(async (step: FormStep): Promise<boolean> => {
     const stepFields = STEP_FIELDS[step];

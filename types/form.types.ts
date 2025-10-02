@@ -135,12 +135,12 @@ export interface ProviderOnboardingFormData {
   // Business Information (Step 1)
   businessName: string
   businessAddress?: string
-  logo?: File | string
+  logo?: File | string | null
 
   // Service Details (Step 2)
   description: string
   serviceAreas: string[]
-  sampleMenu?: File | string
+  sampleMenu?: File | string | null
 
   // Contact Information (Step 3)
   contactPersonName: string

@@ -7,10 +7,10 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "12.2.3 (519615d)"
+    PostgrestVersion: "13.0.5"
   }
   graphql_public: {
     Tables: {
@@ -22,10 +22,10 @@ export type Database = {
     Functions: {
       graphql: {
         Args: {
+          extensions?: Json
           operationName?: string
           query?: string
           variables?: Json
-          extensions?: Json
         }
         Returns: Json
       }
@@ -39,6 +39,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      catering_providers: {
+        Row: {
+          business_address: string | null
+          business_name: string
+          contact_person_name: string
+          created_at: string | null
+          description: string
+          id: string
+          logo_url: string | null
+          mobile_number: string
+          onboarding_completed: boolean | null
+          onboarding_step: number | null
+          sample_menu_url: string | null
+          service_areas: string[]
+          social_media_links: Json | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          business_address?: string | null
+          business_name: string
+          contact_person_name: string
+          created_at?: string | null
+          description: string
+          id?: string
+          logo_url?: string | null
+          mobile_number: string
+          onboarding_completed?: boolean | null
+          onboarding_step?: number | null
+          sample_menu_url?: string | null
+          service_areas?: string[]
+          social_media_links?: Json | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          business_address?: string | null
+          business_name?: string
+          contact_person_name?: string
+          created_at?: string | null
+          description?: string
+          id?: string
+          logo_url?: string | null
+          mobile_number?: string
+          onboarding_completed?: boolean | null
+          onboarding_step?: number | null
+          sample_menu_url?: string | null
+          service_areas?: string[]
+          social_media_links?: Json | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -68,68 +122,6 @@ export type Database = {
           username?: string | null
         }
         Relationships: []
-      }
-      catering_providers: {
-        Row: {
-          id: string
-          user_id: string
-          business_name: string
-          business_address: string | null
-          logo_url: string | null
-          description: string
-          service_areas: string[]
-          sample_menu_url: string | null
-          contact_person_name: string
-          mobile_number: string
-          social_media_links: Json
-          onboarding_completed: boolean
-          onboarding_step: number
-          created_at: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          business_name: string
-          business_address?: string | null
-          logo_url?: string | null
-          description: string
-          service_areas: string[]
-          sample_menu_url?: string | null
-          contact_person_name: string
-          mobile_number: string
-          social_media_links?: Json
-          onboarding_completed?: boolean
-          onboarding_step?: number
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          business_name?: string
-          business_address?: string | null
-          logo_url?: string | null
-          description?: string
-          service_areas?: string[]
-          sample_menu_url?: string | null
-          contact_person_name?: string
-          mobile_number?: string
-          social_media_links?: Json
-          onboarding_completed?: boolean
-          onboarding_step?: number
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "catering_providers_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          }
-        ]
       }
       provider_role_permissions: {
         Row: {
@@ -431,9 +423,3 @@ export const Constants = {
     },
   },
 } as const
-
-// Re-export commonly used types for easier imports
-export type Profile = Tables<'profiles'>
-export type UserRole = Tables<'user_roles'>
-export type AppRole = Database['public']['Enums']['app_role']
-export type ProviderRoleType = Database['public']['Enums']['provider_role_type']
