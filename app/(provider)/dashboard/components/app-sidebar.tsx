@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -34,8 +35,14 @@ import { NavUser } from "./nav-user";
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
   const { state } = useSidebar();
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const isActive = (path: string) => {
+    if (!mounted) return false; // Prevent hydration mismatch
     return pathname === path || pathname.startsWith(`${path}/`);
   };
 
@@ -51,6 +58,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       href: "/dashboard",
       icon: LayoutDashboard,
       description: "View your dashboard",
+    },
+    {
+      name: "Profile",
+      href: "/dashboard/profile",
+      icon: ChefHat,
+      description: "Manage your profile",
     },
     {
       name: "Users",
@@ -70,9 +83,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, profile, isAdmin, isLoading: authLoading } = useAuthInfo();
 
   // Filter navigation items based on roles
+  // Only filter after component is mounted to prevent hydration mismatch
   const navItems = allNavItems.filter((item) => {
     if (item.adminOnly) {
-      return isAdmin;
+      // During SSR or before mount, hide admin items
+      // After mount, show only if user is admin and auth is loaded
+      if (!mounted) return false;
+      return !authLoading && isAdmin;
     }
     return true; // Show items without specific role requirements
   });
@@ -132,9 +149,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
-        {userData && !authLoading && (
-          <NavUser user={userData} />
-        )}
+        {userData && !authLoading && <NavUser user={userData} />}
       </SidebarFooter>
     </Sidebar>
   );

@@ -36,7 +36,10 @@ export function ServicePerformanceCard({
                 <Typography variant="smallText" className="font-medium">
                   {service.name}
                 </Typography>
-                <Typography variant="smallText" className="text-muted-foreground">
+                <Typography
+                  variant="smallText"
+                  className="text-muted-foreground"
+                >
                   {service.percentage}%
                 </Typography>
               </div>
@@ -52,4 +55,3 @@ export function ServicePerformanceCard({
     </Card>
   );
 }
-

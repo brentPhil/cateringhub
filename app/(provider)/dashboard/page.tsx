@@ -1,3 +1,4 @@
+import { getUserRole } from "@/app/auth/actions";
 import { type MetricItem } from "./components/charts/metrics-cards";
 import { type ActivityItem } from "./components/charts/recent-activity-card";
 import { type UpcomingEvent } from "./components/charts/upcoming-events-card";
@@ -5,6 +6,8 @@ import { type ClientInsight } from "./components/charts/client-insights-card";
 import { type ServicePerformance } from "./components/charts/service-performance-card";
 import { type FunnelStage } from "./components/charts/requests-funnel-card";
 import { type TrendDataPoint } from "./components/charts/combined-trend-chart";
+import { type OperationalMetrics } from "./components/charts/operational-metrics-card";
+import { type Notification } from "./components/charts/notifications-panel";
 import { DashboardVisualizer } from "./components/charts/dashboard-visualizer";
 import {
   CalendarDays,
@@ -14,6 +17,10 @@ import {
 } from "lucide-react";
 
 export default async function DashboardPage() {
+  // Get user role to determine if admin
+  const userRoleData = await getUserRole();
+  const isAdmin = userRoleData?.role === "admin";
+
   // Mock dashboard data (visualization only)
   const metrics: MetricItem[] = [
     {
@@ -131,9 +138,52 @@ export default async function DashboardPage() {
     { label: "Completed", count: 41, color: "hsl(var(--chart-2))" },
     { label: "Canceled", count: 32, color: "hsl(var(--muted))" },
   ];
+
+  // Operational metrics (admin only)
+  const operationalMetrics: OperationalMetrics = {
+    onboardingCompletion: 85,
+    avgResponseTime: 3.5,
+    cancellationRate: 8,
+  };
+
+  // Notifications
+  const notifications: Notification[] = [
+    {
+      id: 1,
+      title: "New booking request",
+      message: "ACME Corp requested catering for Oct 25",
+      type: "info",
+      time: "10 min ago",
+      isRead: false,
+    },
+    {
+      id: 2,
+      title: "Payment received",
+      message: "Johnson family reunion payment confirmed",
+      type: "success",
+      time: "2h ago",
+      isRead: false,
+    },
+    {
+      id: 3,
+      title: "Overdue invoice",
+      message: "Invoice #1234 is 5 days overdue",
+      type: "warning",
+      time: "1 day ago",
+      isRead: true,
+    },
+  ];
+
+  // Previous period metrics for comparison
+  const previousPeriodMetrics: MetricItem[] = [
+    { label: "Total bookings", value: 114 },
+    { label: "Revenue", value: "$39.2k" },
+    { label: "Pending requests", value: 11 },
+    { label: "Conversion", value: "29%" },
+  ];
+
   return (
     <div className="space-y-6">
-
       <DashboardVisualizer
         metrics={metrics}
         trendData={trendData}
@@ -144,6 +194,10 @@ export default async function DashboardPage() {
         funnelStages={funnelStages}
         totalRequests={128}
         conversions={41}
+        operationalMetrics={operationalMetrics}
+        notifications={notifications}
+        isAdmin={isAdmin}
+        previousPeriodMetrics={previousPeriodMetrics}
       />
     </div>
   );
