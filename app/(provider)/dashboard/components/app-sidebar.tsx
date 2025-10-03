@@ -2,7 +2,6 @@
 
 import React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import {
   Users,
   Settings,
@@ -31,20 +30,11 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { NavUser } from "./nav-user";
+import { useNavigationState } from "@/hooks/use-navigation-state";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const pathname = usePathname();
   const { state } = useSidebar();
-  const [mounted, setMounted] = React.useState(false);
-
-  React.useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const isActive = (path: string) => {
-    if (!mounted) return false; // Prevent hydration mismatch
-    return pathname === path || pathname.startsWith(`${path}/`);
-  };
+  const { isActive, mounted } = useNavigationState();
 
   const allNavItems: Array<{
     name: string;
@@ -127,10 +117,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <Tooltip delayDuration={350}>
                     <TooltipTrigger asChild>
                       <SidebarMenuButton asChild isActive={isActive(item.href)}>
-                        <Link href={item.href}>
+                        <a href={item.href}>
                           <item.icon className="h-5 w-5" />
                           <span>{item.name}</span>
-                        </Link>
+                        </a>
                       </SidebarMenuButton>
                     </TooltipTrigger>
                     {state === "collapsed" && (

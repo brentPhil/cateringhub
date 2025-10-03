@@ -62,12 +62,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased font-sans">
-        <QueryProvider>
-          <NuqsAdapter>
+        <NuqsAdapter>
+          <QueryProvider>
             <Toaster />
             {children}
-          </NuqsAdapter>
-        </QueryProvider>
+          </QueryProvider>
+        </NuqsAdapter>
       </body>
     </html>
   );

@@ -45,7 +45,7 @@ export function RequestsFunnelCard({
 
         {/* Funnel stages */}
         <div className="space-y-2">
-          {stages.map((stage, idx) => {
+          {stages.map((stage) => {
             const percentage = totalRequests > 0 ? (stage.count / totalRequests) * 100 : 0;
             const width = Math.max(percentage, 10); // Minimum 10% width for visibility
 

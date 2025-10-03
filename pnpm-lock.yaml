@@ -62,6 +62,9 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.49.4
         version: 2.49.4
+      '@tabler/icons-react':
+        specifier: ^3.35.0
+        version: 3.35.0(react@19.0.0)
       '@tanstack/react-query':
         specifier: ^5.67.2
         version: 5.67.2(react@19.0.0)
@@ -86,6 +89,9 @@ importers:
       lucide-react:
         specifier: ^0.479.0
         version: 0.479.0(react@19.0.0)
+      motion:
+        specifier: ^12.23.22
+        version: 12.23.22(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       next:
         specifier: 15.2.1
         version: 15.2.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -101,9 +107,15 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
+      react-dropzone:
+        specifier: ^14.3.8
+        version: 14.3.8(react@19.0.0)
       react-hook-form:
         specifier: ^7.56.3
         version: 7.56.3(react@19.0.0)
+      react-zoom-pan-pinch:
+        specifier: ^3.7.0
+        version: 3.7.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       recharts:
         specifier: 2.15.4
         version: 2.15.4(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -989,6 +1001,14 @@ packages:
   '@swc/helpers@0.5.15':
     resolution: {integrity: sha512-JQ5TuMi45Owi4/BIMAJBoSQoOJu12oOk/gADqlcUL9JEdHB8vyjUSsxqeNXnmXHjYKMi2WcYtezGEEhqUI/E2g==}
 
+  '@tabler/icons-react@3.35.0':
+    resolution: {integrity: sha512-XG7t2DYf3DyHT5jxFNp5xyLVbL4hMJYJhiSdHADzAjLRYfL7AnjlRfiHDHeXxkb2N103rEIvTsBRazxXtAUz2g==}
+    peerDependencies:
+      react: '>= 16'
+
+  '@tabler/icons@3.35.0':
+    resolution: {integrity: sha512-yYXe+gJ56xlZFiXwV9zVoe3FWCGuZ/D7/G4ZIlDtGxSx5CGQK110wrnT29gUj52kEZoxqF7oURTk97GQxELOFQ==}
+
   '@tailwindcss/node@4.0.12':
     resolution: {integrity: sha512-a6J11K1Ztdln9OrGfoM75/hChYPcHYGNYimqciMrvKXRmmPaS8XZTHhdvb5a3glz4Kd4ZxE1MnuFE2c0fGGmtg==}
 
@@ -1248,6 +1268,10 @@ packages:
   async-function@1.0.0:
     resolution: {integrity: sha512-hsU18Ae8CDTR6Kgu9DYf0EbCr/a5iGL0rytQDobUcdpYOKokk8LEjVphnXkDkgpi0wYVsqrXuP0bZxJaTqdgoA==}
     engines: {node: '>= 0.4'}
+
+  attr-accept@2.2.5:
+    resolution: {integrity: sha512-0bDNnY/u6pPwHDMoF0FieU354oBi0a8rD9FcsLwzcGWbc8KS8KPIi7y+s13OlVY+gMWc/9xEMUgNE6Qm8ZllYQ==}
+    engines: {node: '>=4'}
 
   available-typed-arrays@1.0.7:
     resolution: {integrity: sha512-wvUjBtSGN7+7SjNpq/9M2Tg350UZD3q62IFZLbRAR1bSMlCo1ZaeW+BJ+D090e4hIIZLBcTDWe4Mh4jvUDajzQ==}
@@ -1654,6 +1678,10 @@ packages:
     resolution: {integrity: sha512-XXTUwCvisa5oacNGRP9SfNtYBNAMi+RPwBFmblZEF7N7swHYQS6/Zfk7SRwx4D5j3CH211YNRco1DEMNVfZCnQ==}
     engines: {node: '>=16.0.0'}
 
+  file-selector@2.1.2:
+    resolution: {integrity: sha512-QgXo+mXTe8ljeqUFaX3QVHc5osSItJ/Km+xpocx0aSqWGMSCf6qYs/VnzZgS864Pjn5iceMRFigeAV7AfTlaig==}
+    engines: {node: '>= 12'}
+
   fill-range@7.1.1:
     resolution: {integrity: sha512-YsGpe3WHLK8ZYi4tWDg2Jy3ebRz2rXowDxnld4bkQB00cc/1Zw9AWnC0i9ztDJitivtQvaI9KaLyKrc+hBW0yg==}
     engines: {node: '>=8'}
@@ -1672,6 +1700,20 @@ packages:
   for-each@0.3.5:
     resolution: {integrity: sha512-dKx12eRCVIzqCxFGplyFKJMPvLEWgmNtUrpTiJIR5u97zEhRG8ySrtboPHZXx7daLxQVrl643cTzbab2tkQjxg==}
     engines: {node: '>= 0.4'}
+
+  framer-motion@12.23.22:
+    resolution: {integrity: sha512-ZgGvdxXCw55ZYvhoZChTlG6pUuehecgvEAJz0BHoC5pQKW1EC5xf1Mul1ej5+ai+pVY0pylyFfdl45qnM1/GsA==}
+    peerDependencies:
+      '@emotion/is-prop-valid': '*'
+      react: ^18.0.0 || ^19.0.0
+      react-dom: ^18.0.0 || ^19.0.0
+    peerDependenciesMeta:
+      '@emotion/is-prop-valid':
+        optional: true
+      react:
+        optional: true
+      react-dom:
+        optional: true
 
   function-bind@1.1.2:
     resolution: {integrity: sha512-7XHNxH7qX9xG5mIwxkhumTox/MIRNcOgDrxWsMt2pAr23WHp6MrRlN7FBSFpCpr+oVO0F744iUgR82nJMfG2SA==}
@@ -2041,6 +2083,26 @@ packages:
   mitt@3.0.1:
     resolution: {integrity: sha512-vKivATfr97l2/QBCYAkXYDbrIWPM2IIKEl7YPhjCvKlG3kE2gm+uBo6nEXK3M5/Ffh/FLpKExzOQ3JJoJGFKBw==}
 
+  motion-dom@12.23.21:
+    resolution: {integrity: sha512-5xDXx/AbhrfgsQmSE7YESMn4Dpo6x5/DTZ4Iyy4xqDvVHWvFVoV+V2Ri2S/ksx+D40wrZ7gPYiMWshkdoqNgNQ==}
+
+  motion-utils@12.23.6:
+    resolution: {integrity: sha512-eAWoPgr4eFEOFfg2WjIsMoqJTW6Z8MTUCgn/GZ3VRpClWBdnbjryiA3ZSNLyxCTmCQx4RmYX6jX1iWHbenUPNQ==}
+
+  motion@12.23.22:
+    resolution: {integrity: sha512-iSq6X9vLHbeYwmHvhK//+U74ROaPnZmBuy60XZzqNl0QtZkWfoZyMDHYnpKuWFv0sNMqHgED8aCXk94LCoQPGg==}
+    peerDependencies:
+      '@emotion/is-prop-valid': '*'
+      react: ^18.0.0 || ^19.0.0
+      react-dom: ^18.0.0 || ^19.0.0
+    peerDependenciesMeta:
+      '@emotion/is-prop-valid':
+        optional: true
+      react:
+        optional: true
+      react-dom:
+        optional: true
+
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
 
@@ -2202,6 +2264,12 @@ packages:
     peerDependencies:
       react: ^19.0.0
 
+  react-dropzone@14.3.8:
+    resolution: {integrity: sha512-sBgODnq+lcA4P296DY4wacOZz3JFpD99fp+hb//iBO2HHnyeZU3FwWyXJ6salNpqQdsZrgMrotuko/BdJMV8Ug==}
+    engines: {node: '>= 10.13'}
+    peerDependencies:
+      react: '>= 16.8 || 18.0.0'
+
   react-hook-form@7.56.3:
     resolution: {integrity: sha512-IK18V6GVbab4TAo1/cz3kqajxbDPGofdF0w7VHdCo0Nt8PrPlOZcuuDq9YYIV1BtjcX78x0XsldbQRQnQXWXmw==}
     engines: {node: '>=18.0.0'}
@@ -2255,6 +2323,13 @@ packages:
     peerDependencies:
       react: '>=16.6.0'
       react-dom: '>=16.6.0'
+
+  react-zoom-pan-pinch@3.7.0:
+    resolution: {integrity: sha512-UmReVZ0TxlKzxSbYiAj+LeGRW8s8LraAFTXRAxzMYnNRgGPsxCudwZKVkjvGmjtx7SW/hZamt69NUmGf4xrkXA==}
+    engines: {node: '>=8', npm: '>=5'}
+    peerDependencies:
+      react: '*'
+      react-dom: '*'
 
   react@19.0.0:
     resolution: {integrity: sha512-V8AVnmPIICiWpGfm6GLzCR/W5FXLchHop40W4nXBmdlEceh16rCN8O8LNWm5bh5XUX91fh7KpA+W0TgMKmgTpQ==}
@@ -3395,6 +3470,13 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
+  '@tabler/icons-react@3.35.0(react@19.0.0)':
+    dependencies:
+      '@tabler/icons': 3.35.0
+      react: 19.0.0
+
+  '@tabler/icons@3.35.0': {}
+
   '@tailwindcss/node@4.0.12':
     dependencies:
       enhanced-resolve: 5.18.1
@@ -3689,6 +3771,8 @@ snapshots:
   ast-types-flow@0.0.8: {}
 
   async-function@1.0.0: {}
+
+  attr-accept@2.2.5: {}
 
   available-typed-arrays@1.0.7:
     dependencies:
@@ -4238,6 +4322,10 @@ snapshots:
     dependencies:
       flat-cache: 4.0.1
 
+  file-selector@2.1.2:
+    dependencies:
+      tslib: 2.8.1
+
   fill-range@7.1.1:
     dependencies:
       to-regex-range: 5.0.1
@@ -4257,6 +4345,15 @@ snapshots:
   for-each@0.3.5:
     dependencies:
       is-callable: 1.2.7
+
+  framer-motion@12.23.22(react-dom@19.0.0(react@19.0.0))(react@19.0.0):
+    dependencies:
+      motion-dom: 12.23.21
+      motion-utils: 12.23.6
+      tslib: 2.8.1
+    optionalDependencies:
+      react: 19.0.0
+      react-dom: 19.0.0(react@19.0.0)
 
   function-bind@1.1.2: {}
 
@@ -4610,6 +4707,20 @@ snapshots:
 
   mitt@3.0.1: {}
 
+  motion-dom@12.23.21:
+    dependencies:
+      motion-utils: 12.23.6
+
+  motion-utils@12.23.6: {}
+
+  motion@12.23.22(react-dom@19.0.0(react@19.0.0))(react@19.0.0):
+    dependencies:
+      framer-motion: 12.23.22(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      tslib: 2.8.1
+    optionalDependencies:
+      react: 19.0.0
+      react-dom: 19.0.0(react@19.0.0)
+
   ms@2.1.3: {}
 
   nanoid@3.3.9: {}
@@ -4764,6 +4875,13 @@ snapshots:
       react: 19.0.0
       scheduler: 0.25.0
 
+  react-dropzone@14.3.8(react@19.0.0):
+    dependencies:
+      attr-accept: 2.2.5
+      file-selector: 2.1.2
+      prop-types: 15.8.1
+      react: 19.0.0
+
   react-hook-form@7.56.3(react@19.0.0):
     dependencies:
       react: 19.0.0
@@ -4813,6 +4931,11 @@ snapshots:
       dom-helpers: 5.2.1
       loose-envify: 1.4.0
       prop-types: 15.8.1
+      react: 19.0.0
+      react-dom: 19.0.0(react@19.0.0)
+
+  react-zoom-pan-pinch@3.7.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0):
+    dependencies:
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
 

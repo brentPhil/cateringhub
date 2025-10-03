@@ -3,8 +3,8 @@
  * This file serves as the main entry point for all type definitions
  */
 
-// Re-export Supabase types
-export * from './supabase'
+// CSS module type declarations
+import './css'
 
 // Re-export domain-specific types
 export * from './auth.types'
