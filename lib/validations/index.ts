@@ -89,6 +89,37 @@ export const profileSchema = z.object({
   avatar_url: urlSchema,
 })
 
+// Provider profile schema
+export const providerProfileFormSchema = z.object({
+  businessName: z.string().min(2, 'Business name must be at least 2 characters'),
+  contactPersonName: z.string().min(2, 'Contact person name must be at least 2 characters'),
+  mobileNumber: z
+    .string()
+    .min(1, 'Mobile number is required')
+    .regex(/^[\+]?[0-9\s\-\(\)]+$/, 'Please enter a valid mobile number')
+    .refine(val => {
+      const cleaned = val.replace(/[\s\-\(\)\+]/g, '');
+      return cleaned.length >= 10 && cleaned.length <= 15;
+    }, 'Mobile number must be between 10-15 digits'),
+  email: emailSchema.optional().or(z.literal('')),
+  // Address fields moved to service_locations; no longer validated here
+  tagline: z
+    .string()
+    .max(100, 'Tagline must be less than 100 characters')
+    .optional()
+    .or(z.literal('')),
+  description: z
+    .string()
+    .min(10, 'Description must be at least 10 characters')
+    .max(500, 'Description must be less than 500 characters'),
+  // Availability fields (optional)
+  profileVisible: z.boolean().optional(),
+  maxServiceRadius: z.number().min(1).max(1000).optional(), // Max allowed radius per provider
+  dailyCapacity: z.number().min(1).max(10).optional(),
+  advanceBookingDays: z.number().min(1).max(30).optional(),
+  selectedDays: z.array(z.string()).optional(),
+})
+
 // Provider onboarding schemas - Multi-step
 export const providerBusinessInfoSchema = z.object({
   businessName: z.string().min(2, 'Business name must be at least 2 characters'),

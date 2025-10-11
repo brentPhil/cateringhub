@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import type { Tables } from "@/types/supabase";
 
 export interface BannerAdjustments {
   zoom: number; // percentage (50-200)
@@ -9,6 +10,8 @@ export interface BannerAdjustments {
   offsetY: number; // pixels
   rotation: 0 | 90 | 180 | 270;
 }
+
+export type ServiceLocation = Tables<"service_locations">;
 
 export interface ProviderProfile {
   id: string;
@@ -28,6 +31,16 @@ export interface ProviderProfile {
   updated_at?: string;
   banner_image?: string;
   banner_adjustments?: BannerAdjustments | null;
+  email?: string;
+  tagline?: string;
+  // Service locations (multi-location support)
+  service_locations?: ServiceLocation[];
+  // Availability fields
+  is_visible?: boolean;
+  service_radius?: number;
+  daily_capacity?: number;
+  advance_booking_days?: number;
+  available_days?: string[];
 }
 
 export interface ProviderProfileData {
@@ -39,6 +52,7 @@ export interface ProviderProfileData {
  * Fetch provider profile data from Supabase
  */
 async function fetchProviderProfile(): Promise<ProviderProfileData> {
+  // console.log("🟠 [FETCH PROFILE] Starting fetch...");
   const supabase = createClient();
 
   const {
@@ -46,28 +60,59 @@ async function fetchProviderProfile(): Promise<ProviderProfileData> {
   } = await supabase.auth.getUser();
 
   if (!user) {
+    // console.log("🔴 [FETCH PROFILE] Not authenticated");
     throw new Error("Not authenticated");
   }
 
+  // console.log("🟠 [FETCH PROFILE] User ID:", user.id);
+
+  // Fetch provider profile with service locations
   const { data, error } = await supabase
     .from("catering_providers")
-    .select("*")
+    .select(`
+      *,
+      service_locations (
+        id,
+        provider_id,
+        province,
+        city,
+        barangay,
+        street_address,
+        postal_code,
+        is_primary,
+        landmark,
+        service_area_notes,
+        created_at,
+        updated_at
+      )
+    `)
     .eq("user_id", user.id)
     .single();
 
   if (error) {
-    console.error("Error fetching provider profile:", error);
+    console.error("🔴 [FETCH PROFILE] Error:", error);
     throw error;
   }
 
-  console.log("Provider profile fetched - FULL DATA:", data);
-  console.log("Provider profile fetched - banner_adjustments specifically:", data.banner_adjustments);
-  console.log("Provider profile fetched - summary:", {
-    logo_url: data.logo_url,
-    banner_image: data.banner_image,
-    banner_adjustments: data.banner_adjustments,
-    business_name: data.business_name,
-  });
+  // console.log("🟢 [FETCH PROFILE] Profile fetched successfully");
+  // console.log("🟠 [FETCH PROFILE] Full data:", data);
+  // console.log("🟠 [FETCH PROFILE] Service locations:", data.service_locations);
+  // console.log("🟠 [FETCH PROFILE] Availability fields:", {
+  //   is_visible: data.is_visible,
+  //   service_radius: data.service_radius,
+  //   daily_capacity: data.daily_capacity,
+  //   advance_booking_days: data.advance_booking_days,
+  //   available_days: data.available_days,
+  // });
+
+  // Sort service locations: primary first, then by created_at
+  if (data.service_locations && Array.isArray(data.service_locations)) {
+    data.service_locations.sort((a: ServiceLocation, b: ServiceLocation) => {
+      if (a.is_primary && !b.is_primary) return -1;
+      if (!a.is_primary && b.is_primary) return 1;
+      return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+    });
+  }
 
   return { profile: data, userId: user.id };
 }

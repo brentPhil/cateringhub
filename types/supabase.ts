@@ -41,59 +41,98 @@ export type Database = {
     Tables: {
       catering_providers: {
         Row: {
+          advance_booking_days: number | null
+          available_days: string[] | null
           banner_adjustments: Json | null
           banner_image: string | null
+          barangay: string | null
           business_address: string | null
           business_name: string
+          city: string | null
           contact_person_name: string
           created_at: string | null
+          daily_capacity: number | null
           description: string
+          email: string | null
           id: string
+          is_visible: boolean | null
           logo_url: string | null
+          max_service_radius: number
           mobile_number: string
           onboarding_completed: boolean | null
           onboarding_step: number | null
+          postal_code: string | null
+          province: string | null
           sample_menu_url: string | null
           service_areas: string[]
+          service_radius: number | null
           social_media_links: Json | null
+          street_address: string | null
+          tagline: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
+          advance_booking_days?: number | null
+          available_days?: string[] | null
           banner_adjustments?: Json | null
           banner_image?: string | null
+          barangay?: string | null
           business_address?: string | null
           business_name: string
+          city?: string | null
           contact_person_name: string
           created_at?: string | null
+          daily_capacity?: number | null
           description: string
+          email?: string | null
           id?: string
+          is_visible?: boolean | null
           logo_url?: string | null
+          max_service_radius?: number
           mobile_number: string
           onboarding_completed?: boolean | null
           onboarding_step?: number | null
+          postal_code?: string | null
+          province?: string | null
           sample_menu_url?: string | null
           service_areas?: string[]
+          service_radius?: number | null
           social_media_links?: Json | null
+          street_address?: string | null
+          tagline?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
+          advance_booking_days?: number | null
+          available_days?: string[] | null
           banner_adjustments?: Json | null
           banner_image?: string | null
+          barangay?: string | null
           business_address?: string | null
           business_name?: string
+          city?: string | null
           contact_person_name?: string
           created_at?: string | null
+          daily_capacity?: number | null
           description?: string
+          email?: string | null
           id?: string
+          is_visible?: boolean | null
           logo_url?: string | null
+          max_service_radius?: number
           mobile_number?: string
           onboarding_completed?: boolean | null
           onboarding_step?: number | null
+          postal_code?: string | null
+          province?: string | null
           sample_menu_url?: string | null
           service_areas?: string[]
+          service_radius?: number | null
           social_media_links?: Json | null
+          street_address?: string | null
+          tagline?: string | null
           updated_at?: string | null
           user_id?: string
         }
@@ -170,6 +209,62 @@ export type Database = {
           role?: Database["public"]["Enums"]["app_role"]
         }
         Relationships: []
+      }
+      service_locations: {
+        Row: {
+          barangay: string | null
+          city: string | null
+          created_at: string
+          id: string
+          is_primary: boolean
+          landmark: string | null
+          postal_code: string | null
+          provider_id: string
+          province: string | null
+          service_area_notes: string | null
+          service_radius: number
+          street_address: string | null
+          updated_at: string
+        }
+        Insert: {
+          barangay?: string | null
+          city?: string | null
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          landmark?: string | null
+          postal_code?: string | null
+          provider_id: string
+          province?: string | null
+          service_area_notes?: string | null
+          service_radius?: number
+          street_address?: string | null
+          updated_at?: string
+        }
+        Update: {
+          barangay?: string | null
+          city?: string | null
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          landmark?: string | null
+          postal_code?: string | null
+          provider_id?: string
+          province?: string | null
+          service_area_notes?: string | null
+          service_radius?: number
+          street_address?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_locations_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "catering_providers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

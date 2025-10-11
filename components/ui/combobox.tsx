@@ -33,6 +33,14 @@ interface ComboboxProps {
   disabled?: boolean;
 }
 
+/**
+ * Standard Combobox Component
+ *
+ * ⚠️ WARNING: This component renders ALL options in the DOM.
+ * For large datasets (1000+ items), use VirtualizedCombobox instead.
+ *
+ * @see VirtualizedCombobox for high-performance alternative
+ */
 export function Combobox({
   options,
   value,
@@ -79,7 +87,7 @@ export function Combobox({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0">
+      <PopoverContent className="w-full p-0 max-h-3/5">
         <Command>
           <CommandInput placeholder={placeholder} />
           <CommandEmpty>{emptyMessage}</CommandEmpty>
@@ -105,3 +113,6 @@ export function Combobox({
     </Popover>
   );
 }
+
+// Re-export VirtualizedCombobox for convenience
+export { VirtualizedCombobox } from "./virtualized-combobox";

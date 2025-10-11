@@ -66,7 +66,7 @@ export function Banner({
     <>
       <div
         className={cn(
-          "relative w-full h-80 rounded-md bg-muted overflow-hidden group",
+          "relative w-full aspect-[1920/600] rounded-md bg-muted overflow-hidden group",
           className
         )}
       >
