@@ -49,7 +49,7 @@ interface ServiceLocationsSectionProps {
   onUpdateLocation: (
     id: string,
     field: keyof ServiceLocationFormData,
-    value: any
+    value: string | number | boolean | null
   ) => void;
   onSetPrimary: (id: string) => void;
   isLoading?: boolean;
@@ -100,8 +100,8 @@ export function ServiceLocationsSection({
         <Alert>
           <MapPin className="h-4 w-4" />
           <AlertDescription>
-            No service locations added yet. Click "Add location" to set up your
-            first service area.
+            No service locations added yet. Click &quot;Add location&quot; to
+            set up your first service area.
           </AlertDescription>
         </Alert>
       ) : (
@@ -133,7 +133,10 @@ interface LocationAccordionItemProps {
   index: number;
   canRemove: boolean;
   onRemove: () => void;
-  onUpdate: (field: keyof ServiceLocationFormData, value: any) => void;
+  onUpdate: (
+    field: keyof ServiceLocationFormData,
+    value: string | number | boolean | null
+  ) => void;
   onSetPrimary: () => void;
   maxServiceRadius?: number;
 }

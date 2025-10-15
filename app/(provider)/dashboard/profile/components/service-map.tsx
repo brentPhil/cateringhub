@@ -34,6 +34,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 import { Star } from "lucide-react";
+import type maplibregl from "maplibre-gl";
 
 /**
  * Sleep utility for rate limiting
@@ -380,8 +381,8 @@ function MapContent({
   onLocationClick?: (locationId: string) => void;
 }) {
   const mapRef = React.useRef<HTMLDivElement>(null);
-  const mapInstanceRef = React.useRef<any>(null);
-  const markersRef = React.useRef<Map<string, any>>(new Map());
+  const mapInstanceRef = React.useRef<maplibregl.Map | null>(null);
+  const markersRef = React.useRef<Map<string, maplibregl.Marker>>(new Map());
   const [mapError, setMapError] = React.useState(false);
   const [mapReady, setMapReady] = React.useState(false);
   const [initialCenter, setInitialCenter] = React.useState<Coordinates | null>(
@@ -436,7 +437,7 @@ function MapContent({
     return () => {
       cancelled = true;
     };
-  }, [primaryLocation?.city, primaryLocation?.province, primaryLocation?.id]);
+  }, [primaryLocation]);
 
   // Initialize map once we have the initial center coordinates
   React.useEffect(() => {
@@ -448,7 +449,7 @@ function MapContent({
     )
       return;
 
-    let glMap: any = null;
+    let glMap: maplibregl.Map | null = null;
 
     const initMap = async () => {
       try {
@@ -494,7 +495,7 @@ function MapContent({
         });
 
         // Error handling for tile loading
-        glMap.on("error", (e: any) => {
+        glMap.on("error", (e: maplibregl.ErrorEvent) => {
           console.warn("Map warning (non-critical):", e?.error?.message ?? e);
         });
 
@@ -509,10 +510,14 @@ function MapContent({
 
     // Cleanup function
     return () => {
+      // Capture current markers reference for cleanup
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      const currentMarkers = markersRef.current;
+
       if (glMap) {
         // Remove all markers
-        markersRef.current.forEach((marker) => marker.remove());
-        markersRef.current.clear();
+        currentMarkers.forEach((marker) => marker.remove());
+        currentMarkers.clear();
         glMap.remove();
         mapInstanceRef.current = null;
         setMapReady(false);
@@ -607,8 +612,8 @@ function MapContent({
 
         // Add or update the source containing all circles
         const source = map.getSource("service-radii");
-        if (source) {
-          source.setData(circlesCollection as any);
+        if (source && source.type === "geojson") {
+          (source as maplibregl.GeoJSONSource).setData(circlesCollection);
         } else {
           // Add source and layers if they don't exist yet
           map.addSource("service-radii", {

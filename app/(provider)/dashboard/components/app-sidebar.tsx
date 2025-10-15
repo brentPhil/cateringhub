@@ -7,6 +7,8 @@ import {
   Settings,
   ChefHat,
   LayoutDashboard,
+  UserCog,
+  Calendar,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -54,6 +56,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       href: "/dashboard/profile",
       icon: ChefHat,
       description: "Manage your profile",
+    },
+    {
+      name: "Bookings",
+      href: "/dashboard/bookings",
+      icon: Calendar,
+      description: "Manage catering bookings",
+    },
+    {
+      name: "Team",
+      href: "/dashboard/team",
+      icon: UserCog,
+      description: "Manage your team members",
     },
     {
       name: "Users",

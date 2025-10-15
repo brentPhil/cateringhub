@@ -51,13 +51,20 @@ export interface ProviderProfile {
 export interface ProviderProfileData {
   profile: ProviderProfile;
   userId: string;
+  providerId: string;
+  canEdit: boolean; // Whether user can edit the profile
 }
 
 /**
- * Fetch provider profile data from Supabase
+ * Fetch provider profile data from Supabase using team membership
+ * This allows team members to access the business profile
+ *
+ * NEW ARCHITECTURE (Post-Migration):
+ * - Two-table join: provider_members → providers
+ * - All business profile data is now in the unified `providers` table
+ * - No more catering_providers table
  */
 async function fetchProviderProfile(): Promise<ProviderProfileData> {
-  // console.log("🟠 [FETCH PROFILE] Starting fetch...");
   const supabase = createClient();
 
   const {
@@ -65,15 +72,25 @@ async function fetchProviderProfile(): Promise<ProviderProfileData> {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    // console.log("🔴 [FETCH PROFILE] Not authenticated");
     throw new Error("Not authenticated");
   }
 
-  // console.log("🟠 [FETCH PROFILE] User ID:", user.id);
+  // Step 1: Get user's active membership to find their provider
+  const { data: membership, error: membershipError } = await supabase
+    .from("provider_members")
+    .select("id, provider_id, user_id, role, status")
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .single();
 
-  // Fetch provider profile with service locations, social links, and gallery images
+  if (membershipError || !membership) {
+    throw new Error("You are not a member of any provider organization. Please contact your administrator or complete the onboarding process.");
+  }
+
+  // Step 2: Fetch provider profile directly (unified table)
+  // All business profile fields are now in the providers table
   const { data, error } = await supabase
-    .from("catering_providers")
+    .from("providers")
     .select(`
       *,
       service_locations (
@@ -108,13 +125,25 @@ async function fetchProviderProfile(): Promise<ProviderProfileData> {
         updated_at
       )
     `)
-    .eq("user_id", user.id)
+    .eq("id", membership.provider_id)
     .single();
 
   if (error) {
     console.error("🔴 [FETCH PROFILE] Error:", error);
     throw error;
   }
+
+  // Step 3: Determine edit permissions based on role
+  const roleHierarchy: Record<string, number> = {
+    owner: 1,
+    admin: 2,
+    manager: 3,
+    staff: 4,
+    viewer: 5,
+  };
+
+  // Owner, Admin, and Manager can edit the profile
+  const canEdit = roleHierarchy[membership.role] <= roleHierarchy['manager'];
 
   // console.log("🟢 [FETCH PROFILE] Profile fetched successfully");
   // console.log("🟠 [FETCH PROFILE] Full data:", data);
@@ -136,7 +165,12 @@ async function fetchProviderProfile(): Promise<ProviderProfileData> {
     });
   }
 
-  return { profile: data, userId: user.id };
+  return {
+    profile: data,
+    userId: user.id,
+    providerId: membership.provider_id,
+    canEdit,
+  };
 }
 
 /**

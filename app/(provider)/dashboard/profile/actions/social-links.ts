@@ -36,18 +36,35 @@ export async function saveSocialLinks(
       };
     }
 
-    // Verify user owns this provider
-    const { data: provider, error: providerError } = await supabase
-      .from("catering_providers")
-      .select("id")
-      .eq("id", providerId)
+    // Verify user owns this provider (check team membership)
+    const { data: membership, error: membershipError } = await supabase
+      .from("provider_members")
+      .select("provider_id, role, status")
       .eq("user_id", user.id)
+      .eq("provider_id", providerId)
+      .eq("status", "active")
       .single();
 
-    if (providerError || !provider) {
+    if (membershipError || !membership) {
       return {
         success: false,
         error: "Provider not found or access denied",
+      };
+    }
+
+    // Check if user has edit permissions (owner, admin, or manager)
+    const roleHierarchy: Record<string, number> = {
+      owner: 1,
+      admin: 2,
+      manager: 3,
+      staff: 4,
+      viewer: 5,
+    };
+
+    if (roleHierarchy[membership.role] > roleHierarchy['manager']) {
+      return {
+        success: false,
+        error: "You do not have permission to edit social links",
       };
     }
 

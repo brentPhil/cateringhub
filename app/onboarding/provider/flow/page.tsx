@@ -180,7 +180,7 @@ export default function ProviderOnboardingFlowPage() {
       3: onboardingForm.isStepValid(FORM_STEPS.CONTACT_INFO),
     };
     return validation;
-  }, [onboardingForm.formState.errors, onboardingForm.isStepValid]);
+  }, [onboardingForm]);
 
   // Recovery functions with proper memoization
   const handleRecoverData = React.useCallback(() => {
@@ -206,7 +206,7 @@ export default function ProviderOnboardingFlowPage() {
         });
       });
     },
-    [onboardingForm.setValue]
+    [onboardingForm]
   );
 
   // Optimized step content rendering with lazy loading, memoization, and error boundaries

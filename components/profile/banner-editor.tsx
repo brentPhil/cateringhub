@@ -80,14 +80,25 @@ export function BannerEditor({
   const containerRef = React.useRef<HTMLDivElement>(null);
 
   // Handle files from FileUpload component (supports different payload shapes)
-  const handleFileChange = (payload: any) => {
+  const handleFileChange = (
+    payload: File[] | React.ChangeEvent<HTMLInputElement> | unknown
+  ) => {
     try {
       let file: File | null = null;
 
       // Handle different payload formats
       if (Array.isArray(payload) && payload[0] instanceof File) {
         file = payload[0];
-      } else if (payload?.target?.files?.[0]) {
+      } else if (
+        payload &&
+        typeof payload === "object" &&
+        "target" in payload
+      ) {
+        const event = payload as React.ChangeEvent<HTMLInputElement>;
+        if (event.target.files?.[0]) {
+          file = event.target.files[0];
+        }
+      } else if (payload instanceof File) {
         file = payload.target.files[0];
       } else if (payload?.file instanceof File) {
         file = payload.file;
@@ -400,6 +411,7 @@ export function BannerEditor({
                             </Button>
                           </div>
                         ) : (
+                          // eslint-disable-next-line @next/next/no-img-element -- Required for react-zoom-pan-pinch library compatibility
                           <img
                             src={previewUrl || "/placeholder.svg"}
                             alt="Banner preview"

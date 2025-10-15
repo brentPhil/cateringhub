@@ -23,6 +23,37 @@ export async function updateProviderProfile(formData: unknown) {
       };
     }
 
+    // Check user's membership and permissions
+    const { data: membership, error: membershipError } = await supabase
+      .from("provider_members")
+      .select("id, provider_id, user_id, role, status")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .single();
+
+    if (membershipError || !membership) {
+      return {
+        success: false,
+        error: "You are not a member of any provider organization",
+      };
+    }
+
+    // Check if user has edit permissions (owner, admin, or manager)
+    const roleHierarchy: Record<string, number> = {
+      owner: 1,
+      admin: 2,
+      manager: 3,
+      staff: 4,
+      viewer: 5,
+    };
+
+    if (roleHierarchy[membership.role] > roleHierarchy['manager']) {
+      return {
+        success: false,
+        error: "You do not have permission to edit the profile. Contact an admin or owner.",
+      };
+    }
+
     // Prepare update data
     const updateData = {
       business_name: validatedData.businessName,
@@ -42,11 +73,12 @@ export async function updateProviderProfile(formData: unknown) {
       updated_at: new Date().toISOString(),
     };
 
-    // Update the provider profile
+    // Update the provider profile using provider_id from membership
+    // NEW: Query unified providers table instead of catering_providers
     const { error: updateError } = await supabase
-      .from("catering_providers")
+      .from("providers")
       .update(updateData)
-      .eq("user_id", user.id);
+      .eq("id", membership.provider_id);
 
     if (updateError) {
       console.error("Update error:", updateError);

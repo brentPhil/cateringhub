@@ -10,7 +10,7 @@ const ALLOWED_FILE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 interface ActionResult {
   success: boolean;
   error?: string;
-  data?: any;
+  data?: unknown;
 }
 
 /**
@@ -32,16 +32,30 @@ export async function uploadGalleryImage(
       return { success: false, error: "Not authenticated" };
     }
 
-    // Verify provider belongs to user
-    const { data: provider, error: providerError } = await supabase
-      .from("catering_providers")
-      .select("id")
-      .eq("id", providerId)
+    // Verify provider belongs to user (check team membership)
+    const { data: membership, error: membershipError } = await supabase
+      .from("provider_members")
+      .select("provider_id, role, status")
       .eq("user_id", user.id)
+      .eq("provider_id", providerId)
+      .eq("status", "active")
       .single();
 
-    if (providerError || !provider) {
+    if (membershipError || !membership) {
       return { success: false, error: "Provider not found or unauthorized" };
+    }
+
+    // Check if user has edit permissions (owner, admin, or manager)
+    const roleHierarchy: Record<string, number> = {
+      owner: 1,
+      admin: 2,
+      manager: 3,
+      staff: 4,
+      viewer: 5,
+    };
+
+    if (roleHierarchy[membership.role] > roleHierarchy['manager']) {
+      return { success: false, error: "You do not have permission to upload images" };
     }
 
     // Get the file from formData
@@ -179,16 +193,30 @@ export async function removeGalleryImage(
       return { success: false, error: "Not authenticated" };
     }
 
-    // Verify provider belongs to user
-    const { data: provider, error: providerError } = await supabase
-      .from("catering_providers")
-      .select("id")
-      .eq("id", providerId)
+    // Verify provider belongs to user (check team membership)
+    const { data: membership, error: membershipError } = await supabase
+      .from("provider_members")
+      .select("provider_id, role, status")
       .eq("user_id", user.id)
+      .eq("provider_id", providerId)
+      .eq("status", "active")
       .single();
 
-    if (providerError || !provider) {
+    if (membershipError || !membership) {
       return { success: false, error: "Provider not found or unauthorized" };
+    }
+
+    // Check if user has edit permissions (owner, admin, or manager)
+    const roleHierarchy: Record<string, number> = {
+      owner: 1,
+      admin: 2,
+      manager: 3,
+      staff: 4,
+      viewer: 5,
+    };
+
+    if (roleHierarchy[membership.role] > roleHierarchy['manager']) {
+      return { success: false, error: "You do not have permission to delete images" };
     }
 
     // Get the image record to get the URL
@@ -267,16 +295,30 @@ export async function reorderGalleryImages(
       return { success: false, error: "Not authenticated" };
     }
 
-    // Verify provider belongs to user
-    const { data: provider, error: providerError } = await supabase
-      .from("catering_providers")
-      .select("id")
-      .eq("id", providerId)
+    // Verify provider belongs to user (check team membership)
+    const { data: membership, error: membershipError } = await supabase
+      .from("provider_members")
+      .select("provider_id, role, status")
       .eq("user_id", user.id)
+      .eq("provider_id", providerId)
+      .eq("status", "active")
       .single();
 
-    if (providerError || !provider) {
+    if (membershipError || !membership) {
       return { success: false, error: "Provider not found or unauthorized" };
+    }
+
+    // Check if user has edit permissions (owner, admin, or manager)
+    const roleHierarchy: Record<string, number> = {
+      owner: 1,
+      admin: 2,
+      manager: 3,
+      staff: 4,
+      viewer: 5,
+    };
+
+    if (roleHierarchy[membership.role] > roleHierarchy['manager']) {
+      return { success: false, error: "You do not have permission to reorder images" };
     }
 
     // Verify all images belong to this provider
@@ -354,16 +396,30 @@ export async function setFeaturedImage(
       return { success: false, error: "Not authenticated" };
     }
 
-    // Verify provider belongs to user
-    const { data: provider, error: providerError } = await supabase
-      .from("catering_providers")
-      .select("id")
-      .eq("id", providerId)
+    // Verify provider belongs to user (check team membership)
+    const { data: membership, error: membershipError } = await supabase
+      .from("provider_members")
+      .select("provider_id, role, status")
       .eq("user_id", user.id)
+      .eq("provider_id", providerId)
+      .eq("status", "active")
       .single();
 
-    if (providerError || !provider) {
+    if (membershipError || !membership) {
       return { success: false, error: "Provider not found or unauthorized" };
+    }
+
+    // Check if user has edit permissions (owner, admin, or manager)
+    const roleHierarchy: Record<string, number> = {
+      owner: 1,
+      admin: 2,
+      manager: 3,
+      staff: 4,
+      viewer: 5,
+    };
+
+    if (roleHierarchy[membership.role] > roleHierarchy['manager']) {
+      return { success: false, error: "You do not have permission to set featured image" };
     }
 
     let featuredImageUrl: string | null = null;
@@ -388,9 +444,9 @@ export async function setFeaturedImage(
       featuredImageUrl = image.image_url;
     }
 
-    // Update the featured_image_url in catering_providers
+    // Update the featured_image_url in providers (unified table)
     const { error: updateError } = await supabase
-      .from("catering_providers")
+      .from("providers")
       .update({ featured_image_url: featuredImageUrl })
       .eq("id", providerId);
 

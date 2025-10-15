@@ -65,10 +65,13 @@ export function useGalleryImages(
 
   React.useEffect(() => {
     return () => {
-      objectUrlRegistry.current.forEach((url) => {
+      // Capture current registry for cleanup
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      const currentRegistry = objectUrlRegistry.current;
+      currentRegistry.forEach((url) => {
         URL.revokeObjectURL(url);
       });
-      objectUrlRegistry.current.clear();
+      currentRegistry.clear();
     };
   }, []);
 

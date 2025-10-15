@@ -134,7 +134,7 @@ export function useServiceLocations(initialLocations?: DBServiceLocation[]) {
   /**
    * Update a specific field of a location
    */
-  const updateLocation = useCallback((id: string, field: keyof ServiceLocationFormData, value: any) => {
+  const updateLocation = useCallback((id: string, field: keyof ServiceLocationFormData, value: string | number | boolean | null) => {
     setLocations((prev) => {
       if (field === "isPrimary" && value === true) {
         return prev.map((l) => ({ ...l, isPrimary: l.id === id }));

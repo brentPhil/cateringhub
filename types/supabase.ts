@@ -39,104 +39,132 @@ export type Database = {
   }
   public: {
     Tables: {
-      catering_providers: {
+      audit_logs: {
         Row: {
-          advance_booking_days: number | null
-          available_days: string[] | null
-          banner_adjustments: Json | null
-          banner_image: string | null
-          barangay: string | null
-          business_address: string | null
-          business_name: string
-          city: string | null
-          contact_person_name: string
-          created_at: string | null
-          daily_capacity: number | null
-          description: string
-          email: string | null
-          featured_image_url: string | null
+          action: string
+          created_at: string
+          details: Json | null
           id: string
-          is_visible: boolean | null
-          logo_url: string | null
-          max_service_radius: number
-          mobile_number: string
-          onboarding_completed: boolean | null
-          onboarding_step: number | null
-          postal_code: string | null
-          province: string | null
-          sample_menu_url: string | null
-          service_areas: string[]
-          service_radius: number | null
-          street_address: string | null
-          tagline: string | null
-          updated_at: string | null
+          ip_address: unknown | null
+          provider_id: string
+          resource_id: string | null
+          resource_type: string
+          user_agent: string | null
           user_id: string
         }
         Insert: {
-          advance_booking_days?: number | null
-          available_days?: string[] | null
-          banner_adjustments?: Json | null
-          banner_image?: string | null
-          barangay?: string | null
-          business_address?: string | null
-          business_name: string
-          city?: string | null
-          contact_person_name: string
-          created_at?: string | null
-          daily_capacity?: number | null
-          description: string
-          email?: string | null
-          featured_image_url?: string | null
+          action: string
+          created_at?: string
+          details?: Json | null
           id?: string
-          is_visible?: boolean | null
-          logo_url?: string | null
-          max_service_radius?: number
-          mobile_number: string
-          onboarding_completed?: boolean | null
-          onboarding_step?: number | null
-          postal_code?: string | null
-          province?: string | null
-          sample_menu_url?: string | null
-          service_areas?: string[]
-          service_radius?: number | null
-          street_address?: string | null
-          tagline?: string | null
-          updated_at?: string | null
+          ip_address?: unknown | null
+          provider_id: string
+          resource_id?: string | null
+          resource_type: string
+          user_agent?: string | null
           user_id: string
         }
         Update: {
-          advance_booking_days?: number | null
-          available_days?: string[] | null
-          banner_adjustments?: Json | null
-          banner_image?: string | null
-          barangay?: string | null
-          business_address?: string | null
-          business_name?: string
-          city?: string | null
-          contact_person_name?: string
-          created_at?: string | null
-          daily_capacity?: number | null
-          description?: string
-          email?: string | null
-          featured_image_url?: string | null
+          action?: string
+          created_at?: string
+          details?: Json | null
           id?: string
-          is_visible?: boolean | null
-          logo_url?: string | null
-          max_service_radius?: number
-          mobile_number?: string
-          onboarding_completed?: boolean | null
-          onboarding_step?: number | null
-          postal_code?: string | null
-          province?: string | null
-          sample_menu_url?: string | null
-          service_areas?: string[]
-          service_radius?: number | null
-          street_address?: string | null
-          tagline?: string | null
-          updated_at?: string | null
+          ip_address?: unknown | null
+          provider_id?: string
+          resource_id?: string | null
+          resource_type?: string
+          user_agent?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bookings: {
+        Row: {
+          assigned_to: string | null
+          cancelled_at: string | null
+          completed_at: string | null
+          confirmed_at: string | null
+          created_at: string
+          customer_email: string | null
+          customer_id: string | null
+          customer_name: string
+          customer_phone: string | null
+          estimated_budget: number | null
+          event_date: string
+          event_time: string | null
+          event_type: string | null
+          guest_count: number | null
+          id: string
+          provider_id: string
+          special_requests: string | null
+          status: Database["public"]["Enums"]["booking_status"]
+          updated_at: string
+          venue_address: string | null
+          venue_name: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          cancelled_at?: string | null
+          completed_at?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          customer_email?: string | null
+          customer_id?: string | null
+          customer_name: string
+          customer_phone?: string | null
+          estimated_budget?: number | null
+          event_date: string
+          event_time?: string | null
+          event_type?: string | null
+          guest_count?: number | null
+          id?: string
+          provider_id: string
+          special_requests?: string | null
+          status?: Database["public"]["Enums"]["booking_status"]
+          updated_at?: string
+          venue_address?: string | null
+          venue_name?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          cancelled_at?: string | null
+          completed_at?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          customer_email?: string | null
+          customer_id?: string | null
+          customer_name?: string
+          customer_phone?: string | null
+          estimated_budget?: number | null
+          event_date?: string
+          event_time?: string | null
+          event_type?: string | null
+          guest_count?: number | null
+          id?: string
+          provider_id?: string
+          special_requests?: string | null
+          status?: Database["public"]["Enums"]["booking_status"]
+          updated_at?: string
+          venue_address?: string | null
+          venue_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -167,6 +195,135 @@ export type Database = {
           username?: string | null
         }
         Relationships: []
+      }
+      provider_gallery_images: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          image_url: string
+          provider_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          image_url: string
+          provider_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          image_url?: string
+          provider_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_gallery_images_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      provider_invitations: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string
+          provider_id: string
+          role: Database["public"]["Enums"]["provider_role"]
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          invited_by: string
+          provider_id: string
+          role?: Database["public"]["Enums"]["provider_role"]
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string
+          provider_id?: string
+          role?: Database["public"]["Enums"]["provider_role"]
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_invitations_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      provider_members: {
+        Row: {
+          created_at: string
+          id: string
+          invited_at: string | null
+          invited_by: string | null
+          joined_at: string | null
+          provider_id: string
+          role: Database["public"]["Enums"]["provider_role"]
+          status: Database["public"]["Enums"]["provider_member_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invited_at?: string | null
+          invited_by?: string | null
+          joined_at?: string | null
+          provider_id: string
+          role?: Database["public"]["Enums"]["provider_role"]
+          status?: Database["public"]["Enums"]["provider_member_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invited_at?: string | null
+          invited_by?: string | null
+          joined_at?: string | null
+          provider_id?: string
+          role?: Database["public"]["Enums"]["provider_role"]
+          status?: Database["public"]["Enums"]["provider_member_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_members_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       provider_role_permissions: {
         Row: {
@@ -219,45 +376,115 @@ export type Database = {
             foreignKeyName: "provider_social_links_provider_id_fkey"
             columns: ["provider_id"]
             isOneToOne: false
-            referencedRelation: "catering_providers"
+            referencedRelation: "providers"
             referencedColumns: ["id"]
           },
         ]
       }
-      provider_gallery_images: {
+      providers: {
         Row: {
+          advance_booking_days: number | null
+          available_days: string[] | null
+          banner_adjustments: Json | null
+          banner_image: string | null
+          barangay: string | null
+          business_address: string | null
+          business_name: string | null
+          city: string | null
+          contact_person_name: string | null
           created_at: string
-          display_order: number
+          daily_capacity: number | null
+          description: string | null
+          email: string | null
+          featured_image_url: string | null
+          gallery_images: string[] | null
           id: string
-          image_url: string
-          provider_id: string
+          is_visible: boolean | null
+          logo_url: string | null
+          max_service_radius: number | null
+          mobile_number: string | null
+          name: string
+          onboarding_completed: boolean | null
+          onboarding_step: number | null
+          postal_code: string | null
+          province: string | null
+          sample_menu_url: string | null
+          service_areas: string[] | null
+          service_radius: number | null
+          street_address: string | null
+          tagline: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
+          advance_booking_days?: number | null
+          available_days?: string[] | null
+          banner_adjustments?: Json | null
+          banner_image?: string | null
+          barangay?: string | null
+          business_address?: string | null
+          business_name?: string | null
+          city?: string | null
+          contact_person_name?: string | null
           created_at?: string
-          display_order?: number
+          daily_capacity?: number | null
+          description?: string | null
+          email?: string | null
+          featured_image_url?: string | null
+          gallery_images?: string[] | null
           id?: string
-          image_url: string
-          provider_id: string
+          is_visible?: boolean | null
+          logo_url?: string | null
+          max_service_radius?: number | null
+          mobile_number?: string | null
+          name: string
+          onboarding_completed?: boolean | null
+          onboarding_step?: number | null
+          postal_code?: string | null
+          province?: string | null
+          sample_menu_url?: string | null
+          service_areas?: string[] | null
+          service_radius?: number | null
+          street_address?: string | null
+          tagline?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
+          advance_booking_days?: number | null
+          available_days?: string[] | null
+          banner_adjustments?: Json | null
+          banner_image?: string | null
+          barangay?: string | null
+          business_address?: string | null
+          business_name?: string | null
+          city?: string | null
+          contact_person_name?: string | null
           created_at?: string
-          display_order?: number
+          daily_capacity?: number | null
+          description?: string | null
+          email?: string | null
+          featured_image_url?: string | null
+          gallery_images?: string[] | null
           id?: string
-          image_url?: string
-          provider_id?: string
+          is_visible?: boolean | null
+          logo_url?: string | null
+          max_service_radius?: number | null
+          mobile_number?: string | null
+          name?: string
+          onboarding_completed?: boolean | null
+          onboarding_step?: number | null
+          postal_code?: string | null
+          province?: string | null
+          sample_menu_url?: string | null
+          service_areas?: string[] | null
+          service_radius?: number | null
+          street_address?: string | null
+          tagline?: string | null
           updated_at?: string
+          user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "provider_gallery_images_provider_id_fkey"
-            columns: ["provider_id"]
-            isOneToOne: false
-            referencedRelation: "catering_providers"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       role_permissions: {
         Row: {
@@ -331,7 +558,7 @@ export type Database = {
             foreignKeyName: "service_locations_provider_id_fkey"
             columns: ["provider_id"]
             isOneToOne: false
-            referencedRelation: "catering_providers"
+            referencedRelation: "providers"
             referencedColumns: ["id"]
           },
         ]
@@ -382,6 +609,20 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
+      get_user_metadata: {
+        Args: { user_id: string }
+        Returns: {
+          email: string
+          id: string
+          raw_user_meta_data: Json
+        }[]
+      }
+      get_user_provider_ids: {
+        Args: { p_user_id: string }
+        Returns: {
+          provider_id: string
+        }[]
+      }
       get_user_role: {
         Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["app_role"]
@@ -406,6 +647,14 @@ export type Database = {
       }
       is_provider: {
         Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_provider_member: {
+        Args: {
+          p_min_role?: Database["public"]["Enums"]["provider_role"]
+          p_provider_id: string
+          p_user_id?: string
+        }
         Returns: boolean
       }
       is_provider_owner: {
@@ -438,6 +687,14 @@ export type Database = {
         | "reviews.respond"
         | "analytics.basic"
       app_role: "user" | "admin" | "catering_provider"
+      booking_status:
+        | "pending"
+        | "confirmed"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
+      provider_member_status: "pending" | "active" | "suspended"
+      provider_role: "owner" | "admin" | "manager" | "staff" | "viewer"
       provider_role_type: "owner" | "staff"
     }
     CompositeTypes: {
@@ -590,6 +847,15 @@ export const Constants = {
         "analytics.basic",
       ],
       app_role: ["user", "admin", "catering_provider"],
+      booking_status: [
+        "pending",
+        "confirmed",
+        "in_progress",
+        "completed",
+        "cancelled",
+      ],
+      provider_member_status: ["pending", "active", "suspended"],
+      provider_role: ["owner", "admin", "manager", "staff", "viewer"],
       provider_role_type: ["owner", "staff"],
     },
   },

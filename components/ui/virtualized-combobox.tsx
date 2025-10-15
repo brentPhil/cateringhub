@@ -10,7 +10,6 @@ import {
   Command,
   CommandEmpty,
   CommandInput,
-  CommandList,
   CommandItem,
   CommandGroup,
 } from "@/components/ui/command";
@@ -117,7 +116,7 @@ export function VirtualizedCombobox({
         }, 0);
       }
     },
-    [open, rowVirtualizer]
+    [rowVirtualizer]
   );
 
   const handleSelect = React.useCallback(

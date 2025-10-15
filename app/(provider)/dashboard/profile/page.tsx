@@ -1,8 +1,10 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 // import { BrandColorPicker } from "@/components/profile/brand-color-picker";
 import { Typography } from "@/components/ui/typography";
+import { Button } from "@/components/ui/button";
 import { BannerUpload } from "./components/banner-upload";
 import { LogoUpload } from "./components/logo-upload";
 import { ProfileForm } from "./components/profile-form";
@@ -320,17 +322,33 @@ export default function ProfilePage() {
   // Use mounted guard to ensure consistent initial render
   const showLoading = !mounted || isLoading;
 
-  // Show error state
+  // Show error state with helpful message for no membership
   if (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "An error occurred";
+    const isNoMembership = errorMessage.includes("not a member");
+
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3 text-center max-w-md">
+        <div className="flex flex-col items-center gap-4 text-center max-w-md">
           <Typography variant="h4" className="text-destructive">
-            Error loading profile
+            {isNoMembership
+              ? "No provider membership"
+              : "Error loading profile"}
           </Typography>
-          <Typography variant="mutedText">
-            {error instanceof Error ? error.message : "An error occurred"}
-          </Typography>
+          <Typography variant="mutedText">{errorMessage}</Typography>
+          {isNoMembership && (
+            <div className="flex gap-2 mt-2">
+              <Button asChild variant="default">
+                <Link href="/onboarding/provider/flow">
+                  Complete onboarding
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/dashboard">Go to dashboard</Link>
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -489,13 +507,25 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Floating Footer */}
-      <FloatingFooter
-        isVisible={isDirty || locationsIsDirty() || socialLinksIsDirty()}
-        onSave={handleProfileSave}
-        onCancel={handleCancel}
-        isSaving={isSaving}
-      />
+      {/* Floating Footer - Only show if user has edit permissions */}
+      {data?.canEdit && (
+        <FloatingFooter
+          isVisible={isDirty || locationsIsDirty() || socialLinksIsDirty()}
+          onSave={handleProfileSave}
+          onCancel={handleCancel}
+          isSaving={isSaving}
+        />
+      )}
+
+      {/* Read-only indicator for staff/viewer roles */}
+      {!data?.canEdit && (
+        <div className="fixed bottom-0 left-0 right-0 bg-muted border-t border-border py-3 px-4 text-center z-50">
+          <Typography variant="mutedText" className="text-sm">
+            You have read-only access to this profile. Contact an admin or owner
+            to make changes.
+          </Typography>
+        </div>
+      )}
     </div>
   );
 }

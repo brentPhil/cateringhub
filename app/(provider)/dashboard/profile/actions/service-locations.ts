@@ -37,16 +37,30 @@ export async function saveServiceLocations(
       return { success: false, error: "Not authenticated" };
     }
 
-    // Verify provider belongs to user
-    const { data: provider, error: providerError } = await supabase
-      .from("catering_providers")
-      .select("id")
-      .eq("id", providerId)
+    // Verify provider belongs to user (check team membership)
+    const { data: membership, error: membershipError } = await supabase
+      .from("provider_members")
+      .select("provider_id, role, status")
       .eq("user_id", user.id)
+      .eq("provider_id", providerId)
+      .eq("status", "active")
       .single();
 
-    if (providerError || !provider) {
+    if (membershipError || !membership) {
       return { success: false, error: "Provider not found or unauthorized" };
+    }
+
+    // Check if user has edit permissions (owner, admin, or manager)
+    const roleHierarchy: Record<string, number> = {
+      owner: 1,
+      admin: 2,
+      manager: 3,
+      staff: 4,
+      viewer: 5,
+    };
+
+    if (roleHierarchy[membership.role] > roleHierarchy['manager']) {
+      return { success: false, error: "You do not have permission to edit service locations" };
     }
 
     // Validate at least one location exists
@@ -84,10 +98,17 @@ export async function saveServiceLocations(
     }
 
     const existingIds = existingLocations?.map((loc) => loc.id) || [];
-    const newLocationIds = locations.filter((loc) => loc.id).map((loc) => loc.id!);
+
+    // Filter locations: separate new from existing
+    // New locations either have no ID or have a client-generated UUID not in database
+    const newLocations = locations.filter((loc) => !loc.id || !existingIds.includes(loc.id));
+    const existingLocationsToUpdate = locations.filter((loc) => loc.id && existingIds.includes(loc.id));
+
+    // Get IDs of locations being kept (both new and existing)
+    const keptLocationIds = existingLocationsToUpdate.map((loc) => loc.id!);
 
     // Determine which locations to delete (exist in DB but not in new list)
-    const idsToDelete = existingIds.filter((id) => !newLocationIds.includes(id));
+    const idsToDelete = existingIds.filter((id) => !keptLocationIds.includes(id));
 
     // Delete removed locations
     if (idsToDelete.length > 0) {
@@ -97,34 +118,59 @@ export async function saveServiceLocations(
         .in("id", idsToDelete);
 
       if (deleteError) {
+        console.error("Delete error:", deleteError);
         return { success: false, error: "Failed to delete locations" };
       }
     }
 
-    // Upsert locations (insert new, update existing)
-    const locationsToUpsert: TablesInsert<"service_locations">[] = locations.map((loc) => ({
-      id: loc.id || undefined, // Let DB generate ID for new locations
-      provider_id: providerId,
-      province: loc.province || null,
-      city: loc.city || null,
-      barangay: loc.barangay || null,
-      street_address: loc.streetAddress || null,
-      postal_code: loc.postalCode || null,
-      is_primary: loc.isPrimary,
-      landmark: loc.landmark || null,
-      service_area_notes: loc.notes || null,
-      service_radius: loc.serviceRadius ?? undefined,
-    }));
+    // Insert new locations (without ID, let database generate)
+    if (newLocations.length > 0) {
+      const newLocationsData = newLocations.map((loc) => ({
+        provider_id: providerId,
+        province: loc.province || null,
+        city: loc.city || null,
+        barangay: loc.barangay || null,
+        street_address: loc.streetAddress || null,
+        postal_code: loc.postalCode || null,
+        is_primary: loc.isPrimary,
+        landmark: loc.landmark || null,
+        service_area_notes: loc.notes || null,
+        service_radius: loc.serviceRadius ?? null,
+      }));
 
-    const { error: upsertError } = await supabase
-      .from("service_locations")
-      .upsert(locationsToUpsert, {
-        onConflict: "id",
-      });
+      const { error: insertError } = await supabase
+        .from("service_locations")
+        .insert(newLocationsData);
 
-    if (upsertError) {
-      console.error("Upsert error:", upsertError);
-      return { success: false, error: "Failed to save locations" };
+      if (insertError) {
+        console.error("Insert error:", insertError);
+        return { success: false, error: "Failed to add new locations" };
+      }
+    }
+
+    // Update existing locations individually
+    if (existingLocationsToUpdate.length > 0) {
+      for (const loc of existingLocationsToUpdate) {
+        const { error: updateError } = await supabase
+          .from("service_locations")
+          .update({
+            province: loc.province || null,
+            city: loc.city || null,
+            barangay: loc.barangay || null,
+            street_address: loc.streetAddress || null,
+            postal_code: loc.postalCode || null,
+            is_primary: loc.isPrimary,
+            landmark: loc.landmark || null,
+            service_area_notes: loc.notes || null,
+            service_radius: loc.serviceRadius ?? null,
+          })
+          .eq("id", loc.id!);
+
+        if (updateError) {
+          console.error("Update error:", updateError);
+          return { success: false, error: `Failed to update location: ${updateError.message}` };
+        }
+      }
     }
 
     // Revalidate the profile page
@@ -164,16 +210,30 @@ export async function deleteServiceLocation(locationId: string) {
       return { success: false, error: "Location not found" };
     }
 
-    // Verify provider belongs to user
-    const { data: provider, error: providerError } = await supabase
-      .from("catering_providers")
-      .select("id")
-      .eq("id", location.provider_id)
+    // Verify provider belongs to user (check team membership)
+    const { data: membership, error: membershipError } = await supabase
+      .from("provider_members")
+      .select("provider_id, role, status")
       .eq("user_id", user.id)
+      .eq("provider_id", location.provider_id)
+      .eq("status", "active")
       .single();
 
-    if (providerError || !provider) {
+    if (membershipError || !membership) {
       return { success: false, error: "Unauthorized" };
+    }
+
+    // Check if user has edit permissions (owner, admin, or manager)
+    const roleHierarchy: Record<string, number> = {
+      owner: 1,
+      admin: 2,
+      manager: 3,
+      staff: 4,
+      viewer: 5,
+    };
+
+    if (roleHierarchy[membership.role] > roleHierarchy['manager']) {
+      return { success: false, error: "You do not have permission to delete service locations" };
     }
 
     // Check if this is the only location
@@ -239,16 +299,30 @@ export async function setPrimaryLocation(locationId: string) {
       return { success: false, error: "Location not found" };
     }
 
-    // Verify provider belongs to user
-    const { data: provider, error: providerError } = await supabase
-      .from("catering_providers")
-      .select("id")
-      .eq("id", location.provider_id)
+    // Verify provider belongs to user (check team membership)
+    const { data: membership, error: membershipError } = await supabase
+      .from("provider_members")
+      .select("provider_id, role, status")
       .eq("user_id", user.id)
+      .eq("provider_id", location.provider_id)
+      .eq("status", "active")
       .single();
 
-    if (providerError || !provider) {
+    if (membershipError || !membership) {
       return { success: false, error: "Unauthorized" };
+    }
+
+    // Check if user has edit permissions (owner, admin, or manager)
+    const roleHierarchy: Record<string, number> = {
+      owner: 1,
+      admin: 2,
+      manager: 3,
+      staff: 4,
+      viewer: 5,
+    };
+
+    if (roleHierarchy[membership.role] > roleHierarchy['manager']) {
+      return { success: false, error: "You do not have permission to set primary location" };
     }
 
     // Unset all primary flags for this provider

@@ -101,6 +101,7 @@ export function Banner({
                     justifyContent: "center",
                   }}
                 >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- Required for react-zoom-pan-pinch library compatibility */}
                   <img
                     src={src}
                     alt={alt}
@@ -117,6 +118,7 @@ export function Banner({
           ) : (
             // Without adjustments: Simple image display
             <div className="absolute inset-0 overflow-hidden bg-muted">
+              {/* eslint-disable-next-line @next/next/no-img-element -- Banner display with user-controlled transformations */}
               <img src={src} alt={alt} className="w-full h-full object-cover" />
             </div>
           )
