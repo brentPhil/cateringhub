@@ -118,6 +118,20 @@ export const providerProfileFormSchema = z.object({
   dailyCapacity: z.number().min(1).max(10).optional(),
   advanceBookingDays: z.number().min(1).max(30).optional(),
   selectedDays: z.array(z.string()).optional(),
+  // Social media links (optional)
+  socialMediaLinks: z
+    .array(
+      z.object({
+        id: z.string(),
+        platform: z.enum(['facebook', 'instagram', 'website', 'tiktok']),
+        url: z
+          .string()
+          .refine(val => !val || val.startsWith('https://'), {
+            message: 'URL must start with https://',
+          }),
+      })
+    )
+    .optional(),
 })
 
 // Provider onboarding schemas - Multi-step

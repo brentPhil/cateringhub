@@ -134,6 +134,15 @@ export function getCityName(cityCode: string): string | null {
 }
 
 /**
+ * Get province name by code
+ */
+export function getProvinceName(provinceCode: string): string | null {
+  const provinces = getProvinces();
+  const province = provinces.find((p) => p.prov_code === provinceCode);
+  return province && typeof province.name === "string" ? normalizeLabel(province.name) : null;
+}
+
+/**
  * Get barangay name by value (format: "mun_code-index")
  * Since barangays don't have unique codes, we use the combined value
  */

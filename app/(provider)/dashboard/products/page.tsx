@@ -110,7 +110,11 @@ export default function ProductsPage() {
   );
 
   // Simulate fetching products
-  const { data: fetchedProducts = mockProducts, isLoading, error } = useQuery({
+  const {
+    data: fetchedProducts = mockProducts,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["products", "mock"],
     queryFn: () =>
       new Promise<Product[]>((resolve) =>

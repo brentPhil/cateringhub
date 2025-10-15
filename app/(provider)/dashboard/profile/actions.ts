@@ -5,13 +5,9 @@ import { providerProfileFormSchema } from "@/lib/validations";
 import { revalidatePath } from "next/cache";
 
 export async function updateProviderProfile(formData: unknown) {
-  console.log("🟣 [SERVER ACTION] updateProviderProfile called");
-  console.log("🟣 [SERVER ACTION] Raw form data:", formData);
-
   try {
     // Validate the form data
     const validatedData = providerProfileFormSchema.parse(formData);
-    console.log("🟣 [SERVER ACTION] Validated data:", validatedData);
 
     // Get the authenticated user
     const supabase = await createClient();
@@ -21,14 +17,11 @@ export async function updateProviderProfile(formData: unknown) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      console.log("🔴 [SERVER ACTION] Auth error:", authError);
       return {
         success: false,
         error: "You must be logged in to update your profile",
       };
     }
-
-    console.log("🟣 [SERVER ACTION] User ID:", user.id);
 
     // Prepare update data
     const updateData = {
@@ -44,10 +37,10 @@ export async function updateProviderProfile(formData: unknown) {
       daily_capacity: validatedData.dailyCapacity ?? undefined,
       advance_booking_days: validatedData.advanceBookingDays ?? undefined,
       available_days: validatedData.selectedDays ?? undefined,
+      // Social media links (optional)
+      social_media_links: validatedData.socialMediaLinks ?? undefined,
       updated_at: new Date().toISOString(),
     };
-
-    console.log("🟣 [SERVER ACTION] Update data:", updateData);
 
     // Update the provider profile
     const { error: updateError } = await supabase
@@ -56,14 +49,12 @@ export async function updateProviderProfile(formData: unknown) {
       .eq("user_id", user.id);
 
     if (updateError) {
-      console.error("🔴 [SERVER ACTION] Update error:", updateError);
+      console.error("Update error:", updateError);
       return {
         success: false,
         error: "Failed to update profile. Please try again.",
       };
     }
-
-    console.log("🟢 [SERVER ACTION] Profile updated successfully");
 
     // Revalidate the profile page
     revalidatePath("/dashboard/profile");
@@ -73,7 +64,7 @@ export async function updateProviderProfile(formData: unknown) {
       message: "Profile updated successfully",
     };
   } catch (error) {
-    console.error("🔴 [SERVER ACTION] Error:", error);
+    console.error("Error updating profile:", error);
     return {
       success: false,
       error: "An unexpected error occurred. Please try again.",

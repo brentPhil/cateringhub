@@ -1,11 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { Area, AreaChart, CartesianGrid, XAxis, Tooltip, ResponsiveContainer, Bar, BarChart } from "recharts";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  XAxis,
+  Tooltip,
+  ResponsiveContainer,
+  Bar,
+  BarChart,
+} from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Typography } from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
 
 export interface TrendDataPoint {
   month: string;
@@ -97,7 +111,12 @@ export function CombinedTrendChart({
             {chartType === "area" ? (
               <AreaChart data={data} margin={{ left: 12, right: 12 }}>
                 <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
+                <XAxis
+                  dataKey="month"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                />
                 <Tooltip content={<ChartTooltipContent indicator="line" />} />
                 <ChartTooltip cursor={false} />
                 <Area
@@ -113,10 +132,19 @@ export function CombinedTrendChart({
             ) : (
               <BarChart data={data} margin={{ left: 12, right: 12 }}>
                 <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
+                <XAxis
+                  dataKey="month"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                />
                 <Tooltip content={<ChartTooltipContent />} />
                 <ChartTooltip cursor={false} />
-                <Bar dataKey={dataKey} fill={`var(--color-${dataKey})`} radius={[4, 4, 0, 0]} />
+                <Bar
+                  dataKey={dataKey}
+                  fill={`var(--color-${dataKey})`}
+                  radius={[4, 4, 0, 0]}
+                />
               </BarChart>
             )}
           </ResponsiveContainer>
@@ -125,4 +153,3 @@ export function CombinedTrendChart({
     </Card>
   );
 }
-

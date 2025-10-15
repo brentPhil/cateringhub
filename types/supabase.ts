@@ -54,6 +54,7 @@ export type Database = {
           daily_capacity: number | null
           description: string
           email: string | null
+          featured_image_url: string | null
           id: string
           is_visible: boolean | null
           logo_url: string | null
@@ -66,7 +67,6 @@ export type Database = {
           sample_menu_url: string | null
           service_areas: string[]
           service_radius: number | null
-          social_media_links: Json | null
           street_address: string | null
           tagline: string | null
           updated_at: string | null
@@ -86,6 +86,7 @@ export type Database = {
           daily_capacity?: number | null
           description: string
           email?: string | null
+          featured_image_url?: string | null
           id?: string
           is_visible?: boolean | null
           logo_url?: string | null
@@ -98,7 +99,6 @@ export type Database = {
           sample_menu_url?: string | null
           service_areas?: string[]
           service_radius?: number | null
-          social_media_links?: Json | null
           street_address?: string | null
           tagline?: string | null
           updated_at?: string | null
@@ -118,6 +118,7 @@ export type Database = {
           daily_capacity?: number | null
           description?: string
           email?: string | null
+          featured_image_url?: string | null
           id?: string
           is_visible?: boolean | null
           logo_url?: string | null
@@ -130,7 +131,6 @@ export type Database = {
           sample_menu_url?: string | null
           service_areas?: string[]
           service_radius?: number | null
-          social_media_links?: Json | null
           street_address?: string | null
           tagline?: string | null
           updated_at?: string | null
@@ -188,6 +188,76 @@ export type Database = {
           provider_role?: Database["public"]["Enums"]["provider_role_type"]
         }
         Relationships: []
+      }
+      provider_social_links: {
+        Row: {
+          created_at: string
+          id: string
+          platform: string
+          provider_id: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          platform: string
+          provider_id: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          platform?: string
+          provider_id?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_social_links_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "catering_providers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      provider_gallery_images: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          image_url: string
+          provider_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          image_url: string
+          provider_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          image_url?: string
+          provider_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_gallery_images_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "catering_providers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       role_permissions: {
         Row: {

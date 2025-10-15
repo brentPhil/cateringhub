@@ -38,10 +38,10 @@ getServiceCoverageData(cityCode: string | null | undefined, radiusKm: number | n
 #### Supported Cities:
 
 The utility includes coordinates for 35+ Philippine cities:
-- **Metro Manila**: Manila, Quezon City, Makati, Pasig, Taguig, Caloocan, Mandaluyong, San Juan, Pasay, Parañaque, Las Piñas, Muntinlupa, Marikina, Valenzuela, Malabon, Navotas, Pateros
+- **Metro Manila**: Manila, Quezon City, Makati, Pasig, Taguig, Caloocan, Mandaluyong, San Juan, Pasay, Paranaque, Las Pinas, Muntinlupa, Marikina, Valenzuela, Malabon, Navotas, Pateros
 - **Rizal**: Antipolo
-- **Cavite**: Bacoor, Cavite, Imus, Dasmariñas, General Trias
-- **Laguna**: Biñan, Santa Rosa, San Pedro, Cabuyao, Calamba
+- **Cavite**: Bacoor, Cavite, Imus, Dasmarinas, General Trias
+- **Laguna**: Binan, Santa Rosa, San Pedro, Cabuyao, Calamba
 - **Batangas**: Tanauan, Lipa, Batangas
 - **Other Major Cities**: Cebu, Davao
 
@@ -50,14 +50,14 @@ The utility includes coordinates for 35+ Philippine cities:
 #### Removed Hardcoded Data:
 
 ```typescript
-// ❌ OLD: Hardcoded sample data
+// OLD: Hardcoded sample data
 const sampleCoveredCities = ["Manila", "Quezon City", "Makati", "Pasig", "Taguig"];
 ```
 
 #### Added Real Database Integration:
 
 ```typescript
-// ✅ NEW: Calculate from database values
+// NEW: Calculate from database values
 const serviceCoverageData = React.useMemo(() => {
   return getServiceCoverageData(
     data?.profile?.city || null,
@@ -69,7 +69,7 @@ const serviceCoverageData = React.useMemo(() => {
 #### Updated ServiceCoverageSection Props:
 
 ```typescript
-// ❌ OLD: Using form data and hardcoded cities
+// OLD: Using form data and hardcoded cities
 <ServiceCoverageSection
   radius={formData.serviceRadius}
   centerCity={formData.city}
@@ -77,7 +77,7 @@ const serviceCoverageData = React.useMemo(() => {
   isLoading={isLoading}
 />
 
-// ✅ NEW: Using calculated database data
+// NEW: Using calculated database data
 <ServiceCoverageSection
   radius={serviceCoverageData.radius}
   centerCity={serviceCoverageData.mapCityName}
@@ -88,28 +88,18 @@ const serviceCoverageData = React.useMemo(() => {
 
 ### 3. ServiceMap Component Updates (`app/(provider)/dashboard/profile/components/service-map.tsx`)
 
-#### Updated City Coordinates:
+#### Runtime Geocoding & Rendering
 
-- Changed all city names to **UPPERCASE** for case-insensitive matching
-- Added Batangas cities (Tanauan, Lipa, Batangas)
-- Updated fallback from "Manila" to "MANILA"
+- Swapped the static `CITY_COORDINATES` map for just-in-time lookups via the Nominatim API.
+- Added an in-memory cache plus a sequential request queue to respect the 1 request/second policy.
+- Re-used geocode results for both coverage circles and marker placement to avoid duplicate fetches.
+- Focuses the map and opens the marker popup for the active location using `easeTo` for smoother UX.
 
-```typescript
-// ❌ OLD: Mixed case
-const CITY_COORDINATES: Record<string, [number, number]> = {
-  Manila: [14.5995, 120.9842],
-  "Quezon City": [14.676, 121.0437],
-  // ...
-};
+#### Marker & Circle Updates
 
-// ✅ NEW: Uppercase for consistency
-const CITY_COORDINATES: Record<string, [number, number]> = {
-  MANILA: [14.5995, 120.9842],
-  "QUEZON CITY": [14.676, 121.0437],
-  TANAUAN: [14.0858, 121.1503],
-  // ...
-};
-```
+- Coverage circles reuse the same cached coordinates as markers.
+- Map clean-up removes markers and resets internal state to prevent drift during unmounts.
+- Console logging no longer relies on emojis so server logs stay readable.
 
 ## Data Flow
 
@@ -146,9 +136,9 @@ const CITY_COORDINATES: Record<string, [number, number]> = {
 **Scenario**: City name from database doesn't exist in `CITY_COORDINATES`
 
 **Handling**:
-- Console warning: `City "CITY_NAME" not found in coordinates map, using MANILA as fallback`
-- Map centers on Manila
-- Covered cities calculation uses Manila as center
+- Service coverage utility logs `City "CITY_NAME" not found in coordinates map, using MANILA as fallback`
+- Covered cities calculation falls back to Manila
+- ServiceMap still attempts a live geocode via Nominatim and only falls back to Manila if the API returns no results
 
 ### 3. Invalid or Zero Service Radius
 
@@ -241,6 +231,12 @@ const serviceCoverageData = React.useMemo(() => {
 - ServiceMap only re-renders when `radius` or `centerCity` props change
 - MapLibre GL handles map updates efficiently
 
+### 4. Geocoding Cache & Rate Limiting
+
+- In-memory cache prevents repeated Nominatim lookups for the same city/province combination.
+- Requests are queued to guarantee a minimum one-second gap, honoring the public API limits.
+- Cached coordinates are reused by both circles and markers, eliminating duplicate work.
+
 ## Testing Checklist
 
 - [x] Map displays correctly on initial page load with database data
@@ -260,7 +256,7 @@ const serviceCoverageData = React.useMemo(() => {
 
 ### 1. Add More Cities
 
-Expand `CITY_COORDINATES` to include:
+Expand the coverage utility's `CITY_COORDINATES` map to include:
 - All provincial capitals
 - Major tourist destinations
 - Popular event venues
@@ -285,11 +281,11 @@ Allow providers to draw custom service area polygons instead of just circles
 
 ### Issue: Map shows Manila instead of my city
 
-**Cause**: City name from database doesn't match any key in `CITY_COORDINATES`
+**Cause**: Nominatim did not return coordinates for the provided city and province, so the Manila fallback kicked in.
 
-**Solution**: Add the city to `CITY_COORDINATES` in both:
-- `app/(provider)/dashboard/profile/utils/service-coverage.ts`
-- `app/(provider)/dashboard/profile/components/service-map.tsx`
+**Solution**:
+- Confirm the city and province names stored in the database match Nominatim's expected spelling (for example, "Lipa" vs "City of Lipa").
+- If the API keeps failing for a known-good location, add a curated entry to the service coverage utility as a temporary override.
 
 ### Issue: Covered cities list is empty
 
@@ -310,4 +306,3 @@ Allow providers to draw custom service area polygons instead of just circles
 ## Conclusion
 
 The ServiceMap component is now fully integrated with real database data, providing an accurate, real-time visualization of the provider's service coverage area. The implementation handles edge cases gracefully and updates automatically when the profile is saved.
-

@@ -12,6 +12,8 @@ export interface BannerAdjustments {
 }
 
 export type ServiceLocation = Tables<"service_locations">;
+export type SocialLink = Tables<"provider_social_links">;
+export type GalleryImage = Tables<"provider_gallery_images">;
 
 export interface ProviderProfile {
   id: string;
@@ -24,7 +26,6 @@ export interface ProviderProfile {
   sample_menu_url?: string;
   contact_person_name: string;
   mobile_number: string;
-  social_media_links?: Record<string, string>;
   onboarding_completed?: boolean;
   onboarding_step?: number;
   created_at?: string;
@@ -35,6 +36,10 @@ export interface ProviderProfile {
   tagline?: string;
   // Service locations (multi-location support)
   service_locations?: ServiceLocation[];
+  // Social links (normalized)
+  provider_social_links?: SocialLink[];
+  // Gallery images
+  provider_gallery_images?: GalleryImage[];
   // Availability fields
   is_visible?: boolean;
   service_radius?: number;
@@ -66,7 +71,7 @@ async function fetchProviderProfile(): Promise<ProviderProfileData> {
 
   // console.log("🟠 [FETCH PROFILE] User ID:", user.id);
 
-  // Fetch provider profile with service locations
+  // Fetch provider profile with service locations, social links, and gallery images
   const { data, error } = await supabase
     .from("catering_providers")
     .select(`
@@ -81,7 +86,24 @@ async function fetchProviderProfile(): Promise<ProviderProfileData> {
         postal_code,
         is_primary,
         landmark,
+        service_radius,
         service_area_notes,
+        created_at,
+        updated_at
+      ),
+      provider_social_links (
+        id,
+        provider_id,
+        platform,
+        url,
+        created_at,
+        updated_at
+      ),
+      provider_gallery_images (
+        id,
+        provider_id,
+        image_url,
+        display_order,
         created_at,
         updated_at
       )
@@ -140,4 +162,3 @@ export function useProviderProfile() {
     retry: 1,
   });
 }
-

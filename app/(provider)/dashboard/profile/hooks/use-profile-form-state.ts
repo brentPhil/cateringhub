@@ -47,8 +47,6 @@ export interface UseProfileFormStateReturn {
 export function useProfileFormState(
   initialProfile: ProviderProfile | null
 ): UseProfileFormStateReturn {
-  // console.log("🟡 [FORM STATE] Hook initialized with profile:", initialProfile);
-
   // Use single useQueryStates hook to manage all form fields including availability
   const [formState, setFormState] = useQueryStates({
     // No defaults here; URL params are only for temporary overrides
@@ -86,14 +84,12 @@ export function useProfileFormState(
         formState.advanceBookingDays ?? (initialProfile?.advance_booking_days ?? 7),
       selectedDays: formState.selectedDays ?? (initialProfile?.available_days ?? []),
     };
-    // console.log("🟡 [FORM STATE] Form data computed:", data);
     return data;
   }, [formState, initialProfile]);
 
   // Check if form is dirty by comparing with initial profile data
   const isDirty = useMemo(() => {
     if (!initialProfile) {
-      // console.log("🟡 [FORM STATE] isDirty: false (no initial profile)");
       return false;
     }
 
@@ -121,18 +117,12 @@ export function useProfileFormState(
         (initialProfile.advance_booking_days ?? 7) ||
       !arraysEqual(formData.selectedDays, initialProfile.available_days ?? []);
 
-    // console.log("🟡 [FORM STATE] isDirty:", dirty);
-    // console.log("🟡 [FORM STATE] Comparing formData:", formData);
-    // console.log("🟡 [FORM STATE] With initialProfile:", initialProfile);
-
     return dirty;
   }, [formData, initialProfile]);
 
   // Reset form to initial values by clearing all URL params
   // This makes the form fall back to the defaults from initialProfile
   const resetForm = async () => {
-    // console.log("🟡 [FORM STATE] resetForm called - clearing all URL params");
-
     // Clear all URL params by setting everything to null
     // This will make the form use the defaults from initialProfile
     const result = await setFormState({
@@ -148,8 +138,6 @@ export function useProfileFormState(
       advanceBookingDays: null,
       selectedDays: null,
     });
-
-    // console.log("🟡 [FORM STATE] Reset complete, URL params cleared");
 
     return result;
   };

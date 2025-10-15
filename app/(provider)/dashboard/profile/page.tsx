@@ -9,6 +9,7 @@ import { ProfileForm } from "./components/profile-form";
 import { AboutBusinessSection } from "./components/about-business-section";
 import { ProfileVisibilitySection } from "./components/profile-visibility-section";
 import { AvailabilitySection } from "./components/availability-section";
+import { ProfileCompletenessWidget } from "./components/profile-completeness-widget";
 import { FloatingFooter } from "@/components/profile/floating-footer";
 import {
   PackagesPreviewSection,
@@ -16,6 +17,8 @@ import {
 } from "./components/packages-preview-section";
 import { ServiceCoverageSection } from "./components/service-coverage-section";
 import { ServiceLocationsSection } from "./components/service-locations-section";
+import { SocialLinksSection } from "./components/social-links-section";
+import { GallerySection } from "./components/gallery-section";
 import { useRouter } from "next/navigation";
 import { useProviderProfile } from "./hooks/use-provider-profile";
 import { useProfileFormState } from "./hooks/use-profile-form-state";
@@ -26,7 +29,10 @@ import { providerProfileFormSchema } from "@/lib/validations";
 import { z } from "zod";
 import { useServiceLocations } from "./hooks/use-service-locations";
 import { saveServiceLocations } from "./actions/service-locations";
-import { getCityName } from "@/lib/data/philippine-locations";
+import { getCityName, getProvinceName } from "@/lib/data/philippine-locations";
+import { useSocialLinks } from "./hooks/use-social-links";
+import { saveSocialLinks } from "./actions/social-links";
+import { useGalleryImages } from "./hooks/use-gallery-images";
 
 export default function ProfilePage() {
   // Fetch provider profile
@@ -96,18 +102,56 @@ export default function ProfilePage() {
     syncFromServer,
   } = useServiceLocations(data?.profile?.service_locations || []);
 
+  // Social links state (normalized table)
+  const {
+    links: socialLinks,
+    addLink: addSocialLink,
+    updateLink: updateSocialLink,
+    removeLink: removeSocialLink,
+    validateLinks: validateSocialLinks,
+    isDirty: socialLinksIsDirty,
+    resetLinks: resetSocialLinksState,
+    syncFromServer: syncSocialLinksFromServer,
+  } = useSocialLinks(data?.profile?.provider_social_links || []);
+
+  // Gallery images state
+  const galleryImagesFromServer = React.useMemo(
+    () => data?.profile?.provider_gallery_images ?? [],
+    [data?.profile?.provider_gallery_images]
+  );
+
+  const {
+    images: galleryImages,
+    isUploading: isUploadingGallery,
+    isDeleting: isDeletingGallery,
+    uploadImage: uploadGalleryImage,
+    deleteImage: deleteGalleryImage,
+    syncFromServer: syncGalleryFromServer,
+  } = useGalleryImages(galleryImagesFromServer, data?.profile?.id);
+
   // Active location state for map interaction
   const [activeLocationId, setActiveLocationId] = React.useState<string | null>(
     null
   );
 
-  // Initialize active location to primary location on mount
+  // Initialize active location to primary location when locations are first loaded
   React.useEffect(() => {
-    if (locations.length > 0 && !activeLocationId) {
-      const primary = locations.find((l) => l.isPrimary);
-      setActiveLocationId(primary?.id || locations[0].id);
+    if (locations.length === 0) {
+      return;
     }
-  }, [locations, activeLocationId]);
+
+    // Check if activeLocationId is null OR if it doesn't exist in current locations
+    const activeLocationExists = activeLocationId
+      ? locations.some((l) => l.id === activeLocationId)
+      : false;
+
+    if (!activeLocationId || !activeLocationExists) {
+      const primary = locations.find((l) => l.isPrimary);
+      const selectedId = primary?.id || locations[0].id;
+      setActiveLocationId(selectedId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locations]); // Only depend on locations, not activeLocationId
 
   // Select location for coverage: 1) active by ID, 2) primary, 3) first
   const selectedCoverageLocation = React.useMemo(() => {
@@ -170,32 +214,31 @@ export default function ProfilePage() {
 
   // Handle profile save
   const handleProfileSave = async () => {
-    // console.log("🔵 [SAVE] Starting save process...");
-    // console.log("🔵 [SAVE] Form data to save:", formData);
-
     if (!validateForm()) {
-      // console.log("🔴 [SAVE] Validation failed");
       return;
     }
 
     // Validate service locations
     const locationErrors = validateLocations();
     if (locationErrors.length > 0) {
-      // console.log("🔴 [SAVE] Location validation failed:", locationErrors);
       toast.error(locationErrors[0]);
+      return;
+    }
+
+    // Validate social links
+    const socialLinkErrors = validateSocialLinks();
+    if (socialLinkErrors.length > 0) {
+      toast.error(socialLinkErrors[0]);
       return;
     }
 
     setIsSaving(true);
     try {
-      // console.log("🔵 [SAVE] Calling updateProviderProfile...");
       const result = await updateProviderProfile(formData);
-      // console.log("🔵 [SAVE] Update result:", result);
 
       if (result.success) {
         // Save service locations
         if (data?.profile?.id) {
-          // console.log("🔵 [SAVE] Saving service locations...");
           const toSave = locations.map((l) => ({
             id: l.id,
             province: l.province,
@@ -209,42 +252,60 @@ export default function ProfilePage() {
             serviceRadius: l.serviceRadius,
           }));
           const locResult = await saveServiceLocations(data.profile.id, toSave);
-          // console.log("🔵 [SAVE] Locations save result:", locResult);
           if (!locResult.success) {
             toast.error(locResult.error || "Failed to save service locations");
+            return;
+          }
+
+          // Save social links
+          const socialLinksToSave = socialLinks.map((link) => ({
+            id: link.id,
+            platform: link.platform,
+            url: link.url,
+          }));
+          const socialResult = await saveSocialLinks(
+            data.profile.id,
+            socialLinksToSave
+          );
+          if (!socialResult.success) {
+            toast.error(socialResult.error || "Failed to save social links");
             return;
           }
         }
 
         toast.success(result.message || "Profile updated successfully");
 
-        // console.log("🔵 [SAVE] Refetching profile data...");
         const refetchResult = await refetch();
-        // console.log("🔵 [SAVE] Refetch complete");
 
         // Manually sync locations from the refetched data
         if (refetchResult.data?.profile?.service_locations) {
           syncFromServer(refetchResult.data.profile.service_locations);
         }
 
-        // After refetch, the component will re-render with the new data
-        // The useEffect in useProfileFormState will detect the change and update the form
-        // We just need to clear the URL params to mark the form as "clean"
-        console.log("� [SAVE] Clearing URL params...");
+        // Manually sync social links from the refetched data
+        if (refetchResult.data?.profile?.provider_social_links) {
+          syncSocialLinksFromServer(
+            refetchResult.data.profile.provider_social_links
+          );
+        }
+
+        // Manually sync gallery images from the refetched data
+        const galleryFromServer =
+          refetchResult.data?.profile?.provider_gallery_images ?? [];
+        syncGalleryFromServer(galleryFromServer);
+
+        // Clear URL params to mark the form as "clean"
         await resetForm();
         resetLocationState();
-
-        console.log("� [SAVE] Form reset complete");
+        resetSocialLinksState();
       } else {
-        console.log("🔴 [SAVE] Save failed:", result.error);
         toast.error(result.error || "Failed to update profile");
       }
     } catch (error) {
-      console.error("🔴 [SAVE] Error during save:", error);
+      console.error("Error during save:", error);
       toast.error("An unexpected error occurred");
     } finally {
       setIsSaving(false);
-      console.log("🔵 [SAVE] Save process complete");
     }
   };
 
@@ -252,6 +313,7 @@ export default function ProfilePage() {
   const handleCancel = async () => {
     await resetForm();
     resetLocationState();
+    resetSocialLinksState();
     setErrors({});
   };
 
@@ -275,7 +337,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen relative bg-background">
       {/* Banner Section */}
       <div className="relative">
         <BannerUpload
@@ -311,29 +373,56 @@ export default function ProfilePage() {
           {/* Main Content - Left Side */}
           <div className="lg:col-span-2 space-y-20">
             {/* About your business */}
-            <AboutBusinessSection
-              formData={formData}
-              setFormState={setFormState}
-              errors={errors}
-              isLoading={isLoading}
-            />
+            <div id="basic-info-section">
+              <AboutBusinessSection
+                formData={formData}
+                setFormState={setFormState}
+                errors={errors}
+                isLoading={isLoading}
+              />
+            </div>
             {/* Basic information */}
-            <ProfileForm
-              formData={formData}
-              setFormState={setFormState}
-              errors={errors}
-              isLoading={isLoading}
-            />
+            <div id="branding-section">
+              <ProfileForm
+                formData={formData}
+                setFormState={setFormState}
+                errors={errors}
+                isLoading={isLoading}
+              />
+            </div>
+            {/* Social media links */}
+            <div id="social-links-section">
+              <SocialLinksSection
+                socialLinks={socialLinks}
+                onAddLink={addSocialLink}
+                onUpdateLink={(id, value) => updateSocialLink(id, "url", value)}
+                onRemoveLink={removeSocialLink}
+                isLoading={isLoading}
+              />
+            </div>
+            {/* Photo gallery */}
+            <div id="gallery-section">
+              <GallerySection
+                images={galleryImages}
+                isUploading={isUploadingGallery}
+                isDeleting={isDeletingGallery}
+                onUpload={uploadGalleryImage}
+                onDelete={deleteGalleryImage}
+                isLoading={isLoading}
+              />
+            </div>
             {/* Service locations */}
-            <ServiceLocationsSection
-              locations={locations}
-              onAddLocation={addLocation}
-              onRemoveLocation={removeLocation}
-              onUpdateLocation={updateLocation}
-              onSetPrimary={setPrimaryLocation}
-              isLoading={isLoading}
-              maxServiceRadius={formData.maxServiceRadius}
-            />
+            <div id="service-locations-section">
+              <ServiceLocationsSection
+                locations={locations}
+                onAddLocation={addLocation}
+                onRemoveLocation={removeLocation}
+                onUpdateLocation={updateLocation}
+                onSetPrimary={setPrimaryLocation}
+                isLoading={isLoading}
+                maxServiceRadius={formData.maxServiceRadius}
+              />
+            </div>
             {/* Packages preview */}
             <PackagesPreviewSection
               packages={samplePackages}
@@ -343,11 +432,16 @@ export default function ProfilePage() {
             {/* Service coverage area */}
             <ServiceCoverageSection
               locations={locations.map((loc) => {
-                const name = getCityName(loc.city || "");
-                const cityNameUpper = (name || "MANILA").toUpperCase();
+                const cityName = getCityName(loc.city || "");
+                const provinceName = getProvinceName(loc.province || "");
+                const cityNameUpper = (cityName || "MANILA").toUpperCase();
+                const provinceNameUpper = provinceName
+                  ? provinceName.toUpperCase()
+                  : "";
                 return {
                   id: loc.id,
                   city: cityNameUpper,
+                  province: provinceNameUpper,
                   serviceRadius: loc.serviceRadius,
                   isPrimary: loc.isPrimary,
                 };
@@ -367,30 +461,37 @@ export default function ProfilePage() {
 
           {/* Sidebar - Right Side */}
           <div className="space-y-6">
-            {/* Profile Visibility Section */}
-            <ProfileVisibilitySection
-              value={formData.profileVisible}
-              onChange={setProfileVisible}
-              isLoading={isLoading}
-            />
+            {/* Profile Completeness Widget */}
+            <ProfileCompletenessWidget profile={data?.profile} />
 
-            {/* Availability Section */}
-            <AvailabilitySection
-              dailyCapacity={formData.dailyCapacity}
-              advanceBookingDays={formData.advanceBookingDays}
-              selectedDays={formData.selectedDays}
-              onDailyCapacityChange={setDailyCapacity}
-              onAdvanceBookingDaysChange={setAdvanceBookingDays}
-              onSelectedDaysChange={setSelectedDays}
-              isLoading={isLoading}
-            />
+            {/* Profile Visibility Section */}
+            <div id="availability-section">
+              <ProfileVisibilitySection
+                value={formData.profileVisible}
+                onChange={setProfileVisible}
+                isLoading={isLoading}
+              />
+
+              {/* Availability Section */}
+              <div className="mt-6">
+                <AvailabilitySection
+                  dailyCapacity={formData.dailyCapacity}
+                  advanceBookingDays={formData.advanceBookingDays}
+                  selectedDays={formData.selectedDays}
+                  onDailyCapacityChange={setDailyCapacity}
+                  onAdvanceBookingDaysChange={setAdvanceBookingDays}
+                  onSelectedDaysChange={setSelectedDays}
+                  isLoading={isLoading}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Floating Footer */}
       <FloatingFooter
-        isVisible={isDirty || locationsIsDirty()}
+        isVisible={isDirty || locationsIsDirty() || socialLinksIsDirty()}
         onSave={handleProfileSave}
         onCancel={handleCancel}
         isSaving={isSaving}

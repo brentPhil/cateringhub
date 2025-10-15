@@ -41,7 +41,7 @@ export function useServiceLocations(initialLocations?: DBServiceLocation[]) {
         isPrimary: loc.is_primary,
         landmark: loc.landmark || "",
         notes: loc.service_area_notes || "",
-        serviceRadius: (loc as any).service_radius ?? 50,
+        serviceRadius: loc.service_radius ?? 50,
       })),
     []
   );
@@ -249,4 +249,3 @@ export function useServiceLocations(initialLocations?: DBServiceLocation[]) {
     syncFromServer,
   };
 }
-
