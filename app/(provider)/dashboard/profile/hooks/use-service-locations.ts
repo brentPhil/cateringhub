@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import type { Tables } from "@/types/supabase";
+import type { Tables } from "@/database.types";
 
 type DBServiceLocation = Tables<"service_locations">;
 

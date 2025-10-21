@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { IS_DEV } from '@/lib/constants'
+import { handleFirstLogin } from '@/lib/auth/first-login'
 
 export async function GET(request: NextRequest) {
   try {
@@ -37,6 +38,15 @@ export async function GET(request: NextRequest) {
 
           if (userData?.user) {
             const user = userData.user
+
+            // Handle first login for admin-created members
+            // This will activate pending memberships on first successful login
+            try {
+              await handleFirstLogin(user.id)
+            } catch (firstLoginError) {
+              // Log but don't fail the auth flow
+              if (IS_DEV) console.error('Error handling first login:', firstLoginError)
+            }
 
             // Check if this is a Google or Facebook user
             const isOAuthUser = user.app_metadata.provider === 'google' ||

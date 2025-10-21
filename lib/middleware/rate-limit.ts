@@ -263,6 +263,26 @@ export const RateLimiters = {
     maxRequests: 30,
     keyPrefix: 'status',
   }),
+
+  /**
+   * Rate limiter for admin-created members
+   * Limit: 10 admin-created members per hour per user
+   */
+  adminCreateMember: RateLimiter.create({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    maxRequests: 10,
+    keyPrefix: 'admin-create',
+  }),
+
+  /**
+   * Rate limiter for resending password setup links
+   * Limit: 3 resends per hour per member
+   */
+  resendPasswordLink: RateLimiter.create({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    maxRequests: 3,
+    keyPrefix: 'resend-password',
+  }),
 };
 
 /**

@@ -29,7 +29,7 @@ import {
   Edit,
   Trash2,
 } from "lucide-react";
-import type { Database } from "@/types/supabase";
+import type { Database } from "@/database.types";
 import type { BookingsPagination } from "../hooks/use-bookings";
 
 type Booking = Database["public"]["Tables"]["bookings"]["Row"];

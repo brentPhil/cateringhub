@@ -50,6 +50,7 @@ export default function SignupForm() {
   // Email/Password signup mutation
   const { mutate: signUp, isPending: isSignupPending } = useMutation({
     mutationFn: async () => {
+      const redirectTo = searchParams.get("redirect") || "/dashboard";
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -57,7 +58,7 @@ export default function SignupForm() {
           data: {
             full_name: fullName,
           },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectTo)}`,
         },
       });
 
@@ -82,10 +83,11 @@ export default function SignupForm() {
   // Google signup mutation
   const { mutate: signupWithGoogle, isPending: isGooglePending } = useMutation({
     mutationFn: async () => {
+      const redirectTo = searchParams.get("redirect") || "/dashboard";
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectTo)}`,
           scopes: "profile email", // Request access to profile info including image
         },
       });
@@ -103,10 +105,11 @@ export default function SignupForm() {
   const { mutate: signupWithFacebook, isPending: isFacebookPending } =
     useMutation({
       mutationFn: async () => {
+        const redirectTo = searchParams.get("redirect") || "/dashboard";
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: "facebook",
           options: {
-            redirectTo: `${window.location.origin}/auth/callback`,
+            redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectTo)}`,
           },
         });
 

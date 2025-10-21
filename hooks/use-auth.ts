@@ -9,7 +9,7 @@ import { useMemo } from "react";
 import type {
   AuthUser,
 } from "@/types";
-import { AppRole, ProviderRoleType } from "@/types/supabase";
+import { AppRole, ProviderRoleType } from "@/database.types";
 
 /* ------------------------------------------------------------------ */
 /* Helpers & constants                                                */

@@ -10,13 +10,11 @@ import {
   type Control,
 } from "react-hook-form";
 import {
-  FormField,
-  FormItem,
-  FormLabel,
-  FormControl,
-  FormDescription,
-  FormMessage,
-} from "@/components/ui/form";
+  Field,
+  FieldLabel,
+  FieldDescription,
+  FieldError,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -64,7 +62,7 @@ export function TypedFormField<
   disabled = false,
 }: TypedFormFieldProps<TFieldValues, TName>) {
   return (
-    <FormField
+    <Field
       control={control}
       name={name}
       disabled={disabled}
@@ -77,8 +75,8 @@ export function TypedFormField<
         );
 
         return (
-          <FormItem>
-            <FormLabel htmlFor={fieldId}>
+          <>
+            <FieldLabel htmlFor={fieldId}>
               {config.label}
               {config.required && (
                 <span
@@ -88,22 +86,20 @@ export function TypedFormField<
                   *
                 </span>
               )}
-            </FormLabel>
-            <FormControl>
-              {children({
-                ...field,
-                id: fieldId,
-                "aria-describedby": ariaDescribedBy,
-                hasError: !!fieldState.error,
-              })}
-            </FormControl>
+            </FieldLabel>
+            {children({
+              ...field,
+              id: fieldId,
+              "aria-describedby": ariaDescribedBy,
+              hasError: !!fieldState.error,
+            })}
             {config.description && (
-              <FormDescription id={createFieldId(name, "description")}>
+              <FieldDescription id={createFieldId(name, "description")}>
                 {config.description}
-              </FormDescription>
+              </FieldDescription>
             )}
-            <FormMessage id={createFieldId(name, "error")} />
-          </FormItem>
+            <FieldError id={createFieldId(name, "error")} />
+          </>
         );
       }}
     />
@@ -140,7 +136,7 @@ export function TextField<
       disabled={disabled}
     >
       {(field) => {
-        const { hasError, ...inputProps } = field
+        const { hasError, ...inputProps } = field;
         return (
           <Input
             {...inputProps}
@@ -150,7 +146,7 @@ export function TextField<
             disabled={disabled}
             aria-invalid={hasError}
           />
-        )
+        );
       }}
     </TypedFormField>
   );
@@ -191,7 +187,7 @@ export function TextareaField<
       disabled={disabled}
     >
       {(field) => {
-        const { hasError, ...textareaProps } = field
+        const { hasError, ...textareaProps } = field;
         return (
           <Textarea
             {...textareaProps}
@@ -202,7 +198,7 @@ export function TextareaField<
             rows={rows}
             aria-invalid={hasError}
           />
-        )
+        );
       }}
     </TypedFormField>
   );

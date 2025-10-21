@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import type { TablesInsert, TablesUpdate } from "@/types/supabase";
+import type { TablesInsert, TablesUpdate } from "@/database.types";
 
 export type SocialPlatform = "facebook" | "instagram" | "website" | "tiktok";
 

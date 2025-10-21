@@ -8,15 +8,13 @@ import { useForm } from "react-hook-form";
 import type { User } from "@supabase/supabase-js";
 
 import { Button } from "@/components/ui/button";
+import { Form } from "@/components/ui/form";
 import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+  Field,
+  FieldLabel,
+  FieldDescription,
+  FieldError,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -99,87 +97,81 @@ export function EditProfileForm({ user, profile }: EditProfileFormProps) {
             </AvatarFallback>
           </Avatar>
 
-          <FormField
+          <Field
             control={form.control}
             name="avatar_url"
             render={({ field }) => (
-              <FormItem className="flex-1 w-full">
-                <FormLabel>Profile Picture URL</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="https://example.com/avatar.jpg"
-                    {...field}
-                    value={field.value || ""}
-                    className="w-full"
-                  />
-                </FormControl>
-                <FormDescription>
+              <div className="flex-1 w-full space-y-2">
+                <FieldLabel>Profile Picture URL</FieldLabel>
+                <Input
+                  placeholder="https://example.com/avatar.jpg"
+                  {...field}
+                  value={field.value || ""}
+                  className="w-full"
+                />
+                <FieldDescription>
                   Enter a URL for your profile picture. Use services like Imgur
                   or Cloudinary to host your images.
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
+                </FieldDescription>
+                <FieldError />
+              </div>
             )}
           />
         </div>
 
         <div className="grid gap-6 sm:grid-cols-2">
-          <FormField
+          <Field
             control={form.control}
             name="full_name"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Full Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="Your name" {...field} />
-                </FormControl>
-                <FormDescription>
+              <>
+                <FieldLabel>Full Name</FieldLabel>
+                <Input placeholder="Your name" {...field} />
+                <FieldDescription>
                   This is your public display name.
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
+                </FieldDescription>
+                <FieldError />
+              </>
             )}
           />
 
-          <FormField
+          <Field
             control={form.control}
             name="username"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Username</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="username"
-                    {...field}
-                    value={field.value || ""}
-                  />
-                </FormControl>
-                <FormDescription>This is your public username.</FormDescription>
-                <FormMessage />
-              </FormItem>
+              <>
+                <FieldLabel>Username</FieldLabel>
+                <Input
+                  placeholder="username"
+                  {...field}
+                  value={field.value || ""}
+                />
+                <FieldDescription>
+                  This is your public username.
+                </FieldDescription>
+                <FieldError />
+              </>
             )}
           />
         </div>
 
-        <FormField
+        <Field
           control={form.control}
           name="bio"
           render={({ field }) => (
-            <FormItem>
-              <FormLabel>Bio</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="Tell us a little bit about yourself"
-                  className="resize-none min-h-[120px]"
-                  {...field}
-                  value={field.value || ""}
-                />
-              </FormControl>
-              <FormDescription>
+            <>
+              <FieldLabel>Bio</FieldLabel>
+              <Textarea
+                placeholder="Tell us a little bit about yourself"
+                className="resize-none min-h-[120px]"
+                {...field}
+                value={field.value || ""}
+              />
+              <FieldDescription>
                 Brief description for your profile. Max 160 characters.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
+              </FieldDescription>
+              <FieldError />
+            </>
           )}
         />
 

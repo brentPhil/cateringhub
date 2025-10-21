@@ -1,4 +1,4 @@
-import type { Database } from "@/types/supabase";
+import type { Database } from "@/database.types";
 import { formatDistanceToNow } from "date-fns";
 
 // Provider role type from database

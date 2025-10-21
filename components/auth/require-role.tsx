@@ -2,33 +2,33 @@
 
 import { useRouter } from "next/navigation";
 import { useCurrentMembership } from "@/hooks/use-membership";
-import type { Database } from "@/types/supabase";
+import type { Database } from "@/database.types";
 import { Loader2 } from "lucide-react";
 
-type ProviderRole = Database['public']['Enums']['provider_role'];
+type ProviderRole = Database["public"]["Enums"]["provider_role"];
 
 interface RequireRoleProps {
   /**
    * Single role or array of allowed roles
    */
   roles: ProviderRole | ProviderRole[];
-  
+
   /**
    * Optional provider ID to check membership in
    */
   providerId?: string;
-  
+
   /**
    * Optional fallback component to show when unauthorized
    * If not provided, redirects to /403
    */
   fallback?: React.ReactNode;
-  
+
   /**
    * Children to render when authorized
    */
   children: React.ReactNode;
-  
+
   /**
    * Optional loading component
    */
@@ -66,7 +66,7 @@ export function RequireRole({
     if (fallback) {
       return <>{fallback}</>;
     }
-    router.push('/403');
+    router.push("/403");
     return null;
   }
 
@@ -78,7 +78,7 @@ export function RequireRole({
     if (fallback) {
       return <>{fallback}</>;
     }
-    router.push('/403');
+    router.push("/403");
     return null;
   }
 
@@ -88,7 +88,7 @@ export function RequireRole({
 
 /**
  * Higher-Order Component for page-level role protection
- * 
+ *
  * @example
  * ```tsx
  * const ProtectedPage = withRequireRole(MyPage, ['owner', 'admin']);
@@ -117,4 +117,3 @@ export function withRequireRole<P extends object>(
     );
   };
 }
-

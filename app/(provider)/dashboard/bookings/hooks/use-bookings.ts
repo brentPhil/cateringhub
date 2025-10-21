@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import type { Database } from "@/types/supabase";
+import type { Database } from "@/database.types";
 
 type Booking = Database['public']['Tables']['bookings']['Row'];
 type ProviderRole = Database['public']['Enums']['provider_role'];

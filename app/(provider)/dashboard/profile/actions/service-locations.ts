@@ -2,7 +2,6 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import type { TablesInsert } from "@/types/supabase";
 
 export interface ServiceLocationInput {
   id?: string; // Optional for new locations

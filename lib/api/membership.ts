@@ -6,7 +6,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { APIErrors } from './errors';
 import { getAuthenticatedUser } from './auth';
-import type { Database } from '@/types/supabase';
+import type { Database } from '@/database.types';
 
 type ProviderRole = Database['public']['Enums']['provider_role'];
 type MemberStatus = Database['public']['Enums']['provider_member_status'];
@@ -213,5 +213,38 @@ export async function requireCapability(
  */
 export function clearMembershipCache(): void {
   membershipCache.clear();
+}
+
+/**
+ * Require user to be an active member with one of the allowed roles
+ * This is a reusable helper for API endpoints that need role-based authorization
+ *
+ * @param providerId - Provider ID to check membership in
+ * @param allowedRoles - Array of roles that are allowed to perform the action
+ * @returns CurrentMembership if authorized
+ * @throws APIErrors.UNAUTHORIZED if user is not authenticated
+ * @throws APIErrors.FORBIDDEN if user doesn't have required role or is not active
+ *
+ * @example
+ * // Require admin or owner role
+ * const membership = await requireMembership(providerId, ['owner', 'admin']);
+ *
+ * // Require manager or higher
+ * const membership = await requireMembership(providerId, ['owner', 'admin', 'manager']);
+ */
+export async function requireMembership(
+  providerId: string,
+  allowedRoles: ProviderRole[]
+): Promise<CurrentMembership> {
+  const membership = await getCurrentMembership(providerId);
+
+  // Check if user's role is in the allowed roles list
+  if (!allowedRoles.includes(membership.role)) {
+    throw APIErrors.FORBIDDEN(
+      `This action requires one of the following roles: ${allowedRoles.join(', ')}. You have ${membership.role} role.`
+    );
+  }
+
+  return membership;
 }
 

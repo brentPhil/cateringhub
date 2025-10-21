@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import {
@@ -42,6 +43,7 @@ const inviteSchema = z.object({
   role: z.enum(["admin", "manager", "staff", "viewer"], {
     required_error: "Please select a role",
   }),
+  note: z.string().max(500, "Note must be less than 500 characters").optional(),
 });
 
 type InviteFormData = z.infer<typeof inviteSchema>;
@@ -66,6 +68,7 @@ export function InviteMemberModal({
     defaultValues: {
       email: "",
       role: "staff",
+      note: "",
     },
   });
 
@@ -150,6 +153,30 @@ export function InviteMemberModal({
                   </Select>
                   <FormDescription>
                     {selectedRole && getRoleDescription(selectedRole)}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Optional note field */}
+            <FormField
+              control={form.control}
+              name="note"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Note (optional)</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Add a personal message to the invitation..."
+                      className="resize-none"
+                      rows={3}
+                      {...field}
+                      disabled={isSubmitting || isLoading}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    This note will be included in the invitation email.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

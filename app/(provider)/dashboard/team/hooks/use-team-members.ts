@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
-import type { Tables, Enums } from "@/types/supabase";
+import type { Tables, Enums } from "@/database.types";
 
 // Types
 export type ProviderMember = Tables<"provider_members"> & {
@@ -41,7 +41,10 @@ export function useTeamMembers(providerId: string | undefined) {
       if (!providerId) throw new Error("Provider ID is required");
 
       // Fetch members with user data via API endpoint
-      const response = await fetch(`/api/providers/${providerId}/members`);
+      const response = await fetch(`/api/providers/${providerId}/members`, {
+        // Prevent caching to ensure fresh data
+        cache: 'no-store',
+      });
 
       if (!response.ok) {
         const error = await response.json();
@@ -49,11 +52,19 @@ export function useTeamMembers(providerId: string | undefined) {
       }
 
       const { data } = await response.json();
-      return data;
+
+      // Filter out any temporary optimistic updates (IDs starting with "temp-")
+      const realMembers = (data || []).filter((member: TeamMemberWithUser) =>
+        !member.id.startsWith('temp-')
+      );
+
+      return realMembers;
     },
     enabled: !!providerId,
-    staleTime: 30 * 1000, // 30 seconds
+    staleTime: 10 * 1000, // 10 seconds (reduced from 30)
     gcTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true, // Refetch when user returns to tab
+    refetchOnMount: true, // Always refetch on mount
   });
 }
 
@@ -273,6 +284,166 @@ export function useResendInvitation(providerId: string) {
     },
     onError: (error) => {
       toast.error(error instanceof Error ? error.message : "Failed to resend invitation");
+    },
+  });
+}
+
+/**
+ * Hook to resend password setup link for admin-created members
+ */
+export function useResendPasswordLink(providerId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (memberId: string) => {
+      const response = await fetch(
+        `/api/providers/${providerId}/members/${memberId}/resend-password-link`,
+        { method: "POST" }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error?.message || "Failed to resend password setup link");
+      }
+
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: teamKeys.members(providerId) });
+      toast.success(data.message);
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to resend password setup link");
+    },
+  });
+}
+
+/**
+ * Hook to update a team member's role
+ */
+export function useUpdateMemberRole(providerId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ memberId, role }: { memberId: string; role: string }) => {
+      const response = await fetch(`/api/providers/${providerId}/members/${memberId}/role`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error?.message || "Failed to update member role");
+      }
+
+      return response.json();
+    },
+    onMutate: async ({ memberId, role }) => {
+      await queryClient.cancelQueries({ queryKey: teamKeys.members(providerId) });
+
+      const previousMembers = queryClient.getQueryData(teamKeys.members(providerId));
+
+      // Optimistically update member role
+      queryClient.setQueryData<TeamMemberWithUser[]>(
+        teamKeys.members(providerId),
+        (old = []) =>
+          old.map((member) =>
+            member.id === memberId ? { ...member, role: role as Enums<"provider_role"> } : member
+          )
+      );
+
+      return { previousMembers };
+    },
+    onError: (error, _variables, context) => {
+      if (context?.previousMembers) {
+        queryClient.setQueryData(teamKeys.members(providerId), context.previousMembers);
+      }
+      toast.error(error instanceof Error ? error.message : "Failed to update member role");
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: teamKeys.members(providerId) });
+      toast.success(data.message || "Member role updated successfully");
+    },
+  });
+}
+
+/**
+ * Hook to add staff manually (admin-created flow)
+ */
+export function useAddStaff(providerId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: { email: string; full_name: string; role: string }) => {
+      if (!providerId) {
+        throw new Error("Provider ID is required to add staff");
+      }
+
+      const response = await fetch(`/api/providers/${providerId}/team/admin-create`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error?.message || "Failed to add staff member");
+      }
+
+      return response.json();
+    },
+    onMutate: async (newStaff) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: teamKeys.members(providerId) });
+
+      // Snapshot previous value
+      const previousMembers = queryClient.getQueryData(teamKeys.members(providerId));
+
+      // Optimistically add pending member
+      queryClient.setQueryData<TeamMemberWithUser[]>(
+        teamKeys.members(providerId),
+        (old = []) => [
+          {
+            id: `temp-${Date.now()}`,
+            provider_id: providerId,
+            user_id: `temp-user-${Date.now()}`,
+            role: newStaff.role as Enums<"provider_role">,
+            status: "pending" as const,
+            invitation_method: "admin_created" as const,
+            invited_by: "temp-inviter-id",
+            invited_at: new Date().toISOString(),
+            joined_at: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            first_login_at: null,
+            full_name: newStaff.full_name,
+            email: newStaff.email,
+            avatar_url: undefined,
+            last_active: undefined,
+          },
+          ...old,
+        ]
+      );
+
+      return { previousMembers };
+    },
+    onError: (error, _variables, context) => {
+      // Rollback on error
+      if (context?.previousMembers) {
+        queryClient.setQueryData(teamKeys.members(providerId), context.previousMembers);
+      }
+      toast.error(error instanceof Error ? error.message : "Failed to add staff member");
+    },
+    onSuccess: async (data) => {
+      // Invalidate and refetch to ensure we have the latest data
+      await queryClient.invalidateQueries({ queryKey: teamKeys.members(providerId) });
+      toast.success(data.message || "Staff member added successfully");
+    },
+    onSettled: () => {
+      // Always refetch after mutation completes (success or error)
+      // This ensures temporary optimistic data is replaced with real data
+      queryClient.invalidateQueries({ queryKey: teamKeys.members(providerId) });
     },
   });
 }

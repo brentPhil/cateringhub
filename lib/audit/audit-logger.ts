@@ -18,7 +18,7 @@
  */
 
 import { createClient } from '@/lib/supabase/server';
-import type { Database } from '@/types/supabase';
+import type { Database } from '@/database.types';
 
 type AuditLogAction = Database['public']['Tables']['audit_logs']['Row']['action'];
 type AuditLogResourceType = Database['public']['Tables']['audit_logs']['Row']['resource_type'];

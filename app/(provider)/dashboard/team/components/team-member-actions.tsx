@@ -1,6 +1,13 @@
 "use client";
 
-import { MoreHorizontal, UserX, UserCheck, Trash2, Mail } from "lucide-react";
+import {
+  MoreHorizontal,
+  UserX,
+  UserCheck,
+  Trash2,
+  Mail,
+  Edit,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -20,6 +27,7 @@ interface TeamMemberActionsProps {
   onSuspend: () => void;
   onActivate: () => void;
   onRemove: () => void;
+  onEditRole?: () => void;
   onResendInvitation?: () => void;
 }
 
@@ -30,16 +38,23 @@ export function TeamMemberActions({
   onSuspend,
   onActivate,
   onRemove,
+  onEditRole,
   onResendInvitation,
 }: TeamMemberActionsProps) {
   const isCurrentUser = member.user_id === currentUserId;
-  const canManage = currentUserRole && canManageUser(currentUserRole, member.role);
+  const canManage =
+    currentUserRole && canManageUser(currentUserRole, member.role);
   const isOwner = member.role === "owner";
   const isSuspended = member.status === "suspended";
   const isPending = member.status === "pending";
+  const isAdminCreated = member.invitation_method === "admin_created";
 
   // Owners can't manage themselves, and users can only manage lower-ranked members
   const canPerformActions = !isCurrentUser && canManage && !isOwner;
+
+  // Only show resend for admin-created pending members
+  // Email invites don't exist as pending members (they're created as active when accepted)
+  const canResend = isPending && isAdminCreated && onResendInvitation;
 
   return (
     <DropdownMenu>
@@ -55,11 +70,11 @@ export function TeamMemberActions({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {isPending && onResendInvitation && (
+        {canResend && (
           <>
             <DropdownMenuItem onClick={onResendInvitation}>
               <Mail className="mr-2 h-4 w-4" />
-              Resend invitation
+              Resend password setup
             </DropdownMenuItem>
             <DropdownMenuSeparator />
           </>
@@ -67,16 +82,29 @@ export function TeamMemberActions({
 
         {canPerformActions && (
           <>
-            {isSuspended ? (
-              <DropdownMenuItem onClick={onActivate}>
-                <UserCheck className="mr-2 h-4 w-4" />
-                Activate member
+            {/* Edit role */}
+            {onEditRole && !isPending && (
+              <DropdownMenuItem onClick={onEditRole}>
+                <Edit className="mr-2 h-4 w-4" />
+                Edit role
               </DropdownMenuItem>
-            ) : (
-              <DropdownMenuItem onClick={onSuspend}>
-                <UserX className="mr-2 h-4 w-4" />
-                Suspend member
-              </DropdownMenuItem>
+            )}
+
+            {/* Suspend/Activate */}
+            {!isPending && (
+              <>
+                {isSuspended ? (
+                  <DropdownMenuItem onClick={onActivate}>
+                    <UserCheck className="mr-2 h-4 w-4" />
+                    Activate member
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onClick={onSuspend}>
+                    <UserX className="mr-2 h-4 w-4" />
+                    Suspend member
+                  </DropdownMenuItem>
+                )}
+              </>
             )}
 
             <DropdownMenuSeparator />
@@ -89,12 +117,9 @@ export function TeamMemberActions({
         )}
 
         {!canPerformActions && !isPending && (
-          <DropdownMenuItem disabled>
-            No actions available
-          </DropdownMenuItem>
+          <DropdownMenuItem disabled>No actions available</DropdownMenuItem>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
-

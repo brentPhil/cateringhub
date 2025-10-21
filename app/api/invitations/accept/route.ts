@@ -1,9 +1,16 @@
 /**
  * Accept Invitation API
  * POST /api/invitations/accept - Accept a provider team invitation
+ *
+ * Security Architecture:
+ * - Uses admin client ONLY for initial invitation lookup by token
+ *   (server-side RLS context doesn't work reliably with SSR cookies)
+ * - Uses RPC function with SECURITY DEFINER for membership operations
+ *   (provides defense in depth and encapsulates business logic)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthenticatedUser } from '@/lib/api/auth';
 import { handleAPIError, APIErrors } from '@/lib/api/errors';
@@ -23,10 +30,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const body = await parseRequestBody(request);
     const { token } = validateAcceptInvitationRequest(body);
 
-    const supabase = await createClient();
+    // Use admin client ONLY for invitation lookup by token
+    // This is necessary because server-side RLS context doesn't work reliably
+    // with SSR cookie-based authentication
+    const adminClient = createAdminClient();
 
     // Find invitation by token
-    const { data: invitation, error: invitationError } = await supabase
+    const { data: invitation, error: invitationError } = await adminClient
       .from('provider_invitations')
       .select('id, provider_id, email, role, expires_at, accepted_at, invited_by')
       .eq('token', token)
@@ -36,93 +46,54 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       throw APIErrors.GONE('Invalid or expired invitation token');
     }
 
-    // Check if invitation has already been accepted
+    // Validate invitation
     if (invitation.accepted_at) {
       throw APIErrors.GONE('This invitation has already been accepted');
     }
 
-    // Check if invitation has expired
     if (isTokenExpired(invitation.expires_at)) {
       throw APIErrors.GONE('This invitation has expired. Please request a new invitation.');
     }
 
     // Verify email matches (case-insensitive)
+    // Following OWASP best practices: use generic error message to prevent account enumeration
     if (invitation.email.toLowerCase() !== user.email.toLowerCase()) {
       throw APIErrors.FORBIDDEN(
-        'This invitation was sent to a different email address. Please log in with the correct account.'
+        'This invitation is not valid for your account. Please sign out and sign in with the correct account, or contact the team administrator.'
       );
     }
 
-    // Check if user is already a member of this provider
-    const { data: existingMember } = await supabase
-      .from('provider_members')
-      .select('id, status, role')
-      .eq('provider_id', invitation.provider_id)
-      .eq('user_id', user.id)
-      .single();
+    // Use RPC function to accept invitation and create membership
+    // This function uses SECURITY DEFINER to bypass RLS for membership creation
+    // while keeping the business logic encapsulated in the database
+    const supabase = await createClient();
+    const { data, error: rpcError } = await supabase.rpc('accept_invitation', {
+      p_invitation_id: invitation.id,
+      p_user_id: user.id,
+    });
 
-    if (existingMember) {
-      if (existingMember.status === 'active') {
-        // Update invitation as accepted even though they're already a member
-        await supabase
-          .from('provider_invitations')
-          .update({ accepted_at: new Date().toISOString() })
-          .eq('id', invitation.id);
+    if (rpcError) {
+      // Handle specific error cases from the RPC function
+      const errorMessage = rpcError.message || '';
 
+      if (errorMessage.includes('already an active member')) {
         throw APIErrors.CONFLICT('You are already a member of this provider');
-      } else if (existingMember.status === 'suspended') {
+      } else if (errorMessage.includes('suspended')) {
         throw APIErrors.FORBIDDEN(
           'Your membership has been suspended. Please contact the provider owner.'
         );
+      } else if (errorMessage.includes('already accepted')) {
+        throw APIErrors.GONE('This invitation has already been accepted');
+      } else {
+        console.error('Error accepting invitation:', rpcError);
+        throw APIErrors.INTERNAL('Failed to accept invitation');
       }
     }
-
-    // Use a transaction-like approach: create membership and update invitation
-    // Create provider membership
-    const { data: newMember, error: memberError } = await supabase
-      .from('provider_members')
-      .insert({
-        provider_id: invitation.provider_id,
-        user_id: user.id,
-        role: invitation.role,
-        status: 'active',
-        invited_by: invitation.invited_by,
-        invited_at: new Date().toISOString(),
-        joined_at: new Date().toISOString(),
-      })
-      .select('id, provider_id, user_id, role, status, joined_at')
-      .single();
-
-    if (memberError) {
-      console.error('Error creating provider member:', memberError);
-      throw APIErrors.INTERNAL('Failed to create membership');
-    }
-
-    // Update invitation as accepted
-    const { error: updateError } = await supabase
-      .from('provider_invitations')
-      .update({ accepted_at: new Date().toISOString() })
-      .eq('id', invitation.id);
-
-    if (updateError) {
-      console.error('Error updating invitation:', updateError);
-      // Don't fail the request, membership was created successfully
-    }
-
-    // Get provider details
-    const { data: provider } = await supabase
-      .from('providers')
-      .select('id, name, description')
-      .eq('id', invitation.provider_id)
-      .single();
 
     // Return success with provider and membership details
     return NextResponse.json(
       {
-        data: {
-          provider: provider || { id: invitation.provider_id },
-          membership: newMember,
-        },
+        data,
         message: 'Invitation accepted successfully',
       },
       { status: 200 }

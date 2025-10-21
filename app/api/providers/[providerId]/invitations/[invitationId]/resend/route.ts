@@ -122,7 +122,7 @@ export async function POST(
       );
     } catch (emailError) {
       console.error('Error sending invitation email:', emailError);
-      // Don't fail the request if email fails, but log it
+      throw APIErrors.INTERNAL('Failed to send invitation email');
     }
 
     // Audit log: Record invitation resent
