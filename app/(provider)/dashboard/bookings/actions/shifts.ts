@@ -23,6 +23,8 @@ export async function createShift(params: {
   notes?: string;
 }): Promise<ActionResult> {
   try {
+    console.log("[createShift] Starting with params:", params);
+
     const supabase = await createClient();
 
     // Get authenticated user
@@ -32,11 +34,14 @@ export async function createShift(params: {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
+      console.error("[createShift] Auth error:", authError);
       return {
         success: false,
         error: "You must be logged in to create shifts",
       };
     }
+
+    console.log("[createShift] Authenticated user:", user.id);
 
     // Verify user has access to this booking through provider membership
     const { data: membership, error: membershipError } = await supabase
@@ -50,6 +55,22 @@ export async function createShift(params: {
       return {
         success: false,
         error: "You must be an active provider member to create shifts",
+      };
+    }
+
+    // Check role permissions - only owner, admin, manager can create shifts
+    const roleHierarchy: Record<string, number> = {
+      owner: 1,
+      admin: 2,
+      manager: 3,
+      staff: 4,
+      viewer: 5,
+    };
+
+    if (roleHierarchy[membership.role] > roleHierarchy.manager) {
+      return {
+        success: false,
+        error: "Only owners, admins, and managers can assign team members to bookings",
       };
     }
 
@@ -93,6 +114,7 @@ export async function createShift(params: {
       .single();
 
     if (existingShift) {
+      console.log("[createShift] Duplicate shift found:", existingShift);
       return {
         success: false,
         error: "This team member is already assigned to this booking",
@@ -110,6 +132,8 @@ export async function createShift(params: {
       status: "scheduled",
     };
 
+    console.log("[createShift] Creating shift with data:", shiftData);
+
     const { data: shift, error: insertError } = await supabase
       .from("shifts")
       .insert(shiftData)
@@ -117,12 +141,14 @@ export async function createShift(params: {
       .single();
 
     if (insertError) {
-      console.error("Error creating shift:", insertError);
+      console.error("[createShift] Insert error:", insertError);
       return {
         success: false,
         error: "Failed to create shift. Please try again.",
       };
     }
+
+    console.log("[createShift] Shift created successfully:", shift);
 
     // Revalidate the bookings page
     revalidatePath("/dashboard/bookings");
@@ -132,7 +158,7 @@ export async function createShift(params: {
       data: shift,
     };
   } catch (error) {
-    console.error("Error in createShift:", error);
+    console.error("[createShift] Error:", error);
     return {
       success: false,
       error: "An unexpected error occurred. Please try again.",
@@ -146,6 +172,8 @@ export async function createShift(params: {
  */
 export async function checkIn(shiftId: string): Promise<ActionResult> {
   try {
+    console.log("[checkIn] Starting check-in for shift:", shiftId);
+
     const supabase = await createClient();
 
     // Get authenticated user
@@ -155,11 +183,14 @@ export async function checkIn(shiftId: string): Promise<ActionResult> {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
+      console.error("[checkIn] Auth error:", authError);
       return {
         success: false,
         error: "You must be logged in to check in",
       };
     }
+
+    console.log("[checkIn] Authenticated user:", user.id);
 
     // Get the shift and verify access
     const { data: shift, error: shiftError } = await supabase
@@ -250,6 +281,8 @@ export async function checkIn(shiftId: string): Promise<ActionResult> {
  */
 export async function checkOut(shiftId: string): Promise<ActionResult> {
   try {
+    console.log("[checkOut] Starting check-out for shift:", shiftId);
+
     const supabase = await createClient();
 
     // Get authenticated user
@@ -259,11 +292,14 @@ export async function checkOut(shiftId: string): Promise<ActionResult> {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
+      console.error("[checkOut] Auth error:", authError);
       return {
         success: false,
         error: "You must be logged in to check out",
       };
     }
+
+    console.log("[checkOut] Authenticated user:", user.id);
 
     // Get the shift and verify access
     const { data: shift, error: shiftError } = await supabase
@@ -394,7 +430,7 @@ export async function deleteShift(shiftId: string): Promise<ActionResult> {
     // Verify user has access through provider membership
     const { data: membership, error: membershipError } = await supabase
       .from("provider_members")
-      .select("provider_id")
+      .select("provider_id, role")
       .eq("user_id", user.id)
       .eq("status", "active")
       .single();
@@ -403,6 +439,22 @@ export async function deleteShift(shiftId: string): Promise<ActionResult> {
       return {
         success: false,
         error: "You must be an active provider member",
+      };
+    }
+
+    // Check role permissions - only owner, admin, manager can delete shifts
+    const roleHierarchy: Record<string, number> = {
+      owner: 1,
+      admin: 2,
+      manager: 3,
+      staff: 4,
+      viewer: 5,
+    };
+
+    if (roleHierarchy[membership.role] > roleHierarchy.manager) {
+      return {
+        success: false,
+        error: "Only owners, admins, and managers can remove team members from bookings",
       };
     }
 

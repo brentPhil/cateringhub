@@ -170,6 +170,7 @@ export default function BookingsPage() {
         isLoading={isLoading}
         canEdit={canEdit}
         currentUserId={membership?.userId}
+        providerId={providerId}
         pagination={pagination}
         onSort={handleSort}
         onPageChange={handlePageChange}
