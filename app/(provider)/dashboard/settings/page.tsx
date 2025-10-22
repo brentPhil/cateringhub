@@ -11,18 +11,11 @@ import { useQueryState, parseAsStringLiteral } from "nuqs";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthInfo } from "@/hooks/use-auth";
+import { DataTable } from "@/components/ui/data-table";
+import { permissionsColumns, type RolePermission } from "./permissions-columns";
 
 // Define valid tab values
 const TABS = ["profile", "account", "permissions"] as const;
-
-// Role permission interface for settings page
-interface RolePermission {
-  role: string;
-  permission: string;
-  id?: string;
-  created_at?: string;
-  updated_at?: string;
-}
 
 // Custom hook for role permissions using TanStack Query directly
 function useRolePermissions(enabled: boolean = true) {
@@ -47,7 +40,12 @@ function useRolePermissions(enabled: boolean = true) {
 }
 
 export default function SettingsPage() {
-  const { user, role: userRole, isAdmin, isLoading: authLoading } = useAuthInfo();
+  const {
+    user,
+    role: userRole,
+    isAdmin,
+    isLoading: authLoading,
+  } = useAuthInfo();
 
   // Only load role permissions if user is admin to avoid unnecessary queries
   const { data: rolePermissions, isLoading: permissionsLoading } =
@@ -255,31 +253,15 @@ export default function SettingsPage() {
           {userRole === "admin" && (
             <Card>
               <CardHeader>
-                <CardTitle>Role Permissions</CardTitle>
+                <CardTitle>Role permissions</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-border bg-muted/50">
-                        <th className="px-4 py-3 text-left text-sm font-medium">
-                          Role
-                        </th>
-                        <th className="px-4 py-3 text-left text-sm font-medium">
-                          Permission
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rolePermissions?.map((rp, index) => (
-                        <tr key={index} className="border-b border-border">
-                          <td className="px-4 py-3 text-sm">{rp.role}</td>
-                          <td className="px-4 py-3 text-sm">{rp.permission}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <DataTable
+                  columns={permissionsColumns}
+                  data={rolePermissions || []}
+                  searchKey="role"
+                  searchPlaceholder="Filter by role..."
+                />
               </CardContent>
             </Card>
           )}

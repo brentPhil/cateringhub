@@ -2,19 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useUsers, useRefreshSession, useAuthInfo } from "@/hooks/use-auth";
-import type { AppRole, ProviderRoleType } from "@/types";
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Typography } from "@/components/ui/typography";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2, AlertCircle, Users, RefreshCw, Bug } from "lucide-react";
 import { useEffect, useCallback } from "react";
@@ -24,19 +13,8 @@ import {
   testSupabaseConnection,
 } from "@/app/auth/actions";
 import { IS_DEV } from "@/lib/constants";
-
-// Define types for our data
-type UserRole = {
-  role: AppRole;
-  provider_role?: ProviderRoleType | null;
-};
-
-type UserWithRoles = {
-  id: string;
-  full_name: string | null;
-  updated_at: string | null;
-  user_roles?: UserRole[];
-};
+import { DataTable } from "@/components/ui/data-table";
+import { usersColumns } from "./users-columns";
 
 export default function UsersPage() {
   const router = useRouter();
@@ -76,33 +54,12 @@ export default function UsersPage() {
     await testSupabaseConnection();
   }, []);
 
-
   // Redirect if user doesn't have admin role (after loading is complete)
   useEffect(() => {
     if (!authLoading && user && isAdmin === false) {
       router.push("/dashboard");
     }
   }, [authLoading, user, isAdmin, router]);
-
-  // Helper function to format role display
-  const formatRoleDisplay = (userRole: UserRole) => {
-    if (userRole.role === "catering_provider" && userRole.provider_role) {
-      return `Catering Provider (${userRole.provider_role})`;
-    }
-    return userRole.role.charAt(0).toUpperCase() + userRole.role.slice(1);
-  };
-
-  // Helper function to get role variant for Badge
-  const getRoleVariant = (
-    userRole: UserRole
-  ): "default" | "secondary" | "destructive" | "outline" => {
-    if (userRole.role === "admin") {
-      return "default";
-    } else if (userRole.role === "catering_provider") {
-      return "secondary";
-    }
-    return "outline";
-  };
 
   // Show loading state while checking authentication
   if (authLoading) {
@@ -155,19 +112,11 @@ export default function UsersPage() {
               <Bug className="h-4 w-4 mr-2" />
               Debug JWT
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleForceRefresh}
-            >
+            <Button variant="outline" size="sm" onClick={handleForceRefresh}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Force Refresh
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleTestConnection}
-            >
+            <Button variant="outline" size="sm" onClick={handleTestConnection}>
               🧪 Test Connection
             </Button>
           </div>
@@ -221,62 +170,19 @@ export default function UsersPage() {
         </Alert>
       ) : null}
 
-      {/* Loading state */}
-      {isLoading && (
+      {/* Users table */}
+      {isLoading ? (
         <div className="flex items-center justify-center p-8">
           <Loader2 className="h-6 w-6 animate-spin mr-2" />
           <Typography>Loading users...</Typography>
         </div>
-      )}
-
-      {/* Users table - only show when not loading */}
-      {!isLoading && (
-        <Table>
-          <TableCaption>A list of all users in the system.</TableCaption>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>ID</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Last Updated</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {users?.map((user: UserWithRoles) => (
-              <TableRow key={user.id}>
-                <TableCell className="font-medium">
-                  {user.full_name || "N/A"}
-                </TableCell>
-                <TableCell className="font-mono text-xs">{user.id}</TableCell>
-                <TableCell>
-                  {user.user_roles?.[0] ? (
-                    <Badge variant={getRoleVariant(user.user_roles[0])}>
-                      {formatRoleDisplay(user.user_roles[0])}
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline">User</Badge>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {user.updated_at
-                    ? new Date(user.updated_at).toLocaleDateString()
-                    : "N/A"}
-                </TableCell>
-              </TableRow>
-            ))}
-
-            {!users?.length && !isLoading && (
-              <TableRow>
-                <TableCell
-                  colSpan={4}
-                  className="text-center text-muted-foreground"
-                >
-                  No users found
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+      ) : (
+        <DataTable
+          columns={usersColumns}
+          data={users || []}
+          searchKey="full_name"
+          searchPlaceholder="Filter by name..."
+        />
       )}
     </div>
   );

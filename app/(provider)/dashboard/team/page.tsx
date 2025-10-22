@@ -4,8 +4,10 @@ import { useState, useMemo } from "react";
 import { useQueryStates, parseAsInteger, parseAsString } from "nuqs";
 import { Button } from "@/components/ui/button";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
-import { UserPlus } from "lucide-react";
-import { TeamMembersTable } from "./components/team-members-table";
+import { Skeleton } from "@/components/ui/skeleton";
+import { DataTable } from "@/components/ui/data-table";
+import { UserPlus, AlertCircle } from "lucide-react";
+import { createTeamMembersColumns } from "./components/team-members-columns";
 import { InviteMemberModal } from "./components/invite-member-modal";
 import { AddStaffModal } from "./components/add-staff-modal";
 import { EditRoleDrawer } from "./components/edit-role-drawer";
@@ -186,6 +188,21 @@ export default function TeamPage() {
   // Check if user can invite (admin or owner)
   const canInvite = currentMembership?.capabilities.canInviteMembers || false;
 
+  // Memoize columns with context
+  const columns = useMemo(
+    () =>
+      createTeamMembersColumns({
+        currentUserRole: currentMembership?.role,
+        currentUserId,
+        onSuspend: handleSuspend,
+        onActivate: handleActivate,
+        onRemove: handleRemove,
+        onEditRole: handleEditRole,
+        onResendInvitation: handleResendInvitation,
+      }),
+    [currentMembership?.role, currentUserId]
+  );
+
   // Show message if user doesn't have a provider membership
   if (!currentMembership && !membershipLoading && !isLoading) {
     return (
@@ -274,27 +291,35 @@ export default function TeamPage() {
       </div>
 
       {/* Team members table */}
-      <TeamMembersTable
-        members={paginatedMembers}
-        isLoading={isLoading}
-        currentUserRole={currentMembership?.role}
-        currentUserId={currentUserId}
-        onSuspend={handleSuspend}
-        onActivate={handleActivate}
-        onRemove={handleRemove}
-        onEditRole={handleEditRole}
-        onResendInvitation={handleResendInvitation}
-        currentPage={filters.page}
-        totalPages={totalPages}
-        pageSize={filters.pageSize}
-        totalItems={totalItems}
-        onPageChange={(page) => setFilters({ page })}
-        onPageSizeChange={(pageSize) => setFilters({ pageSize, page: 1 })}
-        sortBy={filters.sortBy}
-        sortOrder={filters.sortOrder as "asc" | "desc"}
-        onSort={handleSort}
-        error={error as Error | null}
-      />
+      {isLoading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-16 w-full" />
+          ))}
+        </div>
+      ) : error ? (
+        <div className="rounded-md border border-destructive/50 bg-destructive/10 p-8">
+          <div className="flex flex-col items-center justify-center text-center gap-3">
+            <AlertCircle className="h-10 w-10 text-destructive" />
+            <div>
+              <h3 className="font-semibold text-lg mb-1">
+                Failed to load team members
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {(error as Error)?.message ||
+                  "An error occurred while fetching team members."}
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={paginatedMembers}
+          searchKey="full_name"
+          searchPlaceholder="Filter by name or email..."
+        />
+      )}
 
       {/* Invite member modal */}
       <InviteMemberModal
