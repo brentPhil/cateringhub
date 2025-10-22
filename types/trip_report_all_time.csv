@@ -1,0 +1,122 @@
+﻿Transit Trip ID,Vessel,Date,Scheduled Depart Time,Depart Time,Depart Location,Adult (boarded at origin),Passengers Onboard (at final destination),Total Pax Carried,Trip Type,Scheduled Arrive Time,Arrival Time,Destination,Masters Remarks,Stop,Arrive Time,Pax Off,Pax On,Depart Time
+,,10/06/2025,,,,,,,Unscheduled,,,,,,,,,
+,Broken boat,18/06/2025,,,,,,,Unscheduled,,,,,,,,,
+,Rescue vessel,10/06/2025,,,,,,,Unscheduled,,,,,,,,,
+,Rescue vessel,10/06/2025,,,,,,,Unscheduled,,,,,,,,,
+,Aquaholic,10/06/2025,,,,,,,Unscheduled,,,,,,,,,
+,Aquaholic,10/06/2025,,,,,,,Unscheduled,,,,,,,,,
+,Aquaholic,10/06/2025,,,,,,,Unscheduled,,,,,,,,,
+,Aquaholic,10/06/2025,,,,,,,Unscheduled,,,,,,,,,
+,Rescue vessel,10/06/2025,,,,,,,Unscheduled,,,,,,,,,
+,Rescue vessel,10/06/2025,,,,,,,Unscheduled,,,,,,,,,
+,Aquaholic,04/07/2025,,,,,,,Unscheduled,,16:09:00,,,,,,,
+,Aquaholic,04/07/2025,,,,,,,Unscheduled,,17:14:00,,,,,,,
+,Garuda Vessel,01/07/2025,,,,,,,Unscheduled,,,,,,,,,
+,Garuda Vessel,18/07/2025,,,,,,,Unscheduled,,,,,,,,,
+,Rescue vessel,25/07/2025,,,Riva del Garda,1,1,1,Unscheduled,,,,,,,,,
+,,22/10/2025,,,,2,,2,Unscheduled,,,,,Bardolino,12:35:00,2,0,15:35:00
+,Aquaholic,06/08/2025,,,,3,3,3,Unscheduled,,,,,,,,,
+,Rescue vessel,25/07/2025,,,,,,,Unscheduled,,,,,,,,,
+,Aquaholic,18/08/2025,,,,,,,Unscheduled,,,,,,,,,
+,Aquaholic,19/08/2025,,,,,,,Unscheduled,,,Bardolino,,,,,,
+,Rescue vessel,19/08/2025,,,,,,,Unscheduled,,,,,,,,,
+,Aquaholic,21/08/2025,,,,2,2,2,Unscheduled,,,,,,,,,
+,Garuda Vessel,20/08/2025,,,Im lost,,,,Unscheduled,,,Bardolino,<p><br></p>,,,,,
+,Aquaholic,26/08/2025,,,Bardolino,,,,Unscheduled,,,,<p>Comment G</p>,,,,,
+,Aquaholic,26/08/2025,,,,,,,Unscheduled,,,,,,,,,
+,Aquaholic,02/09/2025,,,,2,2,2,Unscheduled,,,,,,,,,
+,Aquaholic,09/09/2025,,,,,,,Unscheduled,,,,,,,,,
+,,22/10/2025,,,,3,3,3,Unscheduled,,,,,,,,,
+,,22/10/2025,,,,,,,Unscheduled,,,,,,,,,
+,Aquaholic,19/09/2025,,,,2,2,2,Unscheduled,,15:18:00,Bardolino,<p><br></p>,,,,,
+,,22/10/2025,,,,,,,Unscheduled,,,,,,,,,
+,Aquaholic,19/09/2025,,,,,,,Unscheduled,,,,,,,,,
+,Garuda Vessel,24/09/2025,,,Im lost,1,1,1,Unscheduled,,05:00:00,Bardolino,<p><br></p>,,,,,
+,,22/10/2025,,,,6,6,6,Unscheduled,,,,,,,,,
+,,22/10/2025,,,,,,,Unscheduled,,,,,,,,,
+,,22/10/2025,,,,,,,Unscheduled,,,,,,,,,
+,,22/10/2025,,,,8,8,8,Unscheduled,,,,,,,,,
+,Aquaholic,06/10/2025,,,,8,8,8,Unscheduled,,,,,,,,,
+,Aquaholic,07/10/2025,,,,10,10,10,Unscheduled,,,,,,,,,
+,Aquaholic,07/10/2025,,,,6,6,6,Unscheduled,,,,,,,,,
+,Aquaholic,08/10/2025,,,,10,10,10,Unscheduled,,,,<p><br></p>,,,,,
+,,22/10/2025,,,,,,,Unscheduled,,,,,,,,,
+,Passenger Ferry,05/10/2025,,,Bardolino,,,,Unscheduled,,,,,,,,,
+,Rescue vessel,19/08/2025,,,,,,,Unscheduled,,,,,,,,,
+,,22/10/2025,,,,6,6,6,Unscheduled,,,,,,,,,
+,,22/10/2025,,,,,,,Scheduled,,,,,,,,,
+,,22/10/2025,,,,,,,Scheduled,,,,,,,,,
+,Aquaholic,20/10/2025,,,,6,6,6,Unscheduled,,,,,,,,,
+,Aquaholic,21/10/2025,,,,,,,Unscheduled,,,,,,,,,
+,Boaty McBoat Face,07/10/2025,,,,,,,Unscheduled,,,,,,,,,
+,Garuda Vessel,17/10/2025,,,,,,,Unscheduled,,,,,,,,,
+,Passenger Ferry,05/10/2025,,,,,,,Unscheduled,,,,,,,,,
+,,21/10/2025,,,,,,,Unscheduled,,,,,,,,,
+,Esthon Water Taxi ,21/10/2025,,,,,,,Unscheduled,,,,,,,,,
+,Esthon Recreation,21/10/2025,,,,12,12,12,Unscheduled,,,,,,,,,
+,Garuda Vessel,09/10/2025,,03:58:00,,,,,Unscheduled,,,,,,,,,
+,,22/10/2025,,05:40:00,Deepwater Cove,,,,Scheduled,,06:45:00,Whitesandy,,,,,,
+,Aquaholic,20/10/2025,,05:40:00,Deepwater Cove,,,,Scheduled,,06:45:00,Whitesandy,"Assign vessel to 2 schedules
+You are assigning a vessel to 2 schedules. The same vessel will be assigned to all selected schedules.",,,,,
+,,22/10/2025,,06:55:00,Whitesandy,,,,Scheduled,,08:00:00,Deepwater Cove,,,,,,
+,,22/10/2025,,06:55:00,Whitesandy,,,,Scheduled,,08:00:00,Deepwater Cove,,,,,,
+,,22/10/2025,,06:55:00,Whitesandy,,,,Scheduled,,08:00:00,Deepwater Cove,,,,,,
+,Aquaholic,20/10/2025,,06:55:00,Whitesandy,,,,Scheduled,,08:00:00,Deepwater Cove,"Assign vessel to 2 schedules
+You are assigning a vessel to 2 schedules. The same vessel will be assigned to all selected schedules.",,,,,
+,Aquaholic,10/06/2025,,07:38:00,,,,1,Unscheduled,,16:38:00,,,,14:39:00,1,1,17:39:00
+,Aquaholic,10/06/2025,,07:38:00,,,,1,Unscheduled,,16:38:00,,,,10:47:00,1,1,10:47:00
+,Aquaholic,10/06/2025,,07:38:00,,,,1,Unscheduled,,16:38:00,,,,14:33:00,1,1,14:33:00
+,Aquaholic,10/06/2025,,07:38:00,,,,1,Unscheduled,,16:38:00,,,,15:42:00,1,1,15:42:00
+,Aquaholic,10/06/2025,,07:38:00,,,,1,Unscheduled,,16:38:00,,,,16:57:00,1,1,16:57:00
+,,22/10/2025,,08:40:00,Deepwater Cove,,,,Scheduled,,09:45:00,Whitesandy,,,,,,
+,,22/10/2025,,08:40:00,Deepwater Cove,,,,Scheduled,,09:45:00,Whitesandy,,,,,,
+,Aquaholic,10/06/2025,,09:00:00,,,,1,Unscheduled,,14:00:00,,,,14:02:00,1,1,16:02:00
+,Aquaholic,10/06/2025,,09:00:00,,,,,Unscheduled,,14:00:00,,,,08:54:00,0,0,10:55:00
+,Aquaholic,10/06/2025,,09:40:00,Riva del Garda,,,,Scheduled,,10:50:00,Sirmione,,Bardolino,10:15:00,0,0,10:15:00
+,Aquaholic,10/06/2025,,09:40:00,Riva del Garda,,,,Scheduled,,10:50:00,Sirmione,,Peschiera del Garda,10:25:00,0,0,10:25:00
+,Aquaholic,10/06/2025,,09:40:00,Riva del Garda,,,,Scheduled,,10:50:00,Sirmione,,Bardolino,10:15:00,0,0,10:15:00
+,Aquaholic,10/06/2025,,09:40:00,Riva del Garda,,,,Scheduled,,10:50:00,Sirmione,,Peschiera del Garda,10:25:00,0,0,10:25:00
+,Passenger Ferry,03/07/2025,,09:40:00,Riva del Garda,,,,Scheduled,,10:50:00,Sirmione,,Peschiera del Garda,10:25:00,0,0,10:25:00
+,Passenger Ferry,03/07/2025,,09:40:00,Riva del Garda,,,,Scheduled,,10:50:00,Sirmione,,Bardolino,10:15:00,0,0,10:15:00
+,Passenger Ferry,03/07/2025,,09:40:00,Riva del Garda,,,,Scheduled,,10:50:00,Sirmione,,,19:24:00,0,0,
+,Passenger Ferry,03/07/2025,,09:40:00,Riva del Garda,,,,Scheduled,,10:50:00,Sirmione,,,20:06:00,0,0,20:20:00
+,Aquaholic,04/07/2025,,09:40:00,Riva del Garda,1,2,2,Scheduled,,10:45:00,Sirmione,,Bardolino,10:15:00,0,1,10:15:00
+,Aquaholic,04/07/2025,,09:40:00,Riva del Garda,1,1,1,Scheduled,,10:45:00,Sirmione,,Peschiera del Garda,10:25:00,0,0,10:25:00
+,Aquaholic,04/07/2025,,09:40:00,Riva del Garda,1,2,2,Scheduled,,10:45:00,Sirmione,,Peschiera del Garda,14:29:00,0,1,15:29:00
+,,22/10/2025,,09:40:00,Riva del Garda,,,,Scheduled,,10:50:00,Sirmione,,,,,,
+,,22/10/2025,,09:40:00,Riva del Garda,,,,Scheduled,,10:50:00,Sirmione,,,,,,
+,,22/10/2025,,09:40:00,Riva del Garda,,,,Scheduled,,10:50:00,Sirmione,,,,,,
+,Aquaholic,20/10/2025,,09:40:00,Riva del Garda,,,,Scheduled,,10:50:00,Sirmione,,,,,,
+,Aquaholic,20/10/2025,,09:40:00,Riva del Garda,,,,Scheduled,,10:50:00,Sirmione,,,,,,
+,,22/10/2025,,09:55:00,Whitesandy,,,,Scheduled,,11:00:00,Deepwater Cove,,,,,,
+,,22/10/2025,,09:55:00,Whitesandy,,,,Scheduled,,11:00:00,Deepwater Cove,,,,,,
+,,22/10/2025,,09:55:00,Whitesandy,,,,Scheduled,,11:00:00,Deepwater Cove,,,,,,
+,Broken boat,20/10/2025,,09:55:00,Whitesandy,,,,Scheduled,,11:00:00,Deepwater Cove,,,,,,
+,Aquaholic,10/06/2025,,10:48:00,,,,,Unscheduled,,13:50:00,,,,,,,
+,Aquaholic,10/06/2025,,10:58:00,,1,1,1,Unscheduled,,10:58:00,,,,,,,
+,Aquaholic,10/06/2025,,11:00:00,Sirmione,,,,Scheduled,,12:05:00,Riva del Garda,,Bardolino,11:25:00,0,0,11:25:00
+,Aquaholic,10/06/2025,,11:00:00,Sirmione,,,,Scheduled,,12:05:00,Riva del Garda,,Peschiera del Garda,11:15:00,0,0,11:15:00
+,Aquaholic,10/06/2025,,11:00:00,Sirmione,,,,Scheduled,,12:05:00,Riva del Garda,,Peschiera del Garda,11:15:00,0,0,11:15:00
+,Aquaholic,10/06/2025,,11:00:00,Sirmione,,,,Scheduled,,12:05:00,Riva del Garda,,Bardolino,11:25:00,0,0,11:25:00
+,,22/10/2025,,11:00:00,Sirmione,,,,Scheduled,,12:05:00,Riva del Garda,,,,,,
+,,22/10/2025,,11:00:00,Sirmione,,,,Scheduled,,12:05:00,Riva del Garda,,,,,,
+,,22/10/2025,,11:00:00,Queenstown,,,,Scheduled,,12:30:00,Queenstown,,,,,,
+,Aquaholic,20/10/2025,,11:00:00,Queenstown,,,,Scheduled,,12:30:00,Queenstown,,,,,,
+,Aquaholic,16/09/2025,,11:13:00,Bardolino,5,5,5,Unscheduled,,,Deepwater Cove,<p><br></p>,,,,,
+,Aquaholic,21/08/2025,,11:15:00,Deepwater Cove,,,,Scheduled,,12:20:00,Whitesandy,,Starfish Wharf,11:55:00,0,0,11:55:00
+,Aquaholic,21/08/2025,,11:15:00,Deepwater Cove,,,,Scheduled,,12:20:00,Whitesandy,,Whale Island Wharf,12:00:00,0,0,12:00:00
+,Aquaholic,21/08/2025,,11:15:00,Deepwater Cove,,,,Scheduled,,12:20:00,Whitesandy,,Dolphin Bay,12:05:00,0,0,12:05:00
+,,22/10/2025,,11:15:00,Deepwater Cove,,,,Scheduled,,12:20:00,Whitesandy,,,,,,
+,,22/10/2025,,12:30:00,Whitesandy,,,,Scheduled,,13:35:00,Deepwater Cove,,,,,,
+,Aquaholic,20/10/2025,,12:30:00,Whitesandy,,,,Scheduled,,13:35:00,Deepwater Cove,,,,,,
+,Aquaholic,10/06/2025,,12:50:00,Riva del Garda,,,,Scheduled,,14:00:00,Sirmione,,Bardolino,13:25:00,0,0,13:25:00
+,Aquaholic,10/06/2025,,12:50:00,Riva del Garda,,,,Scheduled,,14:00:00,Sirmione,,Peschiera del Garda,13:35:00,0,0,13:35:00
+,Aquaholic,10/06/2025,,12:50:00,Riva del Garda,,,,Scheduled,,14:00:00,Sirmione,,Bardolino,13:25:00,0,0,13:25:00
+,Aquaholic,10/06/2025,,12:50:00,Riva del Garda,,,,Scheduled,,14:00:00,Sirmione,,Peschiera del Garda,13:35:00,0,0,13:35:00
+,Aquaholic,10/06/2025,,12:50:00,Riva del Garda,,,,Scheduled,,14:00:00,Sirmione,,Bardolino,13:25:00,0,0,13:25:00
+,Aquaholic,10/06/2025,,12:50:00,Riva del Garda,,,,Scheduled,,14:00:00,Sirmione,,Peschiera del Garda,13:35:00,0,0,13:35:00
+,,22/10/2025,,12:50:00,Riva del Garda,,,,Scheduled,,14:00:00,Sirmione,,,,,,
+,,22/10/2025,,12:50:00,Riva del Garda,,,,Scheduled,,14:00:00,Sirmione,,,,,,
+,,22/10/2025,,12:50:00,Riva del Garda,,,,Scheduled,,14:00:00,Sirmione,,,,,,
+,Aquaholic,20/10/2025,,12:50:00,Riva del Garda,,,,Scheduled,,14:00:00,Sirmione,,,,,,
+,Aquaholic,20/10/2025,,12:50:00,Riva del Garda,,,,Scheduled,,14:00:00,Sirmione,,,,,,

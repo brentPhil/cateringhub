@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, Loader2 } from "lucide-react";
+import { CalendarIcon, Loader2, Users, UserCog } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -24,26 +24,29 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { useTeamMembers } from "@/app/(provider)/dashboard/team/hooks/use-team-members";
+import { useWorkerProfiles } from "@/app/(provider)/dashboard/workers/hooks/use-worker-profiles";
 import { useCreateShift } from "@/app/(provider)/dashboard/bookings/hooks/use-shifts";
 
-const assignTeammateSchema = z.object({
-  userId: z.string().min(1, "Please select a team member"),
-  role: z.string().optional(),
-  scheduledStart: z.string().optional(),
-  scheduledEnd: z.string().optional(),
-  notes: z.string().optional(),
-});
+const assignTeammateSchema = z
+  .object({
+    userId: z.string().optional(),
+    workerProfileId: z.string().optional(),
+    role: z.string().optional(),
+    scheduledStart: z.string().optional(),
+    scheduledEnd: z.string().optional(),
+    notes: z.string().optional(),
+  })
+  .refine((data) => data.userId || data.workerProfileId, {
+    message: "Please select a team member or worker",
+    path: ["userId"],
+  });
 
 type AssignTeammateFormData = z.infer<typeof assignTeammateSchema>;
 
@@ -69,16 +72,25 @@ export function AssignTeammateDialog({
   open,
   onOpenChange,
 }: AssignTeammateDialogProps) {
+  const [assigneeType, setAssigneeType] = useState<"team_member" | "worker">(
+    "team_member"
+  );
   const [selectedUserId, setSelectedUserId] = useState<string>("");
+  const [selectedWorkerId, setSelectedWorkerId] = useState<string>("");
 
   const { data: teamMembers = [], isLoading: loadingMembers } =
     useTeamMembers(providerId);
+  const { data: workers = [], isLoading: loadingWorkers } = useWorkerProfiles(
+    providerId,
+    { status: "active" }
+  );
   const createShiftMutation = useCreateShift(bookingId);
 
   const form = useForm<AssignTeammateFormData>({
     resolver: zodResolver(assignTeammateSchema),
     defaultValues: {
       userId: "",
+      workerProfileId: "",
       role: "",
       scheduledStart: "",
       scheduledEnd: "",
@@ -89,7 +101,8 @@ export function AssignTeammateDialog({
   const onSubmit = async (data: AssignTeammateFormData) => {
     createShiftMutation.mutate(
       {
-        userId: data.userId,
+        userId: data.userId || undefined,
+        workerProfileId: data.workerProfileId || undefined,
         role: data.role || undefined,
         scheduledStart: data.scheduledStart || undefined,
         scheduledEnd: data.scheduledEnd || undefined,
@@ -99,6 +112,7 @@ export function AssignTeammateDialog({
         onSuccess: () => {
           form.reset();
           setSelectedUserId("");
+          setSelectedWorkerId("");
           onOpenChange(false);
         },
       }
@@ -109,83 +123,135 @@ export function AssignTeammateDialog({
     if (!newOpen) {
       form.reset();
       setSelectedUserId("");
+      setSelectedWorkerId("");
     }
     onOpenChange(newOpen);
+  };
+
+  const handleTabChange = (value: string) => {
+    setAssigneeType(value as "team_member" | "worker");
+    // Clear the other field when switching tabs
+    if (value === "team_member") {
+      form.setValue("workerProfileId", "");
+      setSelectedWorkerId("");
+    } else {
+      form.setValue("userId", "");
+      setSelectedUserId("");
+    }
   };
 
   // Filter out active members only
   const activeMembers = teamMembers.filter((m) => m.status === "active");
 
-  const selectedMember = activeMembers.find((m) => m.user_id === selectedUserId);
+  // Prepare Combobox options for team members
+  const teamMemberOptions: ComboboxOption[] = activeMembers.map((member) => ({
+    value: member.user_id,
+    label: member.full_name,
+  }));
+
+  // Prepare Combobox options for workers
+  const workerOptions: ComboboxOption[] = workers.map((worker) => ({
+    value: worker.id,
+    label: worker.role ? `${worker.name} (${worker.role})` : worker.name,
+  }));
+
+  const selectedMember = activeMembers.find(
+    (m) => m.user_id === selectedUserId
+  );
+  const selectedWorker = workers.find((w) => w.id === selectedWorkerId);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Assign team member</DialogTitle>
+          <DialogTitle>Assign to shift</DialogTitle>
           <DialogDescription>
-            Assign a team member to this booking and set their shift details.
+            Assign a team member or worker to this booking and set their shift
+            details.
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* Team member selection */}
-            <FormField
-              control={form.control}
-              name="userId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Team member</FormLabel>
-                  <Select
-                    onValueChange={(value) => {
-                      field.onChange(value);
-                      setSelectedUserId(value);
-                    }}
-                    value={field.value}
-                    disabled={loadingMembers}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a team member" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {loadingMembers ? (
-                        <div className="flex items-center justify-center py-4">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        </div>
-                      ) : activeMembers.length === 0 ? (
-                        <div className="py-4 text-center text-sm text-muted-foreground">
-                          No active team members found
-                        </div>
-                      ) : (
-                        activeMembers.map((member) => (
-                          <SelectItem key={member.user_id} value={member.user_id}>
-                            <div className="flex items-center gap-2">
-                              <Avatar className="h-6 w-6">
-                                <AvatarImage
-                                  src={member.avatar_url}
-                                  alt={member.full_name}
-                                />
-                                <AvatarFallback className="text-xs">
-                                  {getInitials(member.full_name)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span>{member.full_name}</span>
-                            </div>
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <FormDescription>
-                    Select the team member to assign to this booking
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Assignee selection with tabs */}
+            <Tabs value={assigneeType} onValueChange={handleTabChange}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="team_member">
+                  <Users className="mr-2 h-4 w-4" />
+                  Team members
+                </TabsTrigger>
+                <TabsTrigger value="worker">
+                  <UserCog className="mr-2 h-4 w-4" />
+                  Workers
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="team_member" className="mt-4">
+                <FormField
+                  control={form.control}
+                  name="userId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Team member</FormLabel>
+                      <Combobox
+                        options={teamMemberOptions}
+                        value={field.value || ""}
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          setSelectedUserId(value);
+                        }}
+                        placeholder={
+                          loadingMembers
+                            ? "Loading..."
+                            : activeMembers.length === 0
+                              ? "No active team members found"
+                              : "Select a team member"
+                        }
+                        disabled={loadingMembers}
+                        emptyMessage="No active team members found"
+                      />
+                      <FormDescription>
+                        Select a team member with login access
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </TabsContent>
+
+              <TabsContent value="worker" className="mt-4">
+                <FormField
+                  control={form.control}
+                  name="workerProfileId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Worker</FormLabel>
+                      <Combobox
+                        options={workerOptions}
+                        value={field.value || ""}
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          setSelectedWorkerId(value);
+                        }}
+                        placeholder={
+                          loadingWorkers
+                            ? "Loading..."
+                            : workers.length === 0
+                              ? "No active workers found"
+                              : "Select a worker"
+                        }
+                        disabled={loadingWorkers}
+                        emptyMessage="No active workers found"
+                      />
+                      <FormDescription>
+                        Select a worker profile (no login access)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </TabsContent>
+            </Tabs>
 
             {/* Role */}
             <FormField
@@ -277,7 +343,7 @@ export function AssignTeammateDialog({
                 {createShiftMutation.isPending && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                Assign team member
+                Assign to shift
               </Button>
             </DialogFooter>
           </form>
@@ -286,4 +352,3 @@ export function AssignTeammateDialog({
     </Dialog>
   );
 }
-

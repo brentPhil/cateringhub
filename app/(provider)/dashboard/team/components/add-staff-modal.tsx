@@ -18,13 +18,7 @@ import {
   FieldDescription,
   FieldError,
 } from "@/components/ui/field";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -84,6 +78,14 @@ export function AddStaffModal({
       setIsSubmitting(false);
     }
   };
+
+  // Role options for Combobox
+  const roleOptions: ComboboxOption[] = [
+    { value: "admin", label: "Admin" },
+    { value: "manager", label: "Manager" },
+    { value: "staff", label: "Staff" },
+    { value: "viewer", label: "Viewer" },
+  ];
 
   const selectedRole = form.watch("role");
   const permissions = selectedRole
@@ -177,21 +179,13 @@ export function AddStaffModal({
               render={({ field, fieldState }) => (
                 <Field data-invalid={!!fieldState.error}>
                   <FieldLabel htmlFor="role">Role</FieldLabel>
-                  <Select
+                  <Combobox
+                    options={roleOptions}
+                    value={field.value}
                     onValueChange={field.onChange}
-                    defaultValue={field.value}
+                    placeholder="Select a role"
                     disabled={isSubmitting || isLoading || isLimitReached}
-                  >
-                    <SelectTrigger id="role" aria-invalid={!!fieldState.error}>
-                      <SelectValue placeholder="Select a role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="manager">Manager</SelectItem>
-                      <SelectItem value="staff">Staff</SelectItem>
-                      <SelectItem value="viewer">Viewer</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  />
                   <FieldDescription>{roleDescription}</FieldDescription>
                   {fieldState.error && (
                     <FieldError>{fieldState.error.message}</FieldError>

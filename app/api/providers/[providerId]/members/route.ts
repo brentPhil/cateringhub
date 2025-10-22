@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthenticatedUser } from "@/lib/api/auth";
 import { APIErrors, handleAPIError } from "@/lib/api/errors";
+import type { UserMetadata } from "@/types/api.types";
 
 /**
  * GET /api/providers/[providerId]/members
@@ -47,7 +48,7 @@ export async function GET(
         // Query auth.users via the get_user_metadata function
         const { data: authUser, error: userError } = await supabase
           .rpc("get_user_metadata", { user_id: member.user_id })
-          .single();
+          .single<UserMetadata>();
 
         if (userError || !authUser) {
           console.error("Error fetching user metadata:", userError);

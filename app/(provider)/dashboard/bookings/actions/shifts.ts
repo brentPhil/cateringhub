@@ -12,11 +12,12 @@ interface ActionResult<T = unknown> {
 
 /**
  * Create a new shift assignment for a booking
- * Assigns a team member to a booking with optional scheduled times
+ * Supports assigning both team members (userId) and worker profiles (workerProfileId)
  */
 export async function createShift(params: {
   bookingId: string;
-  userId: string;
+  userId?: string;
+  workerProfileId?: string;
   role?: string;
   scheduledStart?: string;
   scheduledEnd?: string;
@@ -26,6 +27,14 @@ export async function createShift(params: {
     console.log("[createShift] Starting with params:", params);
 
     const supabase = await createClient();
+
+    // Validate that exactly one of userId or workerProfileId is provided
+    if ((!params.userId && !params.workerProfileId) || (params.userId && params.workerProfileId)) {
+      return {
+        success: false,
+        error: "Must provide either userId or workerProfileId, but not both",
+      };
+    }
 
     // Get authenticated user
     const {
@@ -70,7 +79,7 @@ export async function createShift(params: {
     if (roleHierarchy[membership.role] > roleHierarchy.manager) {
       return {
         success: false,
-        error: "Only owners, admins, and managers can assign team members to bookings",
+        error: "Only owners, admins, and managers can assign to bookings",
       };
     }
 
@@ -89,42 +98,78 @@ export async function createShift(params: {
       };
     }
 
-    // Verify the assigned user is a member of the same provider
-    const { data: assignedMember, error: assignedMemberError } = await supabase
-      .from("provider_members")
-      .select("id, user_id")
-      .eq("user_id", params.userId)
-      .eq("provider_id", membership.provider_id)
-      .eq("status", "active")
-      .single();
+    // If assigning a team member, verify they're part of the provider
+    if (params.userId) {
+      const { data: assignedMember, error: assignedMemberError } = await supabase
+        .from("provider_members")
+        .select("id, user_id")
+        .eq("user_id", params.userId)
+        .eq("provider_id", membership.provider_id)
+        .eq("status", "active")
+        .single();
 
-    if (assignedMemberError || !assignedMember) {
-      return {
-        success: false,
-        error: "The assigned team member is not part of your provider",
-      };
+      if (assignedMemberError || !assignedMember) {
+        return {
+          success: false,
+          error: "The assigned team member is not part of your provider",
+        };
+      }
+
+      // Check if user already has a shift for this booking
+      const { data: existingShift } = await supabase
+        .from("shifts")
+        .select("id")
+        .eq("booking_id", params.bookingId)
+        .eq("user_id", params.userId)
+        .single();
+
+      if (existingShift) {
+        console.log("[createShift] Duplicate shift found:", existingShift);
+        return {
+          success: false,
+          error: "This team member is already assigned to this booking",
+        };
+      }
     }
 
-    // Check if user already has a shift for this booking
-    const { data: existingShift } = await supabase
-      .from("shifts")
-      .select("id")
-      .eq("booking_id", params.bookingId)
-      .eq("user_id", params.userId)
-      .single();
+    // If assigning a worker profile, verify it belongs to the provider
+    if (params.workerProfileId) {
+      const { data: workerProfile, error: workerError } = await supabase
+        .from("worker_profiles")
+        .select("id, provider_id")
+        .eq("id", params.workerProfileId)
+        .eq("provider_id", membership.provider_id)
+        .single();
 
-    if (existingShift) {
-      console.log("[createShift] Duplicate shift found:", existingShift);
-      return {
-        success: false,
-        error: "This team member is already assigned to this booking",
-      };
+      if (workerError || !workerProfile) {
+        return {
+          success: false,
+          error: "The worker profile is not part of your provider",
+        };
+      }
+
+      // Check if worker already has a shift for this booking
+      const { data: existingShift } = await supabase
+        .from("shifts")
+        .select("id")
+        .eq("booking_id", params.bookingId)
+        .eq("worker_profile_id", params.workerProfileId)
+        .single();
+
+      if (existingShift) {
+        console.log("[createShift] Duplicate shift found:", existingShift);
+        return {
+          success: false,
+          error: "This worker is already assigned to this booking",
+        };
+      }
     }
 
     // Create the shift
     const shiftData: TablesInsert<"shifts"> = {
       booking_id: params.bookingId,
-      user_id: params.userId,
+      user_id: params.userId || null,
+      worker_profile_id: params.workerProfileId || null,
       role: params.role || null,
       scheduled_start: params.scheduledStart || null,
       scheduled_end: params.scheduledEnd || null,

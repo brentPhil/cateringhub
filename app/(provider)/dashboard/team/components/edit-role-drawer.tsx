@@ -21,13 +21,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Shield } from "lucide-react";
@@ -98,6 +92,12 @@ export function EditRoleDrawer({
     }
   };
 
+  // Role options for Combobox
+  const roleOptions: ComboboxOption[] = getAvailableRoles().map((role) => ({
+    value: role,
+    label: formatRoleDisplay(role),
+  }));
+
   const selectedRole = form.watch("role");
   const permissions = selectedRole ? getRolePermissions(selectedRole) : [];
 
@@ -137,24 +137,13 @@ export function EditRoleDrawer({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Role</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
+                  <Combobox
+                    options={roleOptions}
                     value={field.value}
+                    onValueChange={field.onChange}
+                    placeholder="Select a role"
                     disabled={isSubmitting || isLoading}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a role" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {getAvailableRoles().map((role) => (
-                        <SelectItem key={role} value={role}>
-                          {formatRoleDisplay(role)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  />
                   <FormDescription>
                     {selectedRole && getRoleDescription(selectedRole)}
                   </FormDescription>

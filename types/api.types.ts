@@ -184,6 +184,17 @@ export interface RPCResponse<T extends RPCFunction> {
   error: SupabaseError | null
 }
 
+// Specific RPC function return types
+/**
+ * Return type for the get_user_metadata RPC function
+ * This function retrieves user metadata from auth.users table
+ */
+export interface UserMetadata {
+  id: string
+  email: string | null
+  raw_user_meta_data: Record<string, unknown>
+}
+
 // Webhook types
 export interface WebhookPayload {
   type: 'INSERT' | 'UPDATE' | 'DELETE'

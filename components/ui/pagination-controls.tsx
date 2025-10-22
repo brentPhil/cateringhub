@@ -1,12 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Typography } from "@/components/ui/typography";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -35,10 +29,18 @@ export function PaginationControls({
   showInfo = true,
   disabled = false,
   className,
-  pageSizeOptions = [5, 10, 20, 50]
+  pageSizeOptions = [5, 10, 20, 50],
 }: PaginationControlsProps) {
   const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const endItem = Math.min(currentPage * pageSize, totalItems);
+
+  // Prepare Combobox options for page size
+  const pageSizeComboboxOptions: ComboboxOption[] = pageSizeOptions.map(
+    (size) => ({
+      value: size.toString(),
+      label: size.toString(),
+    })
+  );
 
   const handlePreviousPage = () => {
     if (currentPage > 1) {
@@ -73,28 +75,19 @@ export function PaginationControls({
           <Typography variant="smallText" className="text-muted-foreground">
             Showing {startItem} to {endItem} of {totalItems} results
           </Typography>
-          
+
           {showPageSizeSelector && onPageSizeChange && (
             <div className="flex items-center gap-2">
               <Typography variant="smallText" className="text-muted-foreground">
                 Show
               </Typography>
-              <Select
+              <Combobox
+                options={pageSizeComboboxOptions}
                 value={pageSize.toString()}
                 onValueChange={handlePageSizeChange}
                 disabled={disabled}
-              >
-                <SelectTrigger className="w-20">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {pageSizeOptions.map((size) => (
-                    <SelectItem key={size} value={size.toString()}>
-                      {size}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                className="w-20"
+              />
               <Typography variant="smallText" className="text-muted-foreground">
                 per page
               </Typography>
@@ -114,11 +107,11 @@ export function PaginationControls({
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        
+
         <Typography variant="smallText" className="px-2">
           Page {currentPage} of {totalPages || 1}
         </Typography>
-        
+
         <Button
           variant="outline"
           size="icon"
@@ -146,7 +139,7 @@ export function SimplePagination({
   totalPages,
   onPageChange,
   disabled = false,
-  className
+  className,
 }: SimplePaginationProps) {
   const handlePreviousPage = () => {
     if (currentPage > 1) {
@@ -171,11 +164,11 @@ export function SimplePagination({
       >
         <ChevronLeft className="h-4 w-4" />
       </Button>
-      
+
       <Typography variant="smallText" className="px-4">
         Page {currentPage} of {totalPages || 1}
       </Typography>
-      
+
       <Button
         variant="outline"
         size="icon"

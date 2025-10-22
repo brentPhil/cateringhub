@@ -4,22 +4,11 @@ import { useCurrentMembership } from "@/hooks/use-membership";
 import { useBookings } from "./hooks/use-bookings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Badge } from "@/components/ui/badge";
 import { BookingsTable } from "./components/bookings-table";
-import { Calendar, Search, Filter, UserCheck } from "lucide-react";
-import {
-  parseAsBoolean,
-  parseAsInteger,
-  parseAsString,
-  useQueryStates,
-} from "nuqs";
+import { Calendar, Search, UserCheck } from "lucide-react";
+import { parseAsBoolean, parseAsString, useQueryStates } from "nuqs";
 
 export default function BookingsPage() {
   // Get current user's membership
@@ -32,10 +21,6 @@ export default function BookingsPage() {
     search: parseAsString.withDefault(""),
     status: parseAsString.withDefault(""),
     assigned_to_me: parseAsBoolean.withDefault(false),
-    page: parseAsInteger.withDefault(1),
-    page_size: parseAsInteger.withDefault(10),
-    sort_by: parseAsString.withDefault("event_date"),
-    sort_order: parseAsString.withDefault("asc"),
   });
 
   // Fetch bookings with role-based filtering
@@ -46,36 +31,29 @@ export default function BookingsPage() {
 
   const isLoading = membershipLoading || bookingsLoading;
   const bookings = bookingsData?.data || [];
-  const pagination = bookingsData?.pagination;
   const canEdit = bookingsData?.canEditBookings || false;
+
+  // Status filter options
+  const statusOptions: ComboboxOption[] = [
+    { value: "all", label: "All statuses" },
+    { value: "pending", label: "Pending" },
+    { value: "confirmed", label: "Confirmed" },
+    { value: "in_progress", label: "In progress" },
+    { value: "completed", label: "Completed" },
+    { value: "cancelled", label: "Cancelled" },
+  ];
 
   // Handlers
   const handleSearch = (value: string) => {
-    setFilters({ search: value, page: 1 });
+    setFilters({ search: value });
   };
 
   const handleStatusFilter = (value: string) => {
-    setFilters({ status: value === "all" ? "" : value, page: 1 });
+    setFilters({ status: value === "all" ? "" : value });
   };
 
   const handleAssignedToMeToggle = () => {
-    setFilters({ assigned_to_me: !filters.assigned_to_me, page: 1 });
-  };
-
-  const handlePageChange = (newPage: number) => {
-    setFilters({ page: newPage });
-  };
-
-  const handlePageSizeChange = (newPageSize: number) => {
-    setFilters({ page_size: newPageSize, page: 1 });
-  };
-
-  const handleSort = (field: string) => {
-    const newOrder =
-      filters.sort_by === field && filters.sort_order === "asc"
-        ? "desc"
-        : "asc";
-    setFilters({ sort_by: field, sort_order: newOrder });
+    setFilters({ assigned_to_me: !filters.assigned_to_me });
   };
 
   // Show message if user doesn't have a provider membership
@@ -135,23 +113,13 @@ export default function BookingsPage() {
         </div>
 
         {/* Status filter */}
-        <Select
+        <Combobox
+          options={statusOptions}
           value={filters.status || "all"}
           onValueChange={handleStatusFilter}
-        >
-          <SelectTrigger className="w-full sm:w-[180px]">
-            <Filter className="mr-2 h-4 w-4" />
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="confirmed">Confirmed</SelectItem>
-            <SelectItem value="in_progress">In progress</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
-          </SelectContent>
-        </Select>
+          placeholder="Filter by status"
+          className="w-full sm:w-[180px]"
+        />
 
         {/* Assigned to me filter */}
         <Button
@@ -171,21 +139,7 @@ export default function BookingsPage() {
         canEdit={canEdit}
         currentUserId={membership?.userId}
         providerId={providerId}
-        pagination={pagination}
-        onSort={handleSort}
-        onPageChange={handlePageChange}
-        onPageSizeChange={handlePageSizeChange}
       />
-
-      {/* Stats summary */}
-      {pagination && !isLoading && (
-        <div className="text-sm text-muted-foreground">
-          Showing {bookings.length} of {pagination.totalItems} bookings
-          {filters.assigned_to_me && " assigned to you"}
-          {filters.status && ` with status "${filters.status}"`}
-          {filters.search && ` matching "${filters.search}"`}
-        </div>
-      )}
     </div>
   );
 }

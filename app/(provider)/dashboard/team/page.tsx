@@ -3,13 +3,7 @@
 import { useState, useMemo } from "react";
 import { useQueryStates, parseAsInteger, parseAsString } from "nuqs";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { UserPlus } from "lucide-react";
 import { TeamMembersTable } from "./components/team-members-table";
 import { InviteMemberModal } from "./components/invite-member-modal";
@@ -172,6 +166,23 @@ export default function TeamPage() {
     toast.info("Upgrade feature coming soon!");
   };
 
+  // Filter options for Combobox
+  const roleOptions: ComboboxOption[] = [
+    { value: "all", label: "All roles" },
+    { value: "owner", label: "Owner" },
+    { value: "admin", label: "Admin" },
+    { value: "manager", label: "Manager" },
+    { value: "staff", label: "Staff" },
+    { value: "viewer", label: "Viewer" },
+  ];
+
+  const statusOptions: ComboboxOption[] = [
+    { value: "all", label: "All statuses" },
+    { value: "active", label: "Active" },
+    { value: "pending", label: "Pending" },
+    { value: "suspended", label: "Suspended" },
+  ];
+
   // Check if user can invite (admin or owner)
   const canInvite = currentMembership?.capabilities.canInviteMembers || false;
 
@@ -239,42 +250,26 @@ export default function TeamPage() {
       {/* Filters */}
       <div className="flex items-center gap-4">
         <div className="flex-1">
-          <Select
+          <Combobox
+            options={roleOptions}
             value={filters.role || "all"}
             onValueChange={(value) =>
               setFilters({ role: value === "all" ? "" : value, page: 1 })
             }
-          >
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Filter by role" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All roles</SelectItem>
-              <SelectItem value="owner">Owner</SelectItem>
-              <SelectItem value="admin">Admin</SelectItem>
-              <SelectItem value="manager">Manager</SelectItem>
-              <SelectItem value="staff">Staff</SelectItem>
-              <SelectItem value="viewer">Viewer</SelectItem>
-            </SelectContent>
-          </Select>
+            placeholder="Filter by role"
+            className="w-[200px]"
+          />
         </div>
         <div>
-          <Select
+          <Combobox
+            options={statusOptions}
             value={filters.status || "all"}
             onValueChange={(value) =>
               setFilters({ status: value === "all" ? "" : value, page: 1 })
             }
-          >
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="suspended">Suspended</SelectItem>
-            </SelectContent>
-          </Select>
+            placeholder="Filter by status"
+            className="w-[200px]"
+          />
         </div>
       </div>
 

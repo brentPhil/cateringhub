@@ -11,13 +11,7 @@ import {
 } from "@/lib/utils/query-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import {
   Card,
   CardContent,
@@ -187,6 +181,13 @@ export default function ProductsPage() {
     if (IS_DEV) console.log("Add product clicked");
   }, []);
 
+  // Sort options for Combobox
+  const sortOptions: ComboboxOption[] = [
+    { value: "name", label: "Name" },
+    { value: "price", label: "Price" },
+    { value: "created_at", label: "Date added" },
+  ];
+
   // Convert state values to proper types for rendering
   const pageNum = typeof page === "number" ? page : 1;
   const pageSizeNum = typeof pageSize === "number" ? pageSize : 10;
@@ -248,16 +249,13 @@ export default function ProductsPage() {
           </div>
 
           {/* Sort selector */}
-          <Select value={sortByStr} onValueChange={(value) => setSortBy(value)}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="name">Name</SelectItem>
-              <SelectItem value="price">Price</SelectItem>
-              <SelectItem value="created_at">Date Added</SelectItem>
-            </SelectContent>
-          </Select>
+          <Combobox
+            options={sortOptions}
+            value={sortByStr}
+            onValueChange={(value) => setSortBy(value)}
+            placeholder="Sort by"
+            className="w-[180px]"
+          />
 
           {/* Sort order toggle */}
           <Button

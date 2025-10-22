@@ -21,13 +21,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -85,6 +79,12 @@ export function InviteMemberModal({
     }
   };
 
+  // Role options for Combobox
+  const roleOptions: ComboboxOption[] = getAvailableRoles().map((role) => ({
+    value: role,
+    label: formatRoleDisplay(role),
+  }));
+
   const selectedRole = form.watch("role");
 
   return (
@@ -133,24 +133,13 @@ export function InviteMemberModal({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Role</FormLabel>
-                  <Select
+                  <Combobox
+                    options={roleOptions}
+                    value={field.value}
                     onValueChange={field.onChange}
-                    defaultValue={field.value}
+                    placeholder="Select a role"
                     disabled={isSubmitting || isLoading}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a role" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {getAvailableRoles().map((role) => (
-                        <SelectItem key={role} value={role}>
-                          {formatRoleDisplay(role)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  />
                   <FormDescription>
                     {selectedRole && getRoleDescription(selectedRole)}
                   </FormDescription>

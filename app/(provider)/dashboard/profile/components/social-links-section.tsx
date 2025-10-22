@@ -4,13 +4,7 @@ import * as React from "react";
 import { Facebook, Instagram, Globe, Music, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { LucideIcon } from "lucide-react";
@@ -68,6 +62,14 @@ export function SocialLinksSection({
 }: SocialLinksSectionProps) {
   const availablePlatforms = getAvailablePlatforms(socialLinks);
 
+  // Convert available platforms to ComboboxOption format
+  const platformOptions: ComboboxOption[] = availablePlatforms.map(
+    (platform) => ({
+      value: platform.value,
+      label: platform.label,
+    })
+  );
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -97,24 +99,13 @@ export function SocialLinksSection({
 
       <div className="space-y-3">
         {availablePlatforms.length > 0 && (
-          <Select onValueChange={(value) => onAddLink(value as SocialPlatform)}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Add social link" />
-            </SelectTrigger>
-            <SelectContent>
-              {availablePlatforms.map((platform) => {
-                const Icon = platform.icon;
-                return (
-                  <SelectItem key={platform.value} value={platform.value}>
-                    <div className="flex items-center gap-2">
-                      <Icon className="w-4 h-4" />
-                      {platform.label}
-                    </div>
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
+          <Combobox
+            options={platformOptions}
+            value=""
+            onValueChange={(value) => onAddLink(value as SocialPlatform)}
+            placeholder="Add social link"
+            className="w-full"
+          />
         )}
 
         {socialLinks.length > 0 && (

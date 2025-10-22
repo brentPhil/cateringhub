@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { UserPlus, Clock, AlertCircle } from "lucide-react";
+import { UserPlus, Clock, AlertCircle, Phone, UserCog } from "lucide-react";
 import { ShiftActions } from "./shift-actions";
 import type { ShiftWithUser } from "@/app/(provider)/dashboard/bookings/hooks/use-shifts";
 
@@ -163,24 +163,50 @@ export function ShiftList({
           <TableBody>
             {shifts.map((shift) => (
               <TableRow key={shift.id}>
-                {/* Team member */}
+                {/* Team member or Worker */}
                 <TableCell>
                   <div className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage
-                        src={shift.avatar_url}
-                        alt={shift.full_name}
-                      />
-                      <AvatarFallback className="text-xs">
-                        {getInitials(shift.full_name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div className="font-medium">{shift.full_name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {shift.email}
-                      </div>
-                    </div>
+                    {shift.assignee_type === "team_member" ? (
+                      <>
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage
+                            src={shift.avatar_url}
+                            alt={shift.full_name}
+                          />
+                          <AvatarFallback className="text-xs">
+                            {getInitials(shift.full_name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="font-medium">{shift.full_name}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {shift.email}
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+                          <UserCog className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">
+                              {shift.full_name}
+                            </span>
+                            <Badge variant="outline" className="text-xs">
+                              Worker
+                            </Badge>
+                          </div>
+                          {shift.worker_profile?.phone && (
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <Phone className="h-3 w-3" />
+                              {shift.worker_profile.phone}
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </TableCell>
 

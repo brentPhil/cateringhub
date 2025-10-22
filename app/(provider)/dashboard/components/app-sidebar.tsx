@@ -70,6 +70,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       description: "Manage your team members",
     },
     {
+      name: "Workers",
+      href: "/dashboard/workers",
+      icon: Users,
+      description: "Manage worker profiles",
+    },
+    {
       name: "Users",
       href: "/dashboard/users",
       icon: Users,
