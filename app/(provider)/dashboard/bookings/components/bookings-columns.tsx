@@ -22,6 +22,7 @@ import {
   ChevronRight,
   Users,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import type { Database } from "@/database.types";
 
 type Booking = Database["public"]["Tables"]["bookings"]["Row"];
@@ -66,7 +67,7 @@ export const createBookingsColumns = (
     cell: ({ row }) => {
       const booking = row.original;
       const isExpanded = context.isExpanded(booking.id);
-      
+
       return (
         <Button
           variant="ghost"
@@ -207,7 +208,9 @@ export const createBookingsColumns = (
       return booking.assigned_to ? (
         <Badge
           variant={
-            booking.assigned_to === context.currentUserId ? "default" : "outline"
+            booking.assigned_to === context.currentUserId
+              ? "default"
+              : "outline"
           }
           className="capitalize"
         >
@@ -225,6 +228,7 @@ export const createBookingsColumns = (
     cell: ({ row }) => {
       const booking = row.original;
       const isExpanded = context.isExpanded(booking.id);
+      const router = useRouter();
 
       return (
         <div className="text-right">
@@ -237,11 +241,15 @@ export const createBookingsColumns = (
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => context.onToggleExpand(booking.id)}>
+              <DropdownMenuItem
+                onClick={() => context.onToggleExpand(booking.id)}
+              >
                 <Users className="mr-2 h-4 w-4" />
                 {isExpanded ? "Hide" : "View"} team
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => router.push(`/dashboard/bookings/${booking.id}`)}
+              >
                 <Eye className="mr-2 h-4 w-4" />
                 View details
               </DropdownMenuItem>
@@ -267,4 +275,3 @@ export const createBookingsColumns = (
     enableHiding: false,
   },
 ];
-

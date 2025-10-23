@@ -1,49 +1,17 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown } from "lucide-react";
-import type { Database } from "@/database.types";
-
-// Define types from database
-type AppRole = Database["public"]["Enums"]["app_role"];
-type ProviderRoleType = Database["public"]["Enums"]["provider_role_type"];
 
 // Define types for our data
-type UserRole = {
-  role: AppRole;
-  provider_role?: ProviderRoleType | null;
-};
-
-export type UserWithRoles = {
+export type UserProfile = {
   id: string;
   full_name: string | null;
   updated_at: string | null;
-  user_roles?: UserRole[];
 };
 
-// Helper function to format role display
-const formatRoleDisplay = (userRole: UserRole) => {
-  if (userRole.role === "catering_provider" && userRole.provider_role) {
-    return `Catering Provider (${userRole.provider_role})`;
-  }
-  return userRole.role.charAt(0).toUpperCase() + userRole.role.slice(1);
-};
-
-// Helper function to get role variant for Badge
-const getRoleVariant = (
-  userRole: UserRole
-): "default" | "secondary" | "destructive" | "outline" => {
-  if (userRole.role === "admin") {
-    return "default";
-  } else if (userRole.role === "catering_provider") {
-    return "secondary";
-  }
-  return "outline";
-};
-
-export const usersColumns: ColumnDef<UserWithRoles>[] = [
+export const usersColumns: ColumnDef<UserProfile>[] = [
   {
     accessorKey: "full_name",
     header: ({ column }) => {
@@ -70,20 +38,6 @@ export const usersColumns: ColumnDef<UserWithRoles>[] = [
     header: "ID",
     cell: ({ row }) => {
       return <span className="font-mono text-xs">{row.original.id}</span>;
-    },
-  },
-  {
-    accessorKey: "user_roles",
-    header: "Role",
-    cell: ({ row }) => {
-      const userRole = row.original.user_roles?.[0];
-      return userRole ? (
-        <Badge variant={getRoleVariant(userRole)}>
-          {formatRoleDisplay(userRole)}
-        </Badge>
-      ) : (
-        <Badge variant="outline">User</Badge>
-      );
     },
   },
   {

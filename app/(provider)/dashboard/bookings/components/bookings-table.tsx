@@ -76,6 +76,13 @@ export function BookingsTable({
     string | null
   >(null);
 
+  const [localBookings, setLocalBookings] = React.useState<Booking[]>(bookings);
+
+  // Update local bookings when prop changes
+  React.useEffect(() => {
+    setLocalBookings(bookings);
+  }, [bookings]);
+
   const handleToggleExpand = (bookingId: string) => {
     setExpandedBookingIds((prev) => {
       const newSet = new Set(prev);
@@ -89,6 +96,17 @@ export function BookingsTable({
   };
 
   const isExpanded = (bookingId: string) => expandedBookingIds.has(bookingId);
+
+  // Handle row reordering
+  const handleRowReorder = (startIndex: number, endIndex: number) => {
+    const reordered = [...localBookings];
+    const [removed] = reordered.splice(startIndex, 1);
+    reordered.splice(endIndex, 0, removed);
+
+    setLocalBookings(reordered);
+    // Here you could persist the new order to the database if needed
+    // For example: await updateBookingsOrder(reordered.map(b => b.id));
+  };
 
   const columns = React.useMemo(
     () =>
@@ -140,7 +158,7 @@ export function BookingsTable({
     <>
       <DataTable
         columns={columns}
-        data={bookings}
+        data={localBookings}
         searchKey="customer_name"
         searchPlaceholder="Filter by customer name..."
         isRowExpanded={(booking: Booking) => isExpanded(booking.id)}
@@ -152,6 +170,9 @@ export function BookingsTable({
             onAssignClick={() => setAssignDialogBookingId(booking.id)}
           />
         )}
+        enableRowDragging={canEdit}
+        onRowReorder={handleRowReorder}
+        getRowId={(booking: Booking) => booking.id}
       />
 
       {/* Assign teammate dialog */}

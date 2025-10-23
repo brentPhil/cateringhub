@@ -3,7 +3,6 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import type { AppRole, ProviderRoleType } from '@/types'
 import { IS_DEV } from '@/lib/constants'
 
 export async function login(formData: FormData) {
@@ -90,44 +89,6 @@ export async function signout() {
 
 
 
-export async function getUserRole(): Promise<{
-  role: AppRole;
-  provider_role: ProviderRoleType | null;
-} | null> {
-  const supabase = await createClient()
-
-  try {
-    const { data: { session }, error } = await supabase.auth.getSession()
-
-    if (error || !session) {
-      if (IS_DEV) console.log("No session available:", error?.message || "Session is null")
-      return null
-    }
-
-    // Get the JWT and decode it following Supabase RBAC patterns
-    const token = session.access_token
-    const payload = token.split('.')[1]
-
-    if (!payload) {
-      return null
-    }
-
-    const decoded = JSON.parse(atob(payload)) as Record<string, unknown>
-    const role = (decoded.user_role as AppRole) || 'user'
-    const provider_role = (decoded.provider_role as ProviderRoleType) || null
-
-    return {
-      role,
-      provider_role,
-    }
-  } catch (error) {
-    if (IS_DEV) console.log("Error getting user role:", error)
-    return null
-  }
-}
-
-
-
 export async function refreshSession() {
   const supabase = await createClient()
 
@@ -144,37 +105,6 @@ export async function refreshSession() {
     if (IS_DEV) console.error("Error refreshing session:", error)
     throw error
   }
-}
-
-// Role-based helper functions
-export async function isAdmin(): Promise<boolean> {
-  const userRole = await getUserRole()
-  return userRole?.role === 'admin'
-}
-
-export async function isCateringProvider(): Promise<boolean> {
-  const userRole = await getUserRole()
-  return userRole?.role === 'catering_provider'
-}
-
-export async function isProviderOwner(): Promise<boolean> {
-  const userRole = await getUserRole()
-  return userRole?.role === 'catering_provider' && userRole?.provider_role === 'owner'
-}
-
-export async function isProviderStaff(): Promise<boolean> {
-  const userRole = await getUserRole()
-  return userRole?.role === 'catering_provider' && userRole?.provider_role === 'staff'
-}
-
-export async function hasRole(role: AppRole): Promise<boolean> {
-  const userRole = await getUserRole()
-  return userRole?.role === role
-}
-
-export async function hasProviderRole(providerRole: ProviderRoleType): Promise<boolean> {
-  const userRole = await getUserRole()
-  return userRole?.role === 'catering_provider' && userRole?.provider_role === providerRole
 }
 
 

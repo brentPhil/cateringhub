@@ -1,65 +1,17 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useUsers, useRefreshSession, useAuthInfo } from "@/hooks/use-auth";
+import { useUsers, useAuthInfo } from "@/hooks/use-auth";
 import { Typography } from "@/components/ui/typography";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Loader2, AlertCircle, Users, RefreshCw, Bug } from "lucide-react";
-import { useEffect, useCallback } from "react";
-import {
-  debugJwtToken,
-  forceJwtRefresh,
-  testSupabaseConnection,
-} from "@/app/auth/actions";
-import { IS_DEV } from "@/lib/constants";
+import { Loader2, AlertCircle, Users } from "lucide-react";
 import { DataTable } from "@/components/ui/data-table";
 import { usersColumns } from "./users-columns";
 
 export default function UsersPage() {
   const router = useRouter();
-  const {
-    user,
-    role: userRole,
-    isAdmin,
-    isLoading: authLoading,
-    error: authError,
-  } = useAuthInfo();
-  const refreshSession = useRefreshSession();
+  const { user, isLoading: authLoading } = useAuthInfo();
   const { data: users = [], isLoading, error } = useUsers();
-  const showSessionRefresh =
-    !authLoading &&
-    user &&
-    userRole === "admin" &&
-    isAdmin === true &&
-    (error?.message?.includes("403") ||
-      (error as { code?: string })?.code === "42501" ||
-      error?.message?.toLowerCase().includes("permission denied"));
-
-  const handleDebugJwt = useCallback(async () => {
-    if (IS_DEV) console.log("🔍 Debug JWT Token clicked");
-    await debugJwtToken();
-  }, []);
-
-  const handleForceRefresh = useCallback(async () => {
-    if (IS_DEV) console.log("🔄 Force JWT Refresh clicked");
-    const success = await forceJwtRefresh();
-    if (success) {
-      window.location.reload();
-    }
-  }, []);
-
-  const handleTestConnection = useCallback(async () => {
-    if (IS_DEV) console.log("🧪 Test Connection clicked");
-    await testSupabaseConnection();
-  }, []);
-
-  // Redirect if user doesn't have admin role (after loading is complete)
-  useEffect(() => {
-    if (!authLoading && user && isAdmin === false) {
-      router.push("/dashboard");
-    }
-  }, [authLoading, user, isAdmin, router]);
 
   // Show loading state while checking authentication
   if (authLoading) {
@@ -77,95 +29,25 @@ export default function UsersPage() {
     );
   }
 
-  // Show access denied if user doesn't have admin role
-  if (user && isAdmin === false) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-2">
-          <Users className="h-6 w-6" />
-          <Typography variant="h3">Users Management</Typography>
-        </div>
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Access Denied</AlertTitle>
-          <AlertDescription>
-            You don&apos;t have admin access to view users. Please contact an
-            administrator.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
+  // Redirect if not authenticated
+  if (!user) {
+    router.push("/login");
+    return null;
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Users className="h-6 w-6" />
-          <Typography variant="h3">Users Management</Typography>
-        </div>
-
-        {/* Debug Tools - Only show for admin users */}
-        {userRole === "admin" && (
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleDebugJwt}>
-              <Bug className="h-4 w-4 mr-2" />
-              Debug JWT
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleForceRefresh}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Force Refresh
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleTestConnection}>
-              🧪 Test Connection
-            </Button>
-          </div>
-        )}
+      <div className="flex items-center gap-2">
+        <Users className="h-6 w-6" />
+        <Typography variant="h3">Users Management</Typography>
       </div>
 
-      {/* Session Refresh Prompt */}
-      {showSessionRefresh && (
-        <Alert className="bg-yellow-50 border-yellow-200">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>JWT Token Refresh Required</AlertTitle>
-          <AlertDescription>
-            <div className="space-y-3 mt-2">
-              <p>
-                Your admin permissions are detected in the frontend, but the
-                database is rejecting requests (403 Forbidden). This indicates
-                your JWT token doesn&apos;t contain the updated admin claims.
-              </p>
-              <p className="text-sm text-gray-600">
-                <strong>Debug info:</strong> Frontend permissions work, but
-                database RLS policies are blocking access. A session refresh
-                will generate a new JWT token with the correct admin claims.
-              </p>
-              <Button
-                onClick={() => {
-                  refreshSession.mutate();
-                }}
-                variant="default"
-                size="sm"
-                disabled={refreshSession.isPending}
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                {refreshSession.isPending
-                  ? "Refreshing JWT..."
-                  : "Refresh Session & JWT"}
-              </Button>
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {error || authError ? (
+      {error ? (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>
-            {error?.message ||
-              (authError ? String(authError) : "") ||
-              "Failed to load users"}
+            {error?.message || "Failed to load users"}
           </AlertDescription>
         </Alert>
       ) : null}

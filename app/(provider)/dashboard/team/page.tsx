@@ -316,7 +316,7 @@ export default function TeamPage() {
         <DataTable
           columns={columns}
           data={paginatedMembers}
-          searchKey="full_name"
+          searchKey="member"
           searchPlaceholder="Filter by name or email..."
         />
       )}

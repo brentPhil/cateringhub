@@ -7,7 +7,6 @@
 import './css'
 
 // Re-export domain-specific types
-export * from './auth.types'
 export * from './api.types'
 export * from './form.types'
 export type {

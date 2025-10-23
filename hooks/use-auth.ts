@@ -4,12 +4,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { jwtDecode } from "jwt-decode";
 import { useMemo } from "react";
 import type {
   AuthUser,
 } from "@/types";
-import { AppRole, ProviderRoleType } from "@/database.types";
 
 /* ------------------------------------------------------------------ */
 /* Helpers & constants                                                */
@@ -38,7 +36,6 @@ function getSupabase() {
 export const authKeys = {
   user: ["user"] as const,
   profile: (id: string) => ["profile", id] as const,
-  userRole: (id: string) => ["userRole", id] as const,
 } as const;
 
 /* ------------------------------------------------------------------ */
@@ -124,7 +121,6 @@ export function useSignOut() {
     onSuccess: () => {
       // Remove only auth-related caches
       qc.removeQueries({ queryKey: authKeys.user });
-      qc.removeQueries({ queryKey: ["userRole"] });
 
       router.push("/login");
       router.refresh();
@@ -134,165 +130,47 @@ export function useSignOut() {
   });
 }
 
-// -- Role & provider role --------------------------------------------
-
-export function useUserRole() {
-  const supabase = getSupabase();
-
-  return useQuery<{ role: AppRole; provider_role: ProviderRoleType | null } | null>({
-    queryKey: authKeys.userRole("current"),
-    // We directly check the session in the query function so the hook does not
-    // depend on useUser(), avoiding an extra render cycle
-    staleTime: STALE_10_MIN,
-    gcTime: GC_30_MIN,
-    retry: 1,
-    queryFn: async () => {
-      const { data: sessionData, error } = await supabase.auth.getSession();
-      if (error || !sessionData.session) return null;
-
-      try {
-        // Decode JWT token to extract user role information
-        const rawToken = sessionData.session.access_token;
-
-        const decoded = jwtDecode<{
-          user_role?: AppRole;
-          provider_role?: ProviderRoleType;
-          sub?: string;
-          email?: string;
-          aud?: string;
-          exp?: number;
-          iat?: number;
-        }>(rawToken);
-
-        // Return role information with fallback to 'user' role
-        return {
-          role: decoded.user_role ?? "user",
-          provider_role: decoded.provider_role ?? null,
-        };
-      } catch (error) {
-        console.error("Failed to decode JWT token:", error);
-        return null;
-      }
-    },
-  });
-}
-
-// -- Role-based hooks -------------------------------------------------
-
-// -- Role-based convenience hooks ------------------------------------
-
-type HookReturn<T> = { value: T; isLoading: boolean; error: unknown };
-
-export function useIsAdmin(): HookReturn<boolean> {
-  const { data, isLoading, error } = useUserRole();
-  return { value: data?.role === "admin", isLoading, error };
-}
-
-export function useIsProvider(): HookReturn<boolean> {
-  const { data, isLoading, error } = useUserRole();
-  return { value: data?.role === "catering_provider", isLoading, error };
-}
-
-export function useIsProviderOwner(): HookReturn<boolean> {
-  const { data, isLoading, error } = useUserRole();
-  return {
-    value: data?.role === "catering_provider" && data?.provider_role === "owner",
-    isLoading,
-    error
-  };
-}
-
-export function useIsProviderStaff(): HookReturn<boolean> {
-  const { data, isLoading, error } = useUserRole();
-  return {
-    value: data?.role === "catering_provider" && data?.provider_role === "staff",
-    isLoading,
-    error
-  };
-}
-
-export function useHasRole(role: AppRole): HookReturn<boolean> {
-  const { data, isLoading, error } = useUserRole();
-  return { value: data?.role === role, isLoading, error };
-}
-
-export function useHasProviderRole(providerRole: ProviderRoleType): HookReturn<boolean> {
-  const { data, isLoading, error } = useUserRole();
-  return {
-    value: data?.role === "catering_provider" && data?.provider_role === providerRole,
-    isLoading,
-    error
-  };
-}
-
 // -- Combined auth info ------------------------------------------------
 
 /**
- * Convenience hook that aggregates user, profile and role information
+ * Convenience hook that aggregates user and profile information
  * into a single object to avoid multiple hook invocations in components.
  */
 export function useAuthInfo() {
   const userQuery = useUser();
-  const roleQuery = useUserRole();
 
   const info = useMemo(() => {
-    const role = roleQuery.data?.role;
-    const providerRole = roleQuery.data?.provider_role;
-
     return {
       user: userQuery.data,
       profile: userQuery.data?.profile || null,
-      role,
-      providerRole,
-      isAdmin: role === "admin",
-      isProvider: role === "catering_provider",
-      isProviderOwner: role === "catering_provider" && providerRole === "owner",
-      isProviderStaff: role === "catering_provider" && providerRole === "staff",
-      isLoading: userQuery.isLoading || roleQuery.isLoading,
-      error: userQuery.error || roleQuery.error,
+      isLoading: userQuery.isLoading,
+      error: userQuery.error,
     };
-  }, [userQuery.data, roleQuery.data, userQuery.isLoading, roleQuery.isLoading, userQuery.error, roleQuery.error]);
+  }, [userQuery.data, userQuery.isLoading, userQuery.error]);
 
   return info;
 }
 
 
 
-// -- Users list (admin) ----------------------------------------------
+// -- Users list ----------------------------------------------
 
 export function useUsers() {
   const supabase = getSupabase();
-  const { value: isAdmin, isLoading } = useIsAdmin();
 
   return useQuery({
     queryKey: ["users"],
-    enabled: !isLoading && isAdmin,
-    staleTime: STALE_10_MIN, // Increased from 30 seconds
-    gcTime: GC_30_MIN, // Increased from 2 minutes
+    staleTime: STALE_10_MIN,
+    gcTime: GC_30_MIN,
     queryFn: async () => {
-      // profiles
+      // Fetch profiles only - authorization is now handled through provider_members
       const { data: profiles, error: profilesErr } = await supabase
         .from("profiles")
         .select("id, full_name, updated_at")
         .order("updated_at", { ascending: false });
       if (profilesErr) throw profilesErr;
 
-      if (!profiles?.length) return [];
-
-      // roles - Add explicit filter to help RLS performance (Supabase docs recommendation)
-      // Even though RLS policy allows access, explicit filters improve query planning
-      const { data: roles, error: rolesErr } = await supabase
-        .from("user_roles")
-        .select("user_id, role, provider_role")
-        .in('user_id', profiles.map(p => p.id)); // Filter to only needed user IDs
-      if (rolesErr) throw rolesErr;
-
-      return profiles.map((p) => ({
-        ...p,
-        user_roles: roles
-          ?.filter((r) => r.user_id === p.id)
-          .map(({ role, provider_role }) => ({ role, provider_role })),
-      }));
+      return profiles || [];
     },
   });
 }
@@ -308,31 +186,7 @@ export function useRefreshSession() {
     mutationFn: async () => {
       if (IS_DEV) console.log("🔄 Starting session refresh...");
 
-      // First, let's check the current session
-      const { data: currentSession } = await supabase.auth.getSession();
-      if (currentSession.session) {
-        if (IS_DEV) console.log("📋 Current JWT Claims (before refresh):");
-        try {
-          const currentDecoded = jwtDecode<{
-            user_role?: AppRole;
-            provider_role?: ProviderRoleType;
-            sub?: string;
-            email?: string;
-            exp?: number;
-          }>(currentSession.session.access_token);
-
-          if (IS_DEV) console.log({
-            user_role: currentDecoded.user_role,
-            provider_role: currentDecoded.provider_role,
-            email: currentDecoded.email,
-            expires_at: currentDecoded.exp ? new Date(currentDecoded.exp * 1000).toISOString() : 'unknown'
-          });
-        } catch (err) {
-          console.error("Failed to decode current JWT:", err);
-        }
-      }
-
-      // Force a complete session refresh to get fresh JWT with updated claims
+      // Force a complete session refresh
       if (IS_DEV) console.log("🔄 Calling supabase.auth.refreshSession()...");
       const { error } = await supabase.auth.refreshSession();
       if (error) {
@@ -342,10 +196,10 @@ export function useRefreshSession() {
 
       if (IS_DEV) console.log("✅ Session refresh completed");
 
-      // Wait a moment for the new JWT to be available
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Wait a moment for the new session to be available
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Get the fresh session to verify the new JWT
+      // Get the fresh session to verify
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       if (sessionError) {
         console.error("❌ Get session error after refresh:", sessionError);
@@ -356,36 +210,6 @@ export function useRefreshSession() {
         throw new Error("No session available after refresh");
       }
 
-      // Log the new JWT claims for debugging
-      if (IS_DEV) console.log("🆕 New JWT Claims (after refresh):");
-      try {
-        const decoded = jwtDecode<{
-          user_role?: AppRole;
-          provider_role?: ProviderRoleType;
-          sub?: string;
-          email?: string;
-          exp?: number;
-        }>(sessionData.session.access_token);
-
-        if (IS_DEV) console.log({
-          user_role: decoded.user_role,
-          provider_role: decoded.provider_role,
-          email: decoded.email,
-          expires_at: decoded.exp ? new Date(decoded.exp * 1000).toISOString() : 'unknown'
-        });
-
-        // Verify that we have the expected admin role
-        if (decoded.user_role !== 'admin') {
-          console.warn("⚠️ Expected admin role but got:", decoded.user_role);
-          throw new Error(`Expected admin role but JWT contains: ${decoded.user_role || 'no role'}`);
-        } else {
-          if (IS_DEV) console.log("✅ Admin role confirmed in JWT");
-        }
-      } catch (err) {
-        console.error("Failed to decode refreshed JWT:", err);
-        throw err;
-      }
-
       return sessionData;
     },
     onSuccess: () => {
@@ -393,14 +217,10 @@ export function useRefreshSession() {
 
       // Only invalidate specific auth-related queries instead of clearing everything
       qc.invalidateQueries({ queryKey: authKeys.user });
-      qc.invalidateQueries({ queryKey: ["userRole"] }); // This covers authKeys.userRole
       qc.invalidateQueries({ queryKey: ["users"] }); // Refresh users list
 
-      // Don't clear all cache - this was causing excessive re-renders
-      // qc.clear();
-
       router.refresh();
-      toast.success("Session and JWT refreshed successfully! Admin access should now work.");
+      toast.success("Session refreshed successfully!");
     },
     onError: (err: { message: string }) => {
       console.error("❌ Session refresh failed:", err);

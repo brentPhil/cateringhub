@@ -220,20 +220,8 @@ export async function createCateringProvider(
       }
     });
 
-    // Step 3: Update user role with proper error handling
-    const { error: roleError } = await supabase
-      .from('user_roles')
-      .upsert({
-        user_id: user.id,
-        role: 'catering_provider',
-        provider_role: 'owner'
-      }, {
-        onConflict: 'user_id,role'
-      });
-
-    if (roleError) {
-      throw new Error(`Failed to update user role: ${roleError.message}`);
-    }
+    // Step 3: User role is now managed through provider_members table
+    // No need to update user_roles table (removed with RBAC system)
 
     return {
       success: true,

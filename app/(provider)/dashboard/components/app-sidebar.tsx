@@ -90,16 +90,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     },
   ];
 
-  const { user, profile, isAdmin, isLoading: authLoading } = useAuthInfo();
+  const { user, profile, isLoading: authLoading } = useAuthInfo();
 
   // Filter navigation items based on roles
   // Only filter after component is mounted to prevent hydration mismatch
   const navItems = allNavItems.filter((item) => {
     if (item.adminOnly) {
       // During SSR or before mount, hide admin items
-      // After mount, show only if user is admin and auth is loaded
       if (!mounted) return false;
-      return !authLoading && isAdmin;
+      // Admin-only items are now hidden since we removed RBAC
+      return false;
     }
     return true; // Show items without specific role requirements
   });
