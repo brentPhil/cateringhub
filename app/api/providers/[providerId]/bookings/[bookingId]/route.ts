@@ -84,12 +84,13 @@ export async function GET(
         .single();
 
       if (memberData) {
+        const profile = memberData.profiles as { full_name?: string; avatar_url?: string | null } | null;
         assignedMember = {
           id: memberData.id,
           userId: memberData.user_id,
           role: memberData.role,
-          fullName: (memberData.profiles as any)?.full_name || 'Unknown',
-          avatarUrl: (memberData.profiles as any)?.avatar_url || null,
+          fullName: profile?.full_name || 'Unknown',
+          avatarUrl: profile?.avatar_url || null,
         };
       }
     }

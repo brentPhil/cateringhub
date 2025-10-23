@@ -4,8 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { format } from "date-fns";
-import { CalendarIcon, Loader2, Users, UserCog } from "lucide-react";
+import { Loader2, Users, UserCog } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -27,9 +26,7 @@ import {
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import { useTeamMembers } from "@/app/(provider)/dashboard/team/hooks/use-team-members";
 import { useWorkerProfiles } from "@/app/(provider)/dashboard/workers/hooks/use-worker-profiles";
 import { useCreateShift } from "@/app/(provider)/dashboard/bookings/hooks/use-shifts";
@@ -57,15 +54,6 @@ interface AssignTeammateDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
-
 export function AssignTeammateDialog({
   bookingId,
   providerId,
@@ -75,8 +63,6 @@ export function AssignTeammateDialog({
   const [assigneeType, setAssigneeType] = useState<"team_member" | "worker">(
     "team_member"
   );
-  const [selectedUserId, setSelectedUserId] = useState<string>("");
-  const [selectedWorkerId, setSelectedWorkerId] = useState<string>("");
 
   const { data: teamMembers = [], isLoading: loadingMembers } =
     useTeamMembers(providerId);
@@ -111,8 +97,6 @@ export function AssignTeammateDialog({
       {
         onSuccess: () => {
           form.reset();
-          setSelectedUserId("");
-          setSelectedWorkerId("");
           onOpenChange(false);
         },
       }
@@ -122,8 +106,6 @@ export function AssignTeammateDialog({
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
       form.reset();
-      setSelectedUserId("");
-      setSelectedWorkerId("");
     }
     onOpenChange(newOpen);
   };
@@ -133,10 +115,8 @@ export function AssignTeammateDialog({
     // Clear the other field when switching tabs
     if (value === "team_member") {
       form.setValue("workerProfileId", "");
-      setSelectedWorkerId("");
     } else {
       form.setValue("userId", "");
-      setSelectedUserId("");
     }
   };
 
@@ -154,11 +134,6 @@ export function AssignTeammateDialog({
     value: worker.id,
     label: worker.role ? `${worker.name} (${worker.role})` : worker.name,
   }));
-
-  const selectedMember = activeMembers.find(
-    (m) => m.user_id === selectedUserId
-  );
-  const selectedWorker = workers.find((w) => w.id === selectedWorkerId);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -198,7 +173,6 @@ export function AssignTeammateDialog({
                         value={field.value || ""}
                         onValueChange={(value) => {
                           field.onChange(value);
-                          setSelectedUserId(value);
                         }}
                         placeholder={
                           loadingMembers
@@ -231,7 +205,6 @@ export function AssignTeammateDialog({
                         value={field.value || ""}
                         onValueChange={(value) => {
                           field.onChange(value);
-                          setSelectedWorkerId(value);
                         }}
                         placeholder={
                           loadingWorkers

@@ -12,27 +12,18 @@ import {
   UserPlus,
 } from "lucide-react";
 import { format } from "date-fns";
-import type {
-  BookingDetailData,
-  BookingDetailCapabilities,
-} from "../../hooks/use-booking-detail";
+import type { BookingDetailData } from "../../hooks/use-booking-detail";
 import {
   calculateEventCountdown,
   getStatusBadgeVariant,
   formatStatus,
-  canReassignBooking,
-  canEditLogistics,
 } from "../utils/booking-utils";
 
 interface BookingHeroCardProps {
   booking: BookingDetailData;
-  capabilities: BookingDetailCapabilities;
 }
 
-export function BookingHeroCard({
-  booking,
-  capabilities,
-}: BookingHeroCardProps) {
+export function BookingHeroCard({ booking }: BookingHeroCardProps) {
   const countdown = calculateEventCountdown(
     booking.event_date,
     booking.event_time

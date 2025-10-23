@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -31,10 +31,6 @@ function AcceptInvitationContent() {
   const [message, setMessage] = useState("");
   const [providerName, setProviderName] = useState("");
 
-  useEffect(() => {
-    acceptInvitation();
-  }, []);
-
   const handleSignOut = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
@@ -44,7 +40,7 @@ function AcceptInvitationContent() {
     router.push(`/login?redirect=${encodeURIComponent(returnUrl)}`);
   };
 
-  const acceptInvitation = async () => {
+  const acceptInvitation = useCallback(async () => {
     if (!token) {
       setStatus("error");
       setMessage("Invalid invitation link");
@@ -112,7 +108,11 @@ function AcceptInvitationContent() {
         error instanceof Error ? error.message : "Failed to accept invitation"
       );
     }
-  };
+  }, [token, router]);
+
+  useEffect(() => {
+    acceptInvitation();
+  }, [acceptInvitation]);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-4 bg-muted/40">

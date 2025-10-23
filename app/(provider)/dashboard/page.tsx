@@ -115,7 +115,12 @@ export default function DashboardPage() {
     teamLoading ||
     shiftsLoading ||
     workersLoading;
-  const bookings = bookingsData?.data || [];
+
+  // Memoize bookings to prevent dependency changes
+  const bookings = useMemo(
+    () => bookingsData?.data || [],
+    [bookingsData?.data]
+  );
   const canEdit = bookingsData?.canEditBookings || false;
   const canManageWorkers = membership?.capabilities?.canInviteMembers || false;
 

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Users } from "lucide-react";
 import { ShiftList } from "@/components/shifts/shift-list";
@@ -25,14 +26,12 @@ interface BookingsTableProps {
 interface ExpandedRowProps {
   booking: Booking;
   canEdit: boolean;
-  providerId?: string;
   onAssignClick: () => void;
 }
 
 function ExpandedRowContent({
   booking,
   canEdit,
-  providerId,
   onAssignClick,
 }: ExpandedRowProps) {
   const {
@@ -69,6 +68,7 @@ export function BookingsTable({
   providerId,
   error,
 }: BookingsTableProps) {
+  const router = useRouter();
   const [expandedBookingIds, setExpandedBookingIds] = React.useState<
     Set<string>
   >(new Set());
@@ -83,7 +83,7 @@ export function BookingsTable({
     setLocalBookings(bookings);
   }, [bookings]);
 
-  const handleToggleExpand = (bookingId: string) => {
+  const handleToggleExpand = React.useCallback((bookingId: string) => {
     setExpandedBookingIds((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(bookingId)) {
@@ -93,9 +93,19 @@ export function BookingsTable({
       }
       return newSet;
     });
-  };
+  }, []);
 
-  const isExpanded = (bookingId: string) => expandedBookingIds.has(bookingId);
+  const isExpanded = React.useCallback(
+    (bookingId: string) => expandedBookingIds.has(bookingId),
+    [expandedBookingIds]
+  );
+
+  const handleViewDetails = React.useCallback(
+    (bookingId: string) => {
+      router.push(`/dashboard/bookings/${bookingId}`);
+    },
+    [router]
+  );
 
   // Handle row reordering
   const handleRowReorder = (startIndex: number, endIndex: number) => {
@@ -115,8 +125,9 @@ export function BookingsTable({
         currentUserId,
         onToggleExpand: handleToggleExpand,
         isExpanded,
+        onViewDetails: handleViewDetails,
       }),
-    [canEdit, currentUserId]
+    [canEdit, currentUserId, handleToggleExpand, isExpanded, handleViewDetails]
   );
 
   // Loading skeleton
@@ -166,7 +177,6 @@ export function BookingsTable({
           <ExpandedRowContent
             booking={booking}
             canEdit={canEdit}
-            providerId={providerId}
             onAssignClick={() => setAssignDialogBookingId(booking.id)}
           />
         )}

@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/sheet";
 import {
   Form,
-  FormControl,
   FormDescription,
   FormField,
   FormItem,
@@ -65,7 +64,7 @@ export function EditRoleDrawer({
       role:
         member?.role === "owner"
           ? "admin"
-          : (member?.role as ProviderRole) || "staff",
+          : (member?.role as Exclude<ProviderRole, "owner">) || "staff",
     },
   });
 
@@ -73,7 +72,10 @@ export function EditRoleDrawer({
   useEffect(() => {
     if (member) {
       form.reset({
-        role: member.role === "owner" ? "admin" : (member.role as ProviderRole),
+        role:
+          member.role === "owner"
+            ? "admin"
+            : (member.role as Exclude<ProviderRole, "owner">),
       });
     }
   }, [member, form]);

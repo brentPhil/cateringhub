@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useQueryStates, parseAsInteger, parseAsString } from "nuqs";
+import { useQueryStates, parseAsString } from "nuqs";
 import { Button } from "@/components/ui/button";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,6 @@ import {
   type WorkerProfile,
 } from "./hooks/use-worker-profiles";
 import { useCurrentMembership } from "@/hooks/use-membership";
-import { toast } from "sonner";
 import { AddWorkerModal } from "./components/add-worker-modal";
 import { EditWorkerDrawer } from "./components/edit-worker-drawer";
 

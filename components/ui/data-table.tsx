@@ -75,8 +75,11 @@ function DragHandle() {
 }
 
 // Sortable row component
-interface SortableRowProps<TData> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+interface SortableRowProps<TData = any> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   row: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   columns: ColumnDef<TData, any>[];
   renderExpandedRow?: (row: TData) => React.ReactNode;
   isRowExpanded?: (row: TData) => boolean;
@@ -125,6 +128,7 @@ function SortableRow<TData>({
             </div>
           </TableCell>
         )}
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         {row.getVisibleCells().map((cell: any) => (
           <TableCell key={cell.id}>
             {flexRender(cell.column.columnDef.cell, cell.getContext())}

@@ -1,4 +1,4 @@
-import { differenceInDays, differenceInHours, differenceInMinutes, isPast, isFuture } from "date-fns";
+import { differenceInDays, differenceInHours, differenceInMinutes, isPast } from "date-fns";
 import type { Database } from "@/database.types";
 import type { StatusTimeline, ProviderConstraints, BookingDetailCapabilities } from "../../hooks/use-booking-detail";
 
@@ -98,7 +98,6 @@ export function calculateEventCountdown(
 
   const now = new Date();
   const isEventPast = isPast(eventDateTime);
-  const isEventFuture = isFuture(eventDateTime);
 
   if (isEventPast) {
     const daysSince = Math.abs(differenceInDays(now, eventDateTime));

@@ -248,7 +248,7 @@ export function BookingDetailClient({ bookingId }: BookingDetailClientProps) {
         {/* Main content area - Left side on desktop (2/3 width) */}
         <div className="lg:col-span-2 space-y-4">
           {/* Phase 2: Hero Card - Always visible */}
-          <BookingHeroCard booking={booking} capabilities={capabilities} />
+          <BookingHeroCard booking={booking}/>
 
           {/* Tabbed content - Phases 3-8 */}
           <Tabs value={tabValue} onValueChange={setActiveTab}>

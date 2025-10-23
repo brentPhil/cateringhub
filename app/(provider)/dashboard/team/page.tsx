@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useQueryStates, parseAsInteger, parseAsString } from "nuqs";
 import { Button } from "@/components/ui/button";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
@@ -78,8 +78,6 @@ export default function TeamPage() {
   }, [members, filters.role, filters.status]);
 
   // Pagination
-  const totalItems = filteredMembers.length;
-  const totalPages = Math.ceil(totalItems / filters.pageSize);
   const paginatedMembers = useMemo(() => {
     const startIndex = (filters.page - 1) * filters.pageSize;
     const endIndex = startIndex + filters.pageSize;
@@ -114,23 +112,32 @@ export default function TeamPage() {
     await addStaffMutation.mutateAsync(data);
   };
 
-  const handleSuspend = (memberId: string) => {
-    updateStatusMutation.mutate({ memberId, status: "suspended" });
-  };
+  const handleSuspend = useCallback(
+    (memberId: string) => {
+      updateStatusMutation.mutate({ memberId, status: "suspended" });
+    },
+    [updateStatusMutation]
+  );
 
-  const handleActivate = (memberId: string) => {
-    updateStatusMutation.mutate({ memberId, status: "active" });
-  };
+  const handleActivate = useCallback(
+    (memberId: string) => {
+      updateStatusMutation.mutate({ memberId, status: "active" });
+    },
+    [updateStatusMutation]
+  );
 
-  const handleRemove = (memberId: string) => {
-    if (
-      confirm(
-        "Are you sure you want to remove this member? This action cannot be undone."
-      )
-    ) {
-      removeMemberMutation.mutate(memberId);
-    }
-  };
+  const handleRemove = useCallback(
+    (memberId: string) => {
+      if (
+        confirm(
+          "Are you sure you want to remove this member? This action cannot be undone."
+        )
+      ) {
+        removeMemberMutation.mutate(memberId);
+      }
+    },
+    [removeMemberMutation]
+  );
 
   const handleEditRole = (member: TeamMemberWithUser) => {
     setSelectedMember(member);
@@ -141,27 +148,15 @@ export default function TeamPage() {
     await updateRoleMutation.mutateAsync({ memberId, role });
   };
 
-  const handleResendInvitation = (memberId: string) => {
-    // Resend password setup link for admin-created pending members
-    // Note: Only admin-created members exist as pending in the members table.
-    // Email invites don't create a member record until they're accepted (status='active').
-    resendPasswordLinkMutation.mutate(memberId);
-  };
-
-  const handleSort = (field: string) => {
-    if (filters.sortBy === field) {
-      // Toggle sort order
-      setFilters({
-        sortOrder: filters.sortOrder === "asc" ? "desc" : "asc",
-      });
-    } else {
-      // Set new sort field
-      setFilters({
-        sortBy: field,
-        sortOrder: "asc",
-      });
-    }
-  };
+  const handleResendInvitation = useCallback(
+    (memberId: string) => {
+      // Resend password setup link for admin-created pending members
+      // Note: Only admin-created members exist as pending in the members table.
+      // Email invites don't create a member record until they're accepted (status='active').
+      resendPasswordLinkMutation.mutate(memberId);
+    },
+    [resendPasswordLinkMutation]
+  );
 
   const handleUpgrade = () => {
     // Mock upgrade handler - replace with actual upgrade flow
@@ -200,7 +195,14 @@ export default function TeamPage() {
         onEditRole: handleEditRole,
         onResendInvitation: handleResendInvitation,
       }),
-    [currentMembership?.role, currentUserId]
+    [
+      currentMembership?.role,
+      currentUserId,
+      handleSuspend,
+      handleActivate,
+      handleRemove,
+      handleResendInvitation,
+    ]
   );
 
   // Show message if user doesn't have a provider membership

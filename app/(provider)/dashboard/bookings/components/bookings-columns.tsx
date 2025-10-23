@@ -22,7 +22,6 @@ import {
   ChevronRight,
   Users,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import type { Database } from "@/database.types";
 
 type Booking = Database["public"]["Tables"]["bookings"]["Row"];
@@ -33,6 +32,7 @@ interface ColumnContext {
   currentUserId?: string;
   onToggleExpand: (bookingId: string) => void;
   isExpanded: (bookingId: string) => boolean;
+  onViewDetails: (bookingId: string) => void;
 }
 
 // Status badge styling
@@ -228,7 +228,6 @@ export const createBookingsColumns = (
     cell: ({ row }) => {
       const booking = row.original;
       const isExpanded = context.isExpanded(booking.id);
-      const router = useRouter();
 
       return (
         <div className="text-right">
@@ -248,7 +247,7 @@ export const createBookingsColumns = (
                 {isExpanded ? "Hide" : "View"} team
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => router.push(`/dashboard/bookings/${booking.id}`)}
+                onClick={() => context.onViewDetails(booking.id)}
               >
                 <Eye className="mr-2 h-4 w-4" />
                 View details

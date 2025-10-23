@@ -157,8 +157,8 @@ export const createWorkerProfileColumns = (
         {
           id: "actions",
           header: "Actions",
-          cell: ({ row }: { row: any }) => {
-            const worker = row.original as WorkerProfile;
+          cell: ({ row }: { row: { original: WorkerProfile } }) => {
+            const worker = row.original;
             return (
               <WorkerProfileActions
                 worker={worker}

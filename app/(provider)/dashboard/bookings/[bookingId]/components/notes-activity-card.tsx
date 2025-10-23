@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   StickyNote,
@@ -14,13 +13,11 @@ import {
   Save,
   X,
   User,
-  Calendar,
   Clock,
   Edit,
   Trash2,
   CheckCircle,
   UserPlus,
-  FileText,
   DollarSign,
   MapPin,
 } from "lucide-react";
