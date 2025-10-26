@@ -5,6 +5,13 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { authKeys } from "@/hooks/use-auth";
 import type { ProviderOnboardingFormData } from '@/types/form.types';
+import {
+  parseOnboardingError,
+  getUserErrorMessage,
+  ValidationError,
+  UnauthorizedError,
+  FileUploadError,
+} from "@/lib/errors/onboarding-errors";
 
 // Types - use consolidated type from form.types.ts
 export type ProviderOnboardingData = ProviderOnboardingFormData;
@@ -18,12 +25,6 @@ export interface SimpleProviderOnboardingData {
   mobileNumber: string;
 }
 
-export interface OnboardingProgress {
-  step: number;
-  completed: boolean;
-  data?: Partial<ProviderOnboardingData>;
-}
-
 export interface CreateProviderResponse {
   success: boolean;
   providerId?: string;
@@ -34,7 +35,6 @@ export interface CreateProviderResponse {
 export const providerOnboardingKeys = {
   all: ['provider-onboarding'] as const,
   status: () => [...providerOnboardingKeys.all, 'status'] as const,
-  progress: () => [...providerOnboardingKeys.all, 'progress'] as const,
 } as const;
 
 // Helper function to safely check if value is a File instance
@@ -42,44 +42,77 @@ const isFileInstance = (value: any): value is File => {
   return typeof File !== "undefined" && value instanceof File;
 };
 
-// File upload function
+/**
+ * Get file extension from filename or MIME type
+ */
+function getFileExtension(file: File): string {
+  // Try to get extension from filename first
+  const nameParts = file.name.split('.');
+  if (nameParts.length > 1) {
+    return nameParts.pop()!.toLowerCase();
+  }
+
+  // Fallback to MIME type mapping
+  const mimeToExt: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/jpg': 'jpg',
+    'image/png': 'png',
+    'image/gif': 'gif',
+    'image/webp': 'webp',
+    'application/pdf': 'pdf',
+  };
+
+  return mimeToExt[file.type] || 'bin';
+}
+
+/**
+ * Generate deterministic file path for provider assets
+ * Format: {type}/{user_id}/{filename}.{ext}
+ * This allows safe retries with upsert=true
+ */
+function getDeterministicFilePath(
+  userId: string,
+  fileType: 'logo' | 'menu',
+  file: File
+): string {
+  const ext = getFileExtension(file);
+  const typeFolder = fileType === 'logo' ? 'logos' : 'menus';
+  return `${typeFolder}/${userId}/${fileType}.${ext}`;
+}
+
+/**
+ * Upload file to Supabase Storage with deterministic path and upsert support
+ * This makes uploads idempotent - retries will overwrite the same file
+ */
 export async function uploadFile(
   file: File,
   bucket: string,
-  path: string
+  path: string,
+  options: {
+    upsert?: boolean;
+    onProgress?: (progress: number) => void;
+  } = {}
 ): Promise<string> {
   const supabase = createClient();
+  const { upsert = true, onProgress } = options;
 
-  // Sanitize the file path to remove spaces and special characters
-  const sanitizedPath = path.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9\-_.\/]/g, '');
-
-  console.log('Uploading file:', {
-    originalPath: path,
-    sanitizedPath,
-    fileName: file.name,
-    fileSize: file.size,
-    fileType: file.type,
-  });
+  if (onProgress) onProgress(0);
 
   const { data, error } = await supabase.storage
     .from(bucket)
-    .upload(sanitizedPath, file, {
+    .upload(path, file, {
       cacheControl: '3600',
-      upsert: false,
+      upsert,
       contentType: file.type,
     });
 
   if (error) {
-    console.error('Upload error:', error);
-    throw new Error(`Failed to upload file: ${error.message}`);
+    throw new FileUploadError(`Failed to upload file: ${error.message}`, file.name);
   }
 
-  // Get public URL
-  const { data: urlData } = supabase.storage
-    .from(bucket)
-    .getPublicUrl(data.path);
+  if (onProgress) onProgress(100);
 
-  console.log('File uploaded successfully:', urlData.publicUrl);
+  const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(data.path);
   return urlData.publicUrl;
 }
 
@@ -92,27 +125,13 @@ export async function createCateringProvider(
   // Get current user
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user) {
-    throw new Error("User not authenticated");
+    throw new UnauthorizedError("User not authenticated");
   }
 
   // Determine if this is simple or full onboarding data
   const isSimpleData = !('logo' in data) && !('sampleMenu' in data);
 
-  // Backend validation using the appropriate schema based on data type
-  const { simpleProviderOnboardingSchema, providerOnboardingSchema } = await import("@/lib/validations");
-  const validationSchema = isSimpleData ? simpleProviderOnboardingSchema : providerOnboardingSchema;
-  const validationResult = validationSchema.safeParse(data);
 
-  if (!validationResult.success) {
-    const errors = validationResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`);
-    throw new Error(`Validation failed: ${errors.join(', ')}`);
-  }
-
-  // Check if provider already exists
-  const existingProvider = await checkExistingProvider();
-  if (existingProvider) {
-    throw new Error("Provider profile already exists");
-  }
 
   // Additional business logic validation
   const serviceAreasArray = Array.isArray(data.serviceAreas)
@@ -120,340 +139,207 @@ export async function createCateringProvider(
     : data.serviceAreas.split(',').map((area: string) => area.trim()).filter((area: string) => area.length > 0);
 
   if (serviceAreasArray.length === 0) {
-    throw new Error("At least one service area is required");
+    throw new ValidationError("At least one service area is required", "serviceAreas");
   }
 
-  if (serviceAreasArray.length > 10) {
-    throw new Error("Maximum 10 service areas allowed");
-  }
+
 
   let logoUrl: string | null = null;
   let sampleMenuUrl: string | null = null;
   let providerData: any = null;
-  let rollbackActions: (() => Promise<void>)[] = [];
 
   try {
     // Step 1: Upload files first (if provided) - only for full onboarding
+    // Using deterministic paths with upsert=true makes this idempotent
     if (!isSimpleData) {
       const fullData = data as ProviderOnboardingFormData;
 
       if (isFileInstance(fullData.logo)) {
-        const logoPath = `logos/${user.id}/${Date.now()}-${fullData.logo.name}`;
-        logoUrl = await uploadFile(fullData.logo, 'provider-assets', logoPath);
-
-        // Add rollback action for logo
-        rollbackActions.push(async () => {
-          try {
-            const fileName = logoPath.split('/').pop();
-            if (fileName) {
-              await supabase.storage
-                .from('provider-assets')
-                .remove([logoPath]);
-            }
-          } catch (error) {
-            console.warn('Failed to cleanup logo file:', error);
-          }
+        // Use deterministic path: logos/{user_id}/logo.{ext}
+        const logoPath = getDeterministicFilePath(user.id, 'logo', fullData.logo);
+        logoUrl = await uploadFile(fullData.logo, 'provider-assets', logoPath, {
+          upsert: true, // Allow overwrites on retry
         });
       }
 
       if (isFileInstance(fullData.sampleMenu)) {
-        const menuPath = `menus/${user.id}/${Date.now()}-${fullData.sampleMenu.name}`;
-        sampleMenuUrl = await uploadFile(fullData.sampleMenu, 'provider-assets', menuPath);
-
-        // Add rollback action for menu
-        rollbackActions.push(async () => {
-          try {
-            const fileName = menuPath.split('/').pop();
-            if (fileName) {
-              await supabase.storage
-                .from('provider-assets')
-                .remove([menuPath]);
-            }
-          } catch (error) {
-            console.warn('Failed to cleanup menu file:', error);
-          }
+        // Use deterministic path: menus/{user_id}/menu.{ext}
+        const menuPath = getDeterministicFilePath(user.id, 'menu', fullData.sampleMenu);
+        sampleMenuUrl = await uploadFile(fullData.sampleMenu, 'provider-assets', menuPath, {
+          upsert: true, // Allow overwrites on retry
         });
       }
     }
 
-    // Step 2: Create provider profile with progress tracking
-    const insertData = {
-      user_id: user.id,
-      business_name: data.businessName,
-      business_address: isSimpleData ? null : (data as ProviderOnboardingFormData).businessAddress || null,
-      logo_url: logoUrl,
-      description: data.description,
-      service_areas: serviceAreasArray,
-      sample_menu_url: sampleMenuUrl,
-      contact_person_name: data.contactPersonName,
-      mobile_number: data.mobileNumber,
-      social_media_links: isSimpleData ? {} : (data as ProviderOnboardingFormData).socialMediaLinks || {},
-      onboarding_completed: true,
-      onboarding_step: 3,
-    };
+    // Step 2: Create provider profile with membership atomically using RPC
 
-    const { data: insertedProvider, error: insertError } = await supabase
-      .from('catering_providers')
-      .insert(insertData)
-      .select('id')
-      .single();
-
-    if (insertError) {
-      // Check for specific error types
-      if (insertError.code === '23505') { // Unique constraint violation
-        throw new Error("Provider profile already exists for this user");
+    // Convert social media links (object) to JSONB format if provided
+    let socialMediaLinksJson: Record<string, string> | null = null;
+    if (!isSimpleData) {
+      const links = (data as ProviderOnboardingFormData).socialMediaLinks;
+      if (links) {
+        const obj: Record<string, string> = {};
+        if (links.facebook) obj.facebook = links.facebook;
+        if (links.instagram) obj.instagram = links.instagram;
+        if (links.website) obj.website = links.website;
+        socialMediaLinksJson = Object.keys(obj).length ? obj : null;
       }
-      throw new Error(`Failed to create provider profile: ${insertError.message}`);
     }
 
-    providerData = insertedProvider;
+    const rpcParams = {
+      p_user_id: user.id,
+      p_business_name: data.businessName,
+      p_description: data.description,
+      p_contact_person_name: data.contactPersonName,
+      p_mobile_number: data.mobileNumber,
+      p_business_address: isSimpleData ? null : (data as ProviderOnboardingFormData).businessAddress || null,
+      p_logo_url: logoUrl,
+      p_service_areas: serviceAreasArray,
+      p_sample_menu_url: sampleMenuUrl,
+      p_social_links: socialMediaLinksJson,
+      p_client_ip: null, // Could be populated from request headers in the future
+      p_onboarding_completed: true,
+      p_onboarding_step: 3,
+    };
 
-    // Add rollback action for provider
-    rollbackActions.push(async () => {
-      try {
-        await supabase
-          .from('catering_providers')
-          .delete()
-          .eq('id', providerData.id);
-      } catch (error) {
-        console.warn('Failed to cleanup provider profile:', error);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📤 [ONBOARDING] Calling create_provider_with_membership RPC:', {
+        userId: user.id,
+        businessName: data.businessName,
+      });
+    }
+
+    const { data: result, error: insertError } = await supabase
+      .rpc('create_provider_with_membership', rpcParams);
+
+    if (insertError) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ [ONBOARDING] RPC error:', {
+          message: insertError.message,
+          code: insertError.code,
+          details: insertError.details,
+          hint: insertError.hint,
+        });
       }
-    });
+      // Centralized minimal parsing: handles duplicates (23505) and unauthorized
+      throw parseOnboardingError(insertError);
+    }
 
-    // Step 3: User role is now managed through provider_members table
-    // No need to update user_roles table (removed with RBAC system)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('✅ [ONBOARDING] RPC success:', {
+        providerId: result?.provider_id,
+      });
+    }
+
+    if (!result || !result.provider_id) {
+      throw new ValidationError("Failed to create provider profile: No provider ID returned");
+    }
+
+    const providerId = result.provider_id;
+    providerData = { id: providerId };
 
     return {
       success: true,
       providerId: providerData.id,
-      message: "Provider profile created successfully"
+      message: result.message || "Provider profile created successfully"
     };
 
   } catch (error) {
-    // Execute all rollback actions in reverse order
-    for (const rollback of rollbackActions.reverse()) {
-      await rollback();
-    }
+    // With deterministic file paths and upsert=true, files don't need rollback
+    // The RPC handles provider/membership atomically
+    // On retry, files will be overwritten and RPC will handle duplicates
 
-    // Re-throw the original error with enhanced context
-    if (error instanceof Error) {
-      throw new Error(`Onboarding failed: ${error.message}`);
-    }
-    throw new Error("Onboarding failed due to an unknown error");
+    // Parse and re-throw as appropriate custom error
+    throw parseOnboardingError(error);
   }
 }
 
+/**
+ * Check if the current user has an active provider membership
+ * Uses the is_provider RPC function to check provider_members table
+ * This is the correct way to check provider status after the backend migration
+ */
 export async function checkExistingProvider(): Promise<boolean> {
   const supabase = createClient();
 
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 [PROVIDER_CHECK] No authenticated user', { userError });
+    }
     return false;
   }
 
-  const { data, error } = await supabase
-    .from('catering_providers')
-    .select('id')
-    .eq('user_id', user.id)
-    .maybeSingle(); // Use maybeSingle() instead of single() to avoid errors when no rows found
-
-  // If error and it's not a "no rows" error, log it
-  if (error && error.code !== 'PGRST116') {
-    console.error('Error checking existing provider:', error);
-  }
-
-  return !error && !!data;
-}
-
-export async function getOnboardingProgress(): Promise<OnboardingProgress> {
-  const supabase = createClient();
-
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  if (userError || !user) {
-    throw new Error("User not authenticated");
-  }
-
-  const { data, error } = await supabase
-    .from('catering_providers')
-    .select('*')
-    .eq('user_id', user.id)
-    .single();
-
-  if (error) {
-    // No existing provider data
-    return { step: 1, completed: false };
-  }
-
-  return {
-    step: data.onboarding_step || 1,
-    completed: data.onboarding_completed || false,
-    data: {
-      businessName: data.business_name,
-      businessAddress: data.business_address,
-      description: data.description,
-      serviceAreas: data.service_areas,
-      contactPersonName: data.contact_person_name,
-      mobileNumber: data.mobile_number,
-      socialMediaLinks: data.social_media_links,
-    }
-  };
-}
-
-// New function to save progress during onboarding
-export async function saveOnboardingProgress(
-  step: number,
-  data: Partial<ProviderOnboardingData>
-): Promise<void> {
-  const supabase = createClient();
-
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  if (userError || !user) {
-    throw new Error("User not authenticated");
-  }
-
-  // Upsert progress data
-  const { error } = await supabase
-    .from('catering_providers')
-    .upsert({
-      user_id: user.id,
-      business_name: data.businessName || '',
-      business_address: data.businessAddress || null,
-      description: data.description || '',
-      service_areas: data.serviceAreas || [],
-      contact_person_name: data.contactPersonName || '',
-      mobile_number: data.mobileNumber || '',
-      social_media_links: data.socialMediaLinks || {},
-      onboarding_step: step,
-      onboarding_completed: false,
-    }, {
-      onConflict: 'user_id'
-    });
-
-  if (error) {
-    throw new Error(`Failed to save progress: ${error.message}`);
-  }
-}
-
-// Function to clean up incomplete onboarding data
-export async function cleanupIncompleteOnboarding(): Promise<void> {
-  const supabase = createClient();
-
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  if (userError || !user) {
-    throw new Error("User not authenticated");
-  }
-
-  // Delete incomplete provider data
-  const { error: deleteError } = await supabase
-    .from('catering_providers')
-    .delete()
-    .eq('user_id', user.id)
-    .eq('onboarding_completed', false);
-
-  if (deleteError) {
-    console.warn('Failed to cleanup incomplete onboarding:', deleteError);
-  }
-
-  // Clean up any uploaded files for incomplete onboarding
   try {
-    const { data: files } = await supabase.storage
-      .from('provider-assets')
-      .list(`logos/${user.id}`);
+    // Use the is_provider RPC function to check for active membership
+    // This checks the provider_members table for any active membership
+    const { data, error } = await supabase.rpc('is_provider');
 
-    if (files && files.length > 0) {
-      const filePaths = files.map(file => `logos/${user.id}/${file.name}`);
-      await supabase.storage
-        .from('provider-assets')
-        .remove(filePaths);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 [PROVIDER_CHECK] is_provider RPC result:', {
+        userId: user.id,
+        hasProviderMembership: data,
+        error: error?.message,
+      });
     }
 
-    const { data: menuFiles } = await supabase.storage
-      .from('provider-assets')
-      .list(`menus/${user.id}`);
-
-    if (menuFiles && menuFiles.length > 0) {
-      const menuPaths = menuFiles.map(file => `menus/${user.id}/${file.name}`);
-      await supabase.storage
-        .from('provider-assets')
-        .remove(menuPaths);
+    if (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ [PROVIDER_CHECK] RPC error:', error);
+      }
+      return false;
     }
-  } catch (cleanupError) {
-    console.warn('Failed to cleanup uploaded files:', cleanupError);
+
+    return data ?? false;
+  } catch (err) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error('❌ [PROVIDER_CHECK] Unexpected error:', err);
+    }
+    return false;
   }
 }
 
 // Custom Hooks
 
 /**
- * Hook to create a catering provider profile with optimistic updates
+ * Hook to create a catering provider profile
+ * Uses React Query for automatic retries with exponential backoff
  */
 export function useCreateProvider() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: createCateringProvider,
-    onMutate: async () => {
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: providerOnboardingKeys.status() });
-      
-      // Snapshot the previous value
-      const previousStatus = queryClient.getQueryData(providerOnboardingKeys.status());
-      
-      // Optimistically update to show provider status as true
-      queryClient.setQueryData(providerOnboardingKeys.status(), true);
-      
-      return { previousStatus };
+    onError: (error) => {
+      // Show user-friendly error message
+      const errorMessage = getUserErrorMessage(error);
+      toast.error(errorMessage);
+
+
     },
-    onError: (error, _variables, context) => {
-      // Rollback on error
-      if (context?.previousStatus !== undefined) {
-        queryClient.setQueryData(providerOnboardingKeys.status(), context.previousStatus);
-      }
-      
-      // Show error toast
-      toast.error(
-        error instanceof Error 
-          ? error.message 
-          : "Failed to create provider profile. Please try again."
-      );
-    },
-    onSuccess: () => {
+    onSuccess: (data) => {
       // Invalidate and refetch relevant queries
       queryClient.invalidateQueries({ queryKey: authKeys.user });
       queryClient.invalidateQueries({ queryKey: ["userRole"] });
       queryClient.invalidateQueries({ queryKey: providerOnboardingKeys.all });
+      queryClient.invalidateQueries({ queryKey: providerOnboardingKeys.status() });
 
       // Show success toast
-      toast.success("Onboarding completed successfully! Welcome to CateringHub!");
-    },
-    onSettled: () => {
-      // Always refetch after error or success
-      queryClient.invalidateQueries({ queryKey: providerOnboardingKeys.status() });
-    },
-    retry: (failureCount, error) => {
-      // Don't retry validation errors or authentication errors
-      if (error.message.includes('validation') ||
-          error.message.includes('authentication') ||
-          error.message.includes('already exists')) {
-        return false;
-      }
+      toast.success(data.message || "Onboarding completed successfully! Welcome to CateringHub!");
 
-      // Retry network errors up to 3 times
-      if (error.message.includes('network') ||
-          error.message.includes('fetch') ||
-          error.message.includes('timeout')) {
-        return failureCount < 3;
-      }
 
-      // Retry other errors once
-      return failureCount < 1;
     },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    // Important: disable retries for create provider to avoid duplicate submissions
+    // Server now relies on unique constraints; retries could surface duplicate (23505) errors.
+    // Disabling retries prevents accidental duplicates on flaky networks.
+    retry: false,
   });
 }
 
 /**
- * Hook to check if user is already a provider
+ * Hook to check if user has an active provider membership
+ * Uses the is_provider RPC function via checkExistingProvider
+ * This checks the provider_members table for active membership status
  */
 export function useProviderStatus() {
   return useQuery({
@@ -461,28 +347,6 @@ export function useProviderStatus() {
     queryFn: checkExistingProvider,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
-    retry: (failureCount, error) => {
-      // Don't retry authentication errors
-      if (error.message.includes('authentication')) {
-        return false;
-      }
-      // Retry network errors up to 2 times
-      return failureCount < 2;
-    },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
-    refetchOnWindowFocus: false,
-  });
-}
-
-/**
- * Hook to get onboarding progress
- */
-export function useOnboardingProgress() {
-  return useQuery({
-    queryKey: providerOnboardingKeys.progress(),
-    queryFn: getOnboardingProgress,
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    gcTime: 5 * 60 * 1000, // 5 minutes
     retry: (failureCount, error) => {
       // Don't retry authentication errors
       if (error.message.includes('authentication')) {

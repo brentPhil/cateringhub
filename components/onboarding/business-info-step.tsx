@@ -36,7 +36,7 @@ export interface BusinessInfoStepProps
 // Static form field configurations for performance
 const FORM_CONFIGS = {
   businessName: {
-    label: "Business Name",
+    label: "Business name",
     placeholder: "Enter your catering business name",
     description:
       "This will be displayed to customers when they view your services.",
@@ -44,14 +44,14 @@ const FORM_CONFIGS = {
     autoComplete: "organization",
   },
   businessAddress: {
-    label: "Business Address",
+    label: "Business address",
     placeholder: "Enter your business address (optional)",
     description:
       "Your business location. This helps customers understand your service area.",
     autoComplete: "street-address",
   },
   logo: {
-    label: "Business Logo (Optional)",
+    label: "Business logo (optional)",
     placeholder: "Upload your business logo",
     description:
       "Optional: Add your logo now or upload it later from your profile settings. Recommended size: 400x400px or larger, PNG/JPG format.",
@@ -104,7 +104,7 @@ export const BusinessInfoStep = React.memo<BusinessInfoStepProps>(
     return (
       <Form {...formProps}>
         <div className={cn("space-y-6", className)}>
-          <FormSection legend="Business Information" disabled={disabled}>
+          <FormSection legend="Business information" disabled={disabled}>
             <TextField
               control={controlProps}
               name="businessName"

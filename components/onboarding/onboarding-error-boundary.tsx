@@ -7,6 +7,10 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, RefreshCw, ArrowLeft, Home } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
+import {
+  getUserErrorMessage,
+  isRetryableError,
+} from "@/lib/errors/onboarding-errors";
 
 interface OnboardingErrorBoundaryState {
   hasError: boolean;
@@ -30,13 +34,15 @@ export class OnboardingErrorBoundary extends Component<
 
   constructor(props: OnboardingErrorBoundaryProps) {
     super(props);
-    this.state = { 
-      hasError: false, 
-      retryCount: 0 
+    this.state = {
+      hasError: false,
+      retryCount: 0,
     };
   }
 
-  static getDerivedStateFromError(error: Error): Partial<OnboardingErrorBoundaryState> {
+  static getDerivedStateFromError(
+    error: Error
+  ): Partial<OnboardingErrorBoundaryState> {
     return {
       hasError: true,
       error,
@@ -58,16 +64,9 @@ export class OnboardingErrorBoundary extends Component<
       this.props.onError(error, errorInfo);
     }
 
-    // Show toast notification based on error type
-    if (error.message.includes("network") || error.message.includes("fetch")) {
-      toast.error("Network error. Please check your connection and try again.");
-    } else if (error.message.includes("validation")) {
-      toast.error("Please check your form data and try again.");
-    } else if (error.message.includes("authentication")) {
-      toast.error("Authentication error. Please log in again.");
-    } else {
-      toast.error("An error occurred during onboarding. Please try again.");
-    }
+    // Show toast notification using custom error message utility
+    const userMessage = getUserErrorMessage(error);
+    toast.error(userMessage);
 
     this.setState({
       hasError: true,
@@ -84,24 +83,26 @@ export class OnboardingErrorBoundary extends Component<
 
   handleRetry = () => {
     const maxRetries = this.props.maxRetries || 3;
-    
+
     if (this.state.retryCount >= maxRetries) {
-      toast.error(`Maximum retry attempts (${maxRetries}) reached. Please refresh the page.`);
+      toast.error(
+        `Maximum retry attempts (${maxRetries}) reached. Please refresh the page.`
+      );
       return;
     }
 
-    this.setState(prevState => ({ 
-      hasError: false, 
+    this.setState((prevState) => ({
+      hasError: false,
       retryCount: prevState.retryCount + 1,
       error: undefined,
-      errorInfo: undefined
+      errorInfo: undefined,
     }));
 
-    // Auto-retry with exponential backoff for network errors
-    if (this.state.error?.message.includes("network")) {
+    // Auto-retry with exponential backoff for retryable errors
+    if (this.state.error && isRetryableError(this.state.error)) {
       const delay = Math.min(1000 * Math.pow(2, this.state.retryCount), 10000);
       toast.info(`Retrying in ${delay / 1000} seconds...`);
-      
+
       this.retryTimeoutId = setTimeout(() => {
         this.setState({ hasError: false });
       }, delay);
@@ -123,23 +124,8 @@ export class OnboardingErrorBoundary extends Component<
   getErrorMessage = (error?: Error): string => {
     if (!error) return "An unexpected error occurred";
 
-    if (error.message.includes("network") || error.message.includes("fetch")) {
-      return "Network connection error. Please check your internet connection and try again.";
-    }
-    
-    if (error.message.includes("validation")) {
-      return "There was an issue with your form data. Please review your information and try again.";
-    }
-    
-    if (error.message.includes("authentication")) {
-      return "Your session has expired. Please log in again to continue.";
-    }
-    
-    if (error.message.includes("file") || error.message.includes("upload")) {
-      return "There was an issue uploading your files. Please try again with smaller files or check your connection.";
-    }
-
-    return error.message || "An unexpected error occurred during the onboarding process.";
+    // Use the custom error message utility
+    return getUserErrorMessage(error);
   };
 
   override render() {
@@ -184,7 +170,7 @@ export class OnboardingErrorBoundary extends Component<
                     Try Again
                   </Button>
                 )}
-                
+
                 <div className="grid grid-cols-2 gap-2">
                   <Button
                     variant="outline"
@@ -194,7 +180,7 @@ export class OnboardingErrorBoundary extends Component<
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Refresh Page
                   </Button>
-                  
+
                   <Button
                     variant="outline"
                     onClick={this.handleGoBack}
@@ -216,8 +202,8 @@ export class OnboardingErrorBoundary extends Component<
               </div>
 
               <div className="text-center">
-                <Link 
-                  href="/contact" 
+                <Link
+                  href="/contact"
                   className="text-sm text-muted-foreground hover:text-foreground underline"
                 >
                   Need help? Contact support
@@ -257,35 +243,19 @@ export function useOnboardingErrorHandler() {
       console.error("Onboarding error:", error);
     }
 
-    // Handle specific onboarding errors
-    if (error.message.includes("file") || error.message.includes("upload")) {
-      toast.error("File upload failed. Please try again with a smaller file.");
-      return;
-    }
+    // Use the custom error message utility for consistent error handling
+    const userMessage = getUserErrorMessage(error);
+    toast.error(userMessage);
 
-    if (error.message.includes("validation")) {
-      toast.error("Please check your form data and try again.");
-      return;
+    // Special handling for authentication errors - redirect to login
+    if (
+      error.message.toLowerCase().includes("authentication") ||
+      error.message.toLowerCase().includes("unauthorized")
+    ) {
+      setTimeout(() => {
+        window.location.href = "/login";
+      }, 2000); // Give user time to read the error message
     }
-
-    if (error.message.includes("provider") && error.message.includes("exists")) {
-      toast.error("You are already registered as a provider.");
-      return;
-    }
-
-    if (error.message.includes("network") || error.message.includes("fetch")) {
-      toast.error("Network error. Please check your connection and try again.");
-      return;
-    }
-
-    if (error.message.includes("authentication")) {
-      toast.error("Session expired. Please log in again.");
-      window.location.href = "/login";
-      return;
-    }
-
-    // Generic error handling
-    toast.error("An error occurred during onboarding. Please try again.");
   }, []);
 
   return { handleOnboardingError };

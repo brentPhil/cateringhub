@@ -134,7 +134,7 @@ async function updateProviderImage({
         };
 
   const { error } = await supabase
-    .from("catering_providers")
+    .from("providers")
     .update(updateData)
     .eq("user_id", userId);
 

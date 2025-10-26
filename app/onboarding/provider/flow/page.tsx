@@ -20,6 +20,11 @@ import { useOnboardingForm, FORM_STEPS } from "@/hooks/use-onboarding-form";
 import { providerOnboardingSchema } from "@/lib/validations";
 import type { ProviderOnboardingFormData } from "@/types/form.types";
 import { IS_DEV } from "@/lib/constants";
+import { OnboardingErrorBoundary } from "@/components/onboarding/onboarding-error-boundary";
+import {
+  RetryIndicator,
+  NetworkStatusIndicator,
+} from "@/components/ui/retry-indicator";
 
 // Lazy load step components for better bundle splitting with error boundaries
 const BusinessInfoStep = React.lazy(() =>
@@ -55,17 +60,17 @@ const StepErrorBoundary: React.FC<{
 const STEPS = [
   {
     id: "business-info",
-    title: "Business Information",
+    title: "Business information",
     description: "Tell us about your catering business",
   },
   {
     id: "service-details",
-    title: "Service Details",
+    title: "Service details",
     description: "Describe your services and coverage area",
   },
   {
     id: "contact-info",
-    title: "Contact Information",
+    title: "Contact information",
     description: "How customers can reach you",
   },
 ];
@@ -76,9 +81,9 @@ const FORM_DATA_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours
 
 // Step names for error messages - extracted to avoid duplication
 const STEP_NAMES = [
-  "Business Information",
-  "Service Details",
-  "Contact Information",
+  "Business information",
+  "Service details",
+  "Contact information",
 ] as const;
 
 // Helper function to format field names for user-friendly error messages
@@ -145,7 +150,7 @@ function useFormRecovery() {
   };
 }
 
-export default function ProviderOnboardingFlowPage() {
+function ProviderOnboardingFlowPage() {
   const router = useRouter();
   const { user, isProvider, isLoading: authLoading } = useAuthInfo();
 
@@ -289,8 +294,16 @@ export default function ProviderOnboardingFlowPage() {
     }
   }, [stepValidation, currentStep, nextStep, onboardingForm]);
 
+  // Guard to prevent double submission (handles double-clicks and Strict Mode)
+  const submitGuardRef = React.useRef(false);
+
   // Simplified form submission with streamlined validation
   const handleSubmit = React.useCallback(async () => {
+    if (submitGuardRef.current) {
+      if (IS_DEV) console.warn("Submit blocked: already submitting");
+      return;
+    }
+
     // Check if user already has a provider profile
     if (isExistingProvider) {
       toast.error("You are already a catering provider.");
@@ -313,41 +326,10 @@ export default function ProviderOnboardingFlowPage() {
     // Get form data and perform final validation
     const formData = onboardingForm.getValues();
 
-    // Log form data for debugging
-    if (IS_DEV) {
-      console.log("Form data before validation:", {
-        businessName: formData.businessName,
-        businessAddress: formData.businessAddress,
-        logo: formData.logo
-          ? formData.logo instanceof File
-            ? `File: ${formData.logo.name}`
-            : formData.logo
-          : undefined,
-        description: formData.description,
-        serviceAreas: formData.serviceAreas,
-        sampleMenu: formData.sampleMenu
-          ? formData.sampleMenu instanceof File
-            ? `File: ${formData.sampleMenu.name}`
-            : formData.sampleMenu
-          : undefined,
-        contactPersonName: formData.contactPersonName,
-        mobileNumber: formData.mobileNumber,
-        socialMediaLinks: formData.socialMediaLinks,
-      });
-    }
-
     const validationResult = providerOnboardingSchema.safeParse(formData);
 
     if (!validationResult.success) {
       // Log detailed errors in development for debugging
-      if (IS_DEV) {
-        console.error("Validation errors:", validationResult.error.errors);
-        console.error(
-          "Full validation error:",
-          JSON.stringify(validationResult.error, null, 2)
-        );
-      }
-
       // Show user-friendly error message with specific field issues
       const firstError = validationResult.error.errors[0];
       const fieldPath = firstError.path.join(".");
@@ -369,41 +351,27 @@ export default function ProviderOnboardingFlowPage() {
       socialMediaLinks: formData.socialMediaLinks || undefined,
     };
 
+    // Mark as submitting just before mutation to block re-entry
+    submitGuardRef.current = true;
+
     // Submit the form
     createProviderMutation.mutate(submissionData, {
       onSuccess: () => {
         // Clear saved form data on successful submission
         onboardingForm.clearStorage();
 
-        toast.success(
-          "🎉 Onboarding completed successfully! Welcome to CateringHub!"
-        );
+        // Success toast is already handled by the hook
+        // Only navigate after successful submission
         router.push("/dashboard");
       },
       onError: (error) => {
+        // Error toast is already handled by the hook with user-friendly messages
+        // Just log for debugging in development
         if (IS_DEV) console.error("Error submitting onboarding:", error);
-
-        // Provide specific error messages based on error type
-        const errorMessage =
-          error instanceof Error ? error.message : "Unknown error occurred";
-
-        if (errorMessage.includes("duplicate")) {
-          toast.error(
-            "You already have a provider profile. Redirecting to dashboard..."
-          );
-          setTimeout(() => router.push("/dashboard"), 2000);
-        } else if (
-          errorMessage.includes("network") ||
-          errorMessage.includes("fetch")
-        ) {
-          toast.error(
-            "Network error. Please check your connection and try again."
-          );
-        } else {
-          toast.error(
-            "Submission failed. Please check your information and try again."
-          );
-        }
+      },
+      onSettled: () => {
+        // Always release the guard after mutation completes
+        submitGuardRef.current = false;
       },
     });
   }, [
@@ -425,7 +393,21 @@ export default function ProviderOnboardingFlowPage() {
       return;
     }
 
+    // Debug: Log provider status checks
+    if (IS_DEV) {
+      console.log("🔍 [ONBOARDING] Provider status check:", {
+        userId: user.id,
+        isProvider: isProvider,
+        isExistingProvider: isExistingProvider,
+        shouldRedirect: isProvider || isExistingProvider,
+      });
+    }
+
     if (isProvider || isExistingProvider) {
+      if (IS_DEV)
+        console.log(
+          "↪️ [ONBOARDING] Redirecting to dashboard - user already has provider profile"
+        );
       router.push("/dashboard");
       return;
     }
@@ -490,7 +472,7 @@ export default function ProviderOnboardingFlowPage() {
         >
           <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
             <h3 id="recovery-title" className="text-lg font-semibold mb-2">
-              Recover Previous Data?
+              Recover previous data?
             </h3>
             <p id="recovery-description" className="text-gray-600 mb-4">
               We found some previously saved form data. Would you like to
@@ -502,13 +484,13 @@ export default function ProviderOnboardingFlowPage() {
                 onClick={handleDiscardData}
                 aria-label="Discard saved data and start fresh"
               >
-                Start Fresh
+                Start fresh
               </Button>
               <Button
                 onClick={handleRecoverData}
                 aria-label="Recover previously saved form data"
               >
-                Recover Data
+                Recover data
               </Button>
             </div>
           </div>
@@ -519,6 +501,24 @@ export default function ProviderOnboardingFlowPage() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
+        {/* Network Status Indicator */}
+        <NetworkStatusIndicator />
+
+        {/* Retry Indicator for submission errors */}
+        {createProviderMutation.error && !createProviderMutation.isPending && (
+          <RetryIndicator
+            isRetrying={false}
+            retryCount={0}
+            maxRetries={3}
+            error={createProviderMutation.error}
+            onRetry={() => {
+              createProviderMutation.reset();
+              toast.info("Ready to try again. Please resubmit the form.");
+            }}
+            className="mb-6"
+          />
+        )}
+
         <MultiStepForm
           steps={STEPS}
           currentStep={currentStep}
@@ -528,7 +528,7 @@ export default function ProviderOnboardingFlowPage() {
           canGoNext={stepValidation[currentStep]}
           canGoPrevious={canGoPrevious}
           isSubmitting={createProviderMutation.isPending}
-          title="Provider Onboarding"
+          title="Provider onboarding"
           description="Complete your catering provider profile to start accepting bookings"
           showProgress={true}
           progressOrientation="horizontal"
@@ -537,5 +537,22 @@ export default function ProviderOnboardingFlowPage() {
         </MultiStepForm>
       </main>
     </div>
+  );
+}
+
+// Wrap the page with ErrorBoundary
+export default function ProviderOnboardingFlowPageWithErrorBoundary() {
+  return (
+    <OnboardingErrorBoundary
+      onError={(error, errorInfo) => {
+        // Log error in development
+        if (IS_DEV) {
+          console.error("Onboarding error:", error, errorInfo);
+        }
+        // TODO: Send error to error tracking service (e.g., Sentry)
+      }}
+    >
+      <ProviderOnboardingFlowPage />
+    </OnboardingErrorBoundary>
   );
 }

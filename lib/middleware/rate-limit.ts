@@ -169,18 +169,25 @@ export class RateLimiter {
       const keysToDelete: string[] = [];
 
       for (const [key, record] of this.store.entries()) {
-        // If reset time has passed and no recent requests, delete
-        if (record.resetAt < now && record.timestamps.length === 0) {
+        // Delete records that have expired (resetAt has passed)
+        // This cleans up both empty records and records with expired timestamps
+        if (record.resetAt < now) {
           keysToDelete.push(key);
         }
       }
 
       keysToDelete.forEach(key => this.store.delete(key));
-      
+
       if (keysToDelete.length > 0) {
         console.log(`[RATE LIMIT] Cleaned up ${keysToDelete.length} expired records`);
       }
     }, 5 * 60 * 1000); // 5 minutes
+
+    // Prevent interval from blocking process exit in serverless environments
+    // This allows the Node.js process to terminate gracefully when idle
+    if (this.cleanupInterval.unref) {
+      this.cleanupInterval.unref();
+    }
   }
 
   /**

@@ -10,7 +10,7 @@ interface ProviderHeaderProps {
 
 export function ProviderHeader({
   backHref = "/dashboard",
-  backLabel = "Back to Dashboard",
+  backLabel = "Back to dashboard",
 }: ProviderHeaderProps) {
   return (
     <header className="border-b border-border">

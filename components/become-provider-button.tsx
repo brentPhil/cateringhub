@@ -8,16 +8,22 @@ import { useAuthInfo } from "@/hooks/use-auth";
 
 interface BecomeProviderButtonProps {
   size?: "default" | "sm" | "lg" | "icon";
-  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  variant?:
+    | "default"
+    | "destructive"
+    | "outline"
+    | "secondary"
+    | "ghost"
+    | "link";
   className?: string;
   children?: React.ReactNode;
 }
 
-export function BecomeProviderButton({ 
-  size = "lg", 
+export function BecomeProviderButton({
+  size = "lg",
   variant = "default",
   className,
-  children = "Become a Provider"
+  children = "Become a provider",
 }: BecomeProviderButtonProps) {
   const [isNavigating, setIsNavigating] = useState(false);
   const router = useRouter();
@@ -56,8 +62,8 @@ export function BecomeProviderButton({
   const isLoading = authLoading || isNavigating;
 
   return (
-    <Button 
-      size={size} 
+    <Button
+      size={size}
       variant={variant}
       className={className}
       onClick={handleClick}

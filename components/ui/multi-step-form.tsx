@@ -10,7 +10,9 @@ import type { SuccessAnimationProps } from "@/components/ui/success-animation";
 // Lazy load the success animation to reduce initial bundle size
 const SuccessAnimation = dynamic<SuccessAnimationProps>(
   () =>
-    import("@/components/ui/success-animation").then((mod) => mod.SuccessAnimation),
+    import("@/components/ui/success-animation").then(
+      (mod) => mod.SuccessAnimation
+    ),
   { ssr: false }
 );
 import { Loader2 } from "lucide-react";
@@ -181,7 +183,7 @@ export function MultiStepForm({
                       Submitting...
                     </>
                   ) : (
-                    "Complete Onboarding"
+                    "Complete onboarding"
                   )}
                 </Button>
               )}

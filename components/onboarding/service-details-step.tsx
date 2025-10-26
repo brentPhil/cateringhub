@@ -2,21 +2,22 @@
 
 import * as React from "react";
 import { Form } from "@/components/ui/form";
-import type { Control, UseFormReturn, FieldValues } from "react-hook-form";
+import type { Control, UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 import { providerServiceDetailsSchema } from "@/lib/validations";
 import type { OnboardingFormReturn } from "@/hooks/use-onboarding-form";
 import { cn } from "@/lib/utils";
-import { useOnboardingStepForm, useDynamicArray } from "./shared/form-hooks";
+import { useOnboardingStepForm } from "./shared/form-hooks";
 import {
   TextareaField,
   FileUploadField,
-  DynamicArrayField,
+  MultiSelectComboboxField,
   InfoSection,
   FormSection,
 } from "./shared/form-components";
 import type { BaseOnboardingStepProps } from "./shared/form-types";
 import { DEFAULT_FILE_CONFIGS } from "./shared/form-types";
+import { useCities } from "@/lib/hooks/use-philippine-locations";
 
 // Type-safe form data definition
 type ServiceDetailsFormData = z.infer<typeof providerServiceDetailsSchema>;
@@ -30,7 +31,7 @@ export interface ServiceDetailsStepProps
 // Form field configurations
 const FORM_CONFIGS = {
   description: {
-    label: "Service Description",
+    label: "Service description",
     placeholder:
       "Describe your catering services, specialties, and what makes your business unique...",
     description:
@@ -38,14 +39,14 @@ const FORM_CONFIGS = {
     required: true,
   },
   serviceAreas: {
-    label: "Service Areas",
-    placeholder: "Enter a city or barangay",
+    label: "Service areas",
+    placeholder: "Select cities",
     description:
-      "Add the cities, municipalities, or barangays where you provide catering services. This helps customers know if you serve their area.",
+      "Select the cities or municipalities where you provide catering services. This helps customers know if you serve their area.",
     required: true,
   },
   sampleMenu: {
-    label: "Sample Menu (Optional)",
+    label: "Sample menu (optional)",
     placeholder: "Upload a sample menu or food photos",
     description:
       "Optional: Share a sample menu or food photos now or add them later. (Images or PDF, max 10MB)",
@@ -76,11 +77,8 @@ export const ServiceDetailsStep = React.memo<ServiceDetailsStepProps>(
       unifiedForm
     );
 
-    // Use the dynamic array hook for service areas management
-    const serviceAreasManager = useDynamicArray(
-      form as unknown as UseFormReturn<FieldValues>,
-      "serviceAreas"
-    );
+    // Get Philippine cities data for the combobox
+    const { cities } = useCities();
 
     // Memoize form props to prevent unnecessary re-renders
     const formProps = React.useMemo(
@@ -102,15 +100,10 @@ export const ServiceDetailsStep = React.memo<ServiceDetailsStepProps>(
       []
     );
 
-    // Memoize callback functions to prevent unnecessary re-renders
-    const handleAddArea = React.useCallback(() => {
-      return serviceAreasManager.addItem(serviceAreasManager.inputValue);
-    }, [serviceAreasManager]);
-
     return (
       <Form {...formProps}>
         <div className={cn("space-y-6", className)}>
-          <FormSection legend="Service Details" disabled={disabled}>
+          <FormSection legend="Service details" disabled={disabled}>
             <TextareaField
               control={controlProps}
               name="description"
@@ -120,17 +113,14 @@ export const ServiceDetailsStep = React.memo<ServiceDetailsStepProps>(
               resize={false}
             />
 
-            <DynamicArrayField
+            <MultiSelectComboboxField
               control={controlProps}
               name="serviceAreas"
               config={fieldConfigs.serviceAreas}
-              inputValue={serviceAreasManager.inputValue}
-              onInputChange={serviceAreasManager.setInputValue}
-              onAddItem={handleAddArea}
-              onRemoveItem={serviceAreasManager.removeItem}
-              onKeyDown={serviceAreasManager.handleKeyDown}
+              options={cities}
               disabled={disabled}
-              addButtonLabel="Add Area"
+              searchPlaceholder="Search cities..."
+              emptyMessage="No cities found."
             />
 
             <FileUploadField

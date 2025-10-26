@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -140,6 +140,111 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      expenses: {
+        Row: {
+          amount: number
+          booking_id: string | null
+          category: Database["public"]["Enums"]["expense_category"]
+          created_at: string
+          created_by: string
+          description: string
+          expense_date: string
+          id: string
+          notes: string | null
+          provider_id: string
+          receipt_url: string | null
+          tags: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          booking_id?: string | null
+          category: Database["public"]["Enums"]["expense_category"]
+          created_at?: string
+          created_by: string
+          description: string
+          expense_date?: string
+          id?: string
+          notes?: string | null
+          provider_id: string
+          receipt_url?: string | null
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          booking_id?: string | null
+          category?: Database["public"]["Enums"]["expense_category"]
+          created_at?: string
+          created_by?: string
+          description?: string
+          expense_date?: string
+          id?: string
+          notes?: string | null
+          provider_id?: string
+          receipt_url?: string | null
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      idempotency_keys: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error_details: Json | null
+          expires_at: string
+          ip_address: unknown
+          key: string
+          result: Json | null
+          scope: string
+          status: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error_details?: Json | null
+          expires_at?: string
+          ip_address?: unknown
+          key: string
+          result?: Json | null
+          scope: string
+          status?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error_details?: Json | null
+          expires_at?: string
+          ip_address?: unknown
+          key?: string
+          result?: Json | null
+          scope?: string
+          status?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -353,6 +458,8 @@ export type Database = {
           city: string | null
           contact_person_name: string | null
           created_at: string
+          created_by: string | null
+          created_ip: unknown
           daily_capacity: number | null
           description: string | null
           email: string | null
@@ -371,9 +478,11 @@ export type Database = {
           sample_menu_url: string | null
           service_areas: string[] | null
           service_radius: number | null
+          social_media_links: Json | null
           street_address: string | null
           tagline: string | null
           updated_at: string
+          updated_by: string | null
           user_id: string | null
         }
         Insert: {
@@ -387,6 +496,8 @@ export type Database = {
           city?: string | null
           contact_person_name?: string | null
           created_at?: string
+          created_by?: string | null
+          created_ip?: unknown
           daily_capacity?: number | null
           description?: string | null
           email?: string | null
@@ -405,9 +516,11 @@ export type Database = {
           sample_menu_url?: string | null
           service_areas?: string[] | null
           service_radius?: number | null
+          social_media_links?: Json | null
           street_address?: string | null
           tagline?: string | null
           updated_at?: string
+          updated_by?: string | null
           user_id?: string | null
         }
         Update: {
@@ -421,6 +534,8 @@ export type Database = {
           city?: string | null
           contact_person_name?: string | null
           created_at?: string
+          created_by?: string | null
+          created_ip?: unknown
           daily_capacity?: number | null
           description?: string | null
           email?: string | null
@@ -439,9 +554,11 @@ export type Database = {
           sample_menu_url?: string | null
           service_areas?: string[] | null
           service_radius?: number | null
+          social_media_links?: Json | null
           street_address?: string | null
           tagline?: string | null
           updated_at?: string
+          updated_by?: string | null
           user_id?: string | null
         }
         Relationships: []
@@ -633,8 +750,88 @@ export type Database = {
         Args: { p_invitation_id: string; p_user_id: string }
         Returns: Json
       }
+      check_idempotency_key: {
+        Args: { p_key: string; p_scope: string; p_user_id: string }
+        Returns: Json
+      }
+      cleanup_expired_idempotency_keys: { Args: never; Returns: number }
+      create_provider_with_membership:
+        | {
+            Args: {
+              p_business_address?: string
+              p_business_name: string
+              p_client_ip?: string
+              p_contact_person_name: string
+              p_description: string
+              p_idempotency_key?: string
+              p_logo_url?: string
+              p_mobile_number: string
+              p_onboarding_completed?: boolean
+              p_onboarding_step?: number
+              p_sample_menu_url?: string
+              p_service_areas?: string[]
+              p_social_links?: Json
+              p_user_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_business_address?: string
+              p_business_name: string
+              p_client_ip?: unknown
+              p_contact_person_name: string
+              p_description: string
+              p_idempotency_key?: string
+              p_logo_url?: string
+              p_mobile_number: string
+              p_onboarding_completed?: boolean
+              p_onboarding_step?: number
+              p_sample_menu_url?: string
+              p_service_areas?: string[]
+              p_social_links?: Json
+              p_user_id: string
+            }
+            Returns: Json
+          }
       custom_access_token_hook: { Args: { event: Json }; Returns: Json }
       debug_jwt_claims: { Args: never; Returns: Json }
+      get_booking_statistics: {
+        Args: {
+          p_end_date?: string
+          p_provider_id: string
+          p_start_date?: string
+        }
+        Returns: Json
+      }
+      get_expense_summary: {
+        Args: {
+          p_end_date?: string
+          p_provider_id: string
+          p_start_date?: string
+        }
+        Returns: Json
+      }
+      get_monthly_trend_data: {
+        Args: { p_months?: number; p_provider_id: string }
+        Returns: Json
+      }
+      get_revenue_metrics: {
+        Args: {
+          p_end_date?: string
+          p_provider_id: string
+          p_start_date?: string
+        }
+        Returns: Json
+      }
+      get_staff_utilization: {
+        Args: {
+          p_end_date?: string
+          p_provider_id: string
+          p_start_date?: string
+        }
+        Returns: Json
+      }
       get_user_metadata: {
         Args: { user_id: string }
         Returns: {
@@ -664,8 +861,23 @@ export type Database = {
         Returns: boolean
       }
       is_provider_owner: { Args: never; Returns: boolean }
+      register_idempotency_key: {
+        Args: { p_key: string; p_scope: string; p_user_id: string }
+        Returns: boolean
+      }
       revoke_all_refresh_tokens: {
         Args: { target_user_id: string }
+        Returns: undefined
+      }
+      store_idempotency_result: {
+        Args: {
+          p_error_details?: Json
+          p_key: string
+          p_result: Json
+          p_scope: string
+          p_status?: string
+          p_user_id: string
+        }
         Returns: undefined
       }
     }
@@ -676,7 +888,21 @@ export type Database = {
         | "in_progress"
         | "completed"
         | "cancelled"
-      invitation_method: "email_invite" | "admin_created"
+      expense_category:
+        | "ingredients"
+        | "fuel"
+        | "equipment_rental"
+        | "equipment_purchase"
+        | "staff_wages"
+        | "staff_overtime"
+        | "utilities"
+        | "marketing"
+        | "supplies"
+        | "maintenance"
+        | "insurance"
+        | "licenses"
+        | "other"
+      invitation_method: "email_invite" | "admin_created" | "onboarding"
       provider_member_status: "pending" | "active" | "suspended"
       provider_role: "owner" | "admin" | "manager" | "staff" | "viewer"
       worker_status: "active" | "inactive"
@@ -814,7 +1040,22 @@ export const Constants = {
         "completed",
         "cancelled",
       ],
-      invitation_method: ["email_invite", "admin_created"],
+      expense_category: [
+        "ingredients",
+        "fuel",
+        "equipment_rental",
+        "equipment_purchase",
+        "staff_wages",
+        "staff_overtime",
+        "utilities",
+        "marketing",
+        "supplies",
+        "maintenance",
+        "insurance",
+        "licenses",
+        "other",
+      ],
+      invitation_method: ["email_invite", "admin_created", "onboarding"],
       provider_member_status: ["pending", "active", "suspended"],
       provider_role: ["owner", "admin", "manager", "staff", "viewer"],
       worker_status: ["active", "inactive"],

@@ -22,6 +22,19 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
+  // Verify user has an active provider membership
+  const { data: membership, error: membershipError } = await supabase
+    .from("provider_members")
+    .select("id, provider_id, user_id, role, status")
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .maybeSingle();
+
+  // If user doesn't have an active provider membership, redirect to onboarding
+  if (membershipError || !membership) {
+    redirect("/onboarding/provider/flow");
+  }
+
   // Get sidebar state from cookie
   const cookieStore = await cookies();
   const defaultOpen = cookieStore.get("sidebar_state")?.value === "true";

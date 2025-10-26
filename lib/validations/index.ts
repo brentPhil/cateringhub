@@ -3,6 +3,7 @@
  */
 
 import { z } from 'zod'
+import { isValidPhoneNumber } from 'libphonenumber-js'
 
 // Common validation patterns
 const emailSchema = z.string().email('Please enter a valid email address')
@@ -96,11 +97,7 @@ export const providerProfileFormSchema = z.object({
   mobileNumber: z
     .string()
     .min(1, 'Mobile number is required')
-    .regex(/^[\+]?[0-9\s\-\(\)]+$/, 'Please enter a valid mobile number')
-    .refine(val => {
-      const cleaned = val.replace(/[\s\-\(\)\+]/g, '');
-      return cleaned.length >= 10 && cleaned.length <= 15;
-    }, 'Mobile number must be between 10-15 digits'),
+    .refine(isValidPhoneNumber, { message: 'Please enter a valid phone number' }),
   email: emailSchema.optional().or(z.literal('')),
   // Address fields moved to service_locations; no longer validated here
   tagline: z
@@ -134,11 +131,11 @@ export const providerProfileFormSchema = z.object({
     .optional(),
 })
 
-// Provider onboarding schemas - Multi-step
-export const providerBusinessInfoSchema = z.object({
-  businessName: z.string().min(2, 'Business name must be at least 2 characters'),
-  businessAddress: z.string().optional(),
-  logo: z
+// Helper to create file field schema that handles edge cases
+// This schema accepts File | string | undefined | null
+// and rejects invalid types like empty arrays or plain objects
+const createFileFieldSchema = () => {
+  return z
     .union([
       z.instanceof(File),
       z.string(),
@@ -146,7 +143,14 @@ export const providerBusinessInfoSchema = z.object({
       z.null(),
     ])
     .optional()
-    .nullable(),
+    .nullable();
+};
+
+// Provider onboarding schemas - Multi-step
+export const providerBusinessInfoSchema = z.object({
+  businessName: z.string().min(2, 'Business name must be at least 2 characters'),
+  businessAddress: z.string().optional().or(z.literal('')),
+  logo: createFileFieldSchema(),
 })
 
 export const providerServiceDetailsSchema = z.object({
@@ -157,15 +161,7 @@ export const providerServiceDetailsSchema = z.object({
   serviceAreas: z
     .array(z.string().min(1, 'Service area cannot be empty'))
     .min(1, 'At least one service area is required'),
-  sampleMenu: z
-    .union([
-      z.instanceof(File),
-      z.string(),
-      z.undefined(),
-      z.null(),
-    ])
-    .optional()
-    .nullable(),
+  sampleMenu: createFileFieldSchema(),
 })
 
 export const providerContactInfoSchema = z.object({
@@ -173,20 +169,16 @@ export const providerContactInfoSchema = z.object({
   mobileNumber: z
     .string()
     .min(1, 'Mobile number is required')
-    .regex(/^[\+]?[0-9\s\-\(\)]+$/, 'Please enter a valid mobile number (numbers, spaces, dashes, and parentheses only)')
-    .refine(val => {
-      const cleaned = val.replace(/[\s\-\(\)\+]/g, '');
-      return cleaned.length >= 10 && cleaned.length <= 15;
-    }, 'Mobile number must be between 10-15 digits'),
+    .refine(isValidPhoneNumber, { message: 'Please enter a valid phone number' }),
   socialMediaLinks: z.object({
-    facebook: z.string().optional().refine(val => !val || val === '' || z.string().url().safeParse(val).success, {
+    facebook: z.string().optional().or(z.literal('')).refine(val => !val || val === '' || z.string().url().safeParse(val).success, {
       message: 'Please enter a valid Facebook URL or leave empty'
     }),
-    instagram: z.string().optional().refine(val => !val || val === '' || z.string().url().safeParse(val).success, {
+    instagram: z.string().optional().or(z.literal('')).refine(val => !val || val === '' || z.string().url().safeParse(val).success, {
       message: 'Please enter a valid Instagram URL or leave empty'
     }),
-    website: z.string().optional().refine(val => !val || val === '' || z.string().url().safeParse(val).success, {
-      message: 'Please enter a valid website URL or leave empty'
+    website: z.string().optional().or(z.literal('')).refine(val => !val || val === '' || z.string().url().safeParse(val).success, {
+      message: 'Please enter a valid Website URL or leave empty'
     }),
   }).optional(),
 })
@@ -229,11 +221,7 @@ export const simpleProviderOnboardingSchema = z.object({
   mobileNumber: z
     .string()
     .min(1, 'Mobile number is required')
-    .regex(/^[\+]?[0-9\s\-\(\)]+$/, 'Please enter a valid mobile number')
-    .refine(val => {
-      const cleaned = val.replace(/[\s\-\(\)]/g, '');
-      return cleaned.length >= 10 && cleaned.length <= 15;
-    }, 'Mobile number must be between 10-15 digits'),
+    .refine(isValidPhoneNumber, { message: 'Please enter a valid phone number' }),
 })
 
 // Contact form schema

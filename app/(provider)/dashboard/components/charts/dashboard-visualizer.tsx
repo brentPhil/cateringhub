@@ -32,9 +32,21 @@ import { BookingsTable } from "../../bookings/components/bookings-table";
 import { WorkerProfilesTable } from "../../workers/components/worker-profiles-table";
 import { DataTable } from "@/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
-import type { Database } from "@/database.types";
 import type { WorkerProfile } from "../../workers/hooks/use-worker-profiles";
 import { useQueryState, parseAsStringLiteral } from "nuqs";
+import { Database } from "@/types/supabase";
+
+import { useCurrentMembership } from "@/hooks/use-membership";
+import { useBookings } from "../../bookings/hooks/use-bookings";
+import { useTeamMembers } from "../../team/hooks/use-team-members";
+import { useWorkerProfiles } from "../../workers/hooks/use-worker-profiles";
+import { useDashboardShifts } from "../../hooks/use-dashboard-shifts";
+import { format } from "date-fns";
+import {
+  useDashboardAnalytics,
+  useRecentExpenses,
+  useDefaultDateRange,
+} from "../../hooks/use-dashboard-analytics";
 
 // Types
 type Booking = Database["public"]["Tables"]["bookings"]["Row"];
@@ -45,6 +57,7 @@ export interface MetricItem {
   change?: string;
   trend?: "up" | "down";
   description?: string;
+  format?: "currency" | "number" | "percentage";
 }
 
 export interface TrendDataPoint {
@@ -156,24 +169,181 @@ const expenseColumns: ColumnDef<ExpenseItem>[] = [
   },
 ];
 
-export function DashboardVisualizer({
-  metrics,
-  trendData,
-  bookings = [],
-  isLoadingBookings = false,
-  canEdit = false,
-  currentUserId,
-  providerId,
-  teamStats,
-  upcomingShifts = [],
-  workerProfiles = [],
-  isLoadingWorkers = false,
-  canManageWorkers = false,
-  workersError,
-  notes = [],
-  expenses = [],
-  budget,
-}: DashboardVisualizerProps) {
+export function DashboardVisualizer() {
+  // Membership
+  const { data: membership } = useCurrentMembership();
+  const providerId = membership?.providerId;
+
+  // Default date range
+  const { startDate, endDate } = useDefaultDateRange();
+
+  // Analytics
+  const { data: analytics } = useDashboardAnalytics({
+    providerId,
+    startDate,
+    endDate,
+    trendMonths: 6,
+    enabled: !!providerId,
+  });
+
+  // Expenses
+  const { data: recentExpenses = [] } = useRecentExpenses(providerId, 4);
+
+  // Bookings
+  const { data: bookingsData, isLoading: bookingsLoading } = useBookings(
+    providerId,
+    {}
+  );
+
+  // Team members and worker profiles
+  const { data: teamMembers = [] } = useTeamMembers(providerId);
+  const {
+    data: workerProfiles = [],
+    isLoading: workersLoading,
+    error: workersError,
+  } = useWorkerProfiles(providerId, { status: "active" });
+
+  // Upcoming shifts for dashboard
+  const { data: allShifts = [] } = useDashboardShifts(providerId);
+
+  // Derived values
+  const bookings = useMemo(
+    () => bookingsData?.data || [],
+    [bookingsData?.data]
+  );
+  const canEdit = bookingsData?.canEditBookings || false;
+  const canManageWorkers = membership?.capabilities?.canInviteMembers || false;
+  const currentUserId = membership?.userId;
+
+  const metrics: MetricItem[] = useMemo(() => {
+    if (!analytics) {
+      return [
+        { label: "Total bookings", value: 0, description: "Last 30 days" },
+        { label: "Confirmed", value: 0, description: "Active bookings" },
+        {
+          label: "Pending requests",
+          value: 0,
+          description: "Awaiting confirmation",
+        },
+        {
+          label: "Team members",
+          value: teamMembers.length,
+          description: "Active members",
+        },
+      ];
+    }
+
+    const revenueChange =
+      analytics.revenue.previous_period_revenue > 0
+        ? ((analytics.revenue.confirmed_revenue -
+            analytics.revenue.previous_period_revenue) /
+            analytics.revenue.previous_period_revenue) *
+          100
+        : 0;
+
+    return [
+      {
+        label: "Total revenue",
+        value: analytics.revenue.confirmed_revenue,
+        description: `${revenueChange >= 0 ? "+" : ""}${revenueChange.toFixed(1)}% from last period`,
+        format: "currency",
+      },
+      {
+        label: "Total bookings",
+        value: analytics.bookings.total_bookings,
+        description: "Last 30 days",
+      },
+      {
+        label: "Pending requests",
+        value: analytics.bookings.pending_count,
+        description: "Awaiting confirmation",
+      },
+      {
+        label: "Team members",
+        value: teamMembers.length,
+        description: "Active members",
+      },
+    ];
+  }, [analytics, teamMembers]);
+
+  const trendData: TrendDataPoint[] = useMemo(() => {
+    if (!analytics) {
+      return [];
+    }
+
+    return analytics.trends.map((trend) => ({
+      month: trend.month_short,
+      bookings: trend.bookings,
+      revenue: trend.revenue,
+    }));
+  }, [analytics]);
+
+  const upcomingShifts: ShiftItem[] = useMemo(() => {
+    return allShifts.slice(0, 5).map((shift) => ({
+      id: shift.id,
+      date: shift.scheduled_start
+        ? format(new Date(shift.scheduled_start), "MMM dd")
+        : "TBD",
+      role: shift.role || "Staff",
+      assignee: shift.full_name !== "Unassigned" ? shift.full_name : undefined,
+      time:
+        shift.scheduled_start && shift.scheduled_end
+          ? `${format(new Date(shift.scheduled_start), "HH:mm")}–${format(new Date(shift.scheduled_end), "HH:mm")}`
+          : "TBD",
+      status:
+        shift.status === "scheduled" && shift.full_name !== "Unassigned"
+          ? ("filled" as const)
+          : shift.status === "scheduled"
+            ? ("open" as const)
+            : ("scheduled" as const),
+    }));
+  }, [allShifts]);
+
+  const teamStats = useMemo(() => {
+    const activeMembers = teamMembers.filter((m) => m.status === "active");
+
+    if (!analytics) {
+      return {
+        onShift: 0,
+        available: activeMembers.length,
+        off: teamMembers.filter((m) => m.status !== "active").length,
+      };
+    }
+
+    const onShift = analytics.staff.checked_in_shifts;
+
+    return {
+      onShift,
+      available: activeMembers.length - onShift,
+      off: teamMembers.filter((m) => m.status !== "active").length,
+    };
+  }, [teamMembers, analytics]);
+
+  // Notes not implemented yet
+  const notes: NoteItem[] = [];
+
+  const expenses: ExpenseItem[] = useMemo(() => {
+    return recentExpenses.map((expense) => ({
+      id: expense.id,
+      category: expense.category,
+      amount: expense.amount,
+      date: expense.date,
+    }));
+  }, [recentExpenses]);
+
+  const budget: BudgetSummary = useMemo(() => {
+    if (!analytics) {
+      return { month: "Current", spent: 0, budget: 0 };
+    }
+
+    const currentMonth = analytics.trends[analytics.trends.length - 1];
+
+    return {
+      month: currentMonth?.month || "Current",
+      spent: analytics.expenses.total_expenses,
+      budget: analytics.revenue.confirmed_revenue, // Using revenue as budget target
+    };
+  }, [analytics]);
   const [timeRange, setTimeRange] = useState("90d");
   const [activeTab, setActiveTab] = useQueryState(
     "tab",
@@ -194,35 +364,50 @@ export function DashboardVisualizer({
     <div className="flex flex-col gap-4 md:gap-6">
       {/* Metrics Cards */}
       <div className="grid grid-cols-1 gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
-        {metrics.map((metric, index) => (
-          <Card key={index}>
-            <CardHeader>
-              <CardDescription>{metric.label}</CardDescription>
-              <CardTitle className="text-2xl font-semibold tabular-nums">
-                {metric.value}
-              </CardTitle>
-              {metric.change && (
-                <CardAction>
-                  <Badge variant="outline">
-                    {metric.trend === "up" ? (
-                      <TrendingUp className="size-3" />
-                    ) : metric.trend === "down" ? (
-                      <TrendingDown className="size-3" />
-                    ) : null}
-                    {metric.change}
-                  </Badge>
-                </CardAction>
+        {metrics.map((metric, index) => {
+          // Format value based on format type
+          const formattedValue =
+            metric.format === "currency"
+              ? new Intl.NumberFormat("en-PH", {
+                  style: "currency",
+                  currency: "PHP",
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                }).format(Number(metric.value))
+              : metric.format === "percentage"
+                ? `${Number(metric.value).toFixed(1)}%`
+                : metric.value;
+
+          return (
+            <Card key={index}>
+              <CardHeader>
+                <CardDescription>{metric.label}</CardDescription>
+                <CardTitle className="text-2xl font-semibold tabular-nums">
+                  {formattedValue}
+                </CardTitle>
+                {metric.change && (
+                  <CardAction>
+                    <Badge variant="outline">
+                      {metric.trend === "up" ? (
+                        <TrendingUp className="size-3" />
+                      ) : metric.trend === "down" ? (
+                        <TrendingDown className="size-3" />
+                      ) : null}
+                      {metric.change}
+                    </Badge>
+                  </CardAction>
+                )}
+              </CardHeader>
+              {metric.description && (
+                <CardFooter>
+                  <div className="text-muted-foreground">
+                    {metric.description}
+                  </div>
+                </CardFooter>
               )}
-            </CardHeader>
-            {metric.description && (
-              <CardFooter>
-                <div className="text-muted-foreground">
-                  {metric.description}
-                </div>
-              </CardFooter>
-            )}
-          </Card>
-        ))}
+            </Card>
+          );
+        })}
       </div>
 
       {/* Interactive Chart */}
@@ -304,7 +489,7 @@ export function DashboardVisualizer({
         <TabsContent value="bookings">
           <BookingsTable
             bookings={bookings}
-            isLoading={isLoadingBookings}
+            isLoading={bookingsLoading}
             canEdit={canEdit}
             currentUserId={currentUserId}
             providerId={providerId}
@@ -312,65 +497,54 @@ export function DashboardVisualizer({
         </TabsContent>
 
         {/* Team Tab */}
-        <TabsContent value="team">
-          <div className="grid gap-4 md:grid-cols-2">
-            {/* Snapshot */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Staffing snapshot</CardTitle>
-                <CardDescription>Today&apos;s team status</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div>
-                    <div className="text-2xl font-semibold tabular-nums">
-                      {teamStats?.onShift ?? 0}
-                    </div>
-                    <div className="text-muted-foreground text-xs">
-                      On shift
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-semibold tabular-nums">
-                      {teamStats?.available ?? 0}
-                    </div>
-                    <div className="text-muted-foreground text-xs">
-                      Available
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-semibold tabular-nums">
-                      {teamStats?.off ?? 0}
-                    </div>
-                    <div className="text-muted-foreground text-xs">Off</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+        <TabsContent value="team" className="space-y-3">
+          {/* Compact Staffing Metrics Bar */}
+          <div className="grid grid-cols-3 gap-3 rounded-lg border bg-card p-3">
+            <div className="flex flex-col">
+              <div className="text-xl font-semibold tabular-nums">
+                {teamStats?.onShift ?? 0}
+              </div>
+              <div className="text-muted-foreground text-xs">On shift</div>
+            </div>
+            <div className="flex flex-col border-l pl-3">
+              <div className="text-xl font-semibold tabular-nums">
+                {teamStats?.available ?? 0}
+              </div>
+              <div className="text-muted-foreground text-xs">Available</div>
+            </div>
+            <div className="flex flex-col border-l pl-3">
+              <div className="text-xl font-semibold tabular-nums">
+                {teamStats?.off ?? 0}
+              </div>
+              <div className="text-muted-foreground text-xs">Off</div>
+            </div>
+          </div>
 
-            {/* Upcoming shifts */}
+          {/* Two Column Layout: Shifts + Workers */}
+          <div className="grid gap-3 md:grid-cols-2">
+            {/* Upcoming Shifts */}
             <Card>
-              <CardHeader>
-                <CardTitle>Upcoming shifts</CardTitle>
-                <CardDescription>Next assignments</CardDescription>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-semibold">
+                  Upcoming shifts
+                </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 pt-0">
                 <DataTable columns={shiftColumns} data={upcomingShifts} />
               </CardContent>
             </Card>
 
-            {/* Worker Profiles */}
-            <Card className="md:col-span-2">
-              <CardHeader>
-                <CardTitle>Worker profiles</CardTitle>
-                <CardDescription>
-                  Non-login staff available for shifts
-                </CardDescription>
+            {/* Worker Profiles - Compact View */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-semibold">
+                  Worker profiles
+                </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 pt-0">
                 <WorkerProfilesTable
                   workers={workerProfiles}
-                  isLoading={isLoadingWorkers}
+                  isLoading={workersLoading}
                   canManage={canManageWorkers}
                   onEdit={() => {}}
                   onDelete={() => {}}

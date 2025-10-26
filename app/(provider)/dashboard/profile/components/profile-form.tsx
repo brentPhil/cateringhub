@@ -11,6 +11,7 @@ import {
   FieldError,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ProfileFormState } from "../hooks/use-profile-form-state";
@@ -110,12 +111,12 @@ export function ProfileForm({
             <FieldLabel htmlFor="mobileNumber">
               Phone number <span className="text-destructive">*</span>
             </FieldLabel>
-            <Input
+            <PhoneInput
               id="mobileNumber"
-              type="tel"
               value={mobileNumber || ""}
-              onChange={(e) => setFormState({ mobileNumber: e.target.value })}
+              onChange={(value) => setFormState({ mobileNumber: value || "" })}
               placeholder="Enter phone number"
+              defaultCountry="PH"
               aria-invalid={!!errors.mobileNumber}
             />
             {errors.mobileNumber && (

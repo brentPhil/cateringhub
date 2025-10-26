@@ -26,10 +26,6 @@ export async function middleware(request: NextRequest) {
   // Get the pathname from the URL
   const { pathname } = request.nextUrl
 
-  console.log('🛡️  [Middleware] ========== REQUEST INTERCEPTED ==========')
-  console.log('🛡️  [Middleware] Pathname:', pathname)
-  console.log('🛡️  [Middleware] Full URL:', request.url)
-
   // First, update the session to ensure cookies are properly handled
   const response = await updateSession(request)
 
@@ -38,12 +34,8 @@ export async function middleware(request: NextRequest) {
     pathname === route || pathname === `${route}/`
   )
 
-  console.log('🛡️  [Middleware] Is password reset route:', isPasswordResetRoute)
-
   // Password reset routes should always be accessible, regardless of auth state
   if (isPasswordResetRoute) {
-    console.log('✅ [Middleware] Password reset route - allowing access without redirect')
-    console.log('🛡️  [Middleware] ========== REQUEST ALLOWED ==========')
     return response
   }
 
@@ -51,8 +43,6 @@ export async function middleware(request: NextRequest) {
   const isPublicRoute = PUBLIC_ROUTES.some(route =>
     pathname === route || pathname === `${route}/`
   )
-
-  console.log('🛡️  [Middleware] Is public route:', isPublicRoute)
 
   // Note: AUTHENTICATED_ROUTES are handled by individual page components
 
@@ -65,17 +55,8 @@ export async function middleware(request: NextRequest) {
       request.cookies.has('sb-refresh-token') ||
       request.cookies.has('sb-auth-token');
 
-    console.log('🛡️  [Middleware] Has auth cookie:', hasAuthCookie)
-    console.log('🛡️  [Middleware] Cookies:', {
-      'sb-access-token': request.cookies.has('sb-access-token'),
-      'sb-refresh-token': request.cookies.has('sb-refresh-token'),
-      'sb-auth-token': request.cookies.has('sb-auth-token'),
-    })
-
     // If there's a session cookie and user is trying to access a public route, redirect to dashboard
     if (hasAuthCookie) {
-      console.log('🔄 [Middleware] Authenticated user on public route - redirecting to dashboard')
-      console.log('🛡️  [Middleware] ========== REDIRECTING TO DASHBOARD ==========')
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
   }
@@ -83,8 +64,6 @@ export async function middleware(request: NextRequest) {
   // For authenticated routes, allow access without redirect
   // The individual pages will handle their own authentication checks
 
-  console.log('✅ [Middleware] Allowing request to proceed')
-  console.log('🛡️  [Middleware] ========== REQUEST ALLOWED ==========')
   return response
 }
 

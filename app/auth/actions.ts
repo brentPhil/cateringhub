@@ -130,7 +130,7 @@ export async function debugJwtToken() {
 
     const decoded = JSON.parse(atob(payload)) as Record<string, unknown>
 
-    if (IS_DEV) console.log("🔍 JWT Token Debug Info:", {
+    if (IS_DEV) console.log("[DEBUG] JWT Token Debug Info:", {
       user_role: decoded.user_role,
       provider_role: decoded.provider_role,
       sub: decoded.sub,
@@ -193,18 +193,18 @@ export async function testSupabaseConnection(): Promise<boolean> {
   const supabase = await createClient()
 
   try {
-    if (IS_DEV) console.log("🧪 Testing Supabase connection...")
+    if (IS_DEV) console.log("[TEST] Testing Supabase connection...")
 
     // Test basic connection
     const { data, error } = await supabase.auth.getSession()
 
     if (error) {
-      if (IS_DEV) console.error("❌ Connection test failed:", error)
+      if (IS_DEV) console.error("[ERROR] Connection test failed:", error)
       return false
     }
 
-    if (IS_DEV) console.log("✅ Supabase connection successful")
-    if (IS_DEV) console.log("📊 Session data:", {
+    if (IS_DEV) console.log("[SUCCESS] Supabase connection successful")
+    if (IS_DEV) console.log("[DATA] Session data:", {
       hasSession: !!data.session,
       hasUser: !!data.session?.user,
       userEmail: data.session?.user?.email,
@@ -213,7 +213,7 @@ export async function testSupabaseConnection(): Promise<boolean> {
 
     return true
   } catch (error) {
-    if (IS_DEV) console.error("❌ Connection test error:", error)
+    if (IS_DEV) console.error("[ERROR] Connection test error:", error)
     return false
   }
 }

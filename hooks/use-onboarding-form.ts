@@ -130,7 +130,18 @@ export function useOnboardingForm(options: UseOnboardingFormOptions = {}): Onboa
   const saveToStorage = useCallback(() => {
     try {
       const currentData = getValues();
-      localStorage.setItem(autoSaveKey, JSON.stringify(currentData));
+      // Filter out File objects as they cannot be serialized to JSON
+      // Store only serializable data (strings, arrays, objects, primitives)
+      const serializableData: Partial<ProviderOnboardingData> = {};
+      Object.keys(currentData).forEach((key) => {
+        const value = currentData[key as keyof ProviderOnboardingData];
+        // Skip File objects - they will be re-uploaded on form submission
+        if (value instanceof File) {
+          return;
+        }
+        serializableData[key as keyof ProviderOnboardingData] = value as any;
+      });
+      localStorage.setItem(autoSaveKey, JSON.stringify(serializableData));
     } catch (error) {
       console.error("Failed to save form data to storage:", error);
     }
@@ -142,7 +153,21 @@ export function useOnboardingForm(options: UseOnboardingFormOptions = {}): Onboa
       if (stored) {
         const parsedData = JSON.parse(stored);
         Object.keys(parsedData).forEach((key) => {
-          setValue(key as keyof ProviderOnboardingData, parsedData[key], {
+          const value = parsedData[key];
+          // Skip invalid values (empty objects, empty arrays for file fields)
+          if (key === 'logo' || key === 'sampleMenu') {
+            // For file fields, only restore if it's a valid string URL or explicitly null/undefined
+            if (typeof value === 'string' || value === null || value === undefined) {
+              setValue(key as keyof ProviderOnboardingData, value, {
+                shouldValidate: false,
+                shouldDirty: false,
+              });
+            }
+            // Skip File objects, empty arrays, or empty objects
+            return;
+          }
+          // For other fields, restore normally
+          setValue(key as keyof ProviderOnboardingData, value, {
             shouldValidate: false,
             shouldDirty: false,
           });
@@ -384,9 +409,18 @@ export function useOnboardingForm(options: UseOnboardingFormOptions = {}): Onboa
   const createBackup = useCallback(() => {
     try {
       const currentData = getValues();
+      // Filter out File objects for backup (same as saveToStorage)
+      const serializableData: Partial<ProviderOnboardingData> = {};
+      Object.keys(currentData).forEach((key) => {
+        const value = currentData[key as keyof ProviderOnboardingData];
+        if (value instanceof File) {
+          return;
+        }
+        serializableData[key as keyof ProviderOnboardingData] = value as any;
+      });
       const backupKey = `${autoSaveKey}-backup`;
       const backupData = {
-        formData: currentData,
+        formData: serializableData,
         timestamp: new Date().toISOString(),
         version: "1.0",
       };
@@ -408,8 +442,20 @@ export function useOnboardingForm(options: UseOnboardingFormOptions = {}): Onboa
       const data = backupData.formData || backupData;
 
       Object.keys(data).forEach(key => {
-        if (data[key] !== undefined && data[key] !== null) {
-          setValue(key as keyof ProviderOnboardingData, data[key], {
+        const value = data[key];
+        // Skip invalid values for file fields (same validation as loadFromStorage)
+        if (key === 'logo' || key === 'sampleMenu') {
+          if (typeof value === 'string' || value === null || value === undefined) {
+            setValue(key as keyof ProviderOnboardingData, value, {
+              shouldValidate: false,
+              shouldDirty: true,
+            });
+          }
+          return;
+        }
+        // For other fields, restore if not undefined/null
+        if (value !== undefined && value !== null) {
+          setValue(key as keyof ProviderOnboardingData, value, {
             shouldValidate: false,
             shouldDirty: true,
           });

@@ -10,11 +10,15 @@ import { cn } from "@/lib/utils";
 import { useOnboardingStepForm } from "./shared/form-hooks";
 import {
   TextField,
+  PhoneInputField,
   SocialMediaLinks,
   InfoSection,
   FormSection,
 } from "./shared/form-components";
-import type { BaseOnboardingStepProps, OnboardingFormControl } from "./shared/form-types";
+import type {
+  BaseOnboardingStepProps,
+  OnboardingFormControl,
+} from "./shared/form-types";
 
 // Type-safe form data definition
 type ContactInfoFormData = z.infer<typeof providerContactInfoSchema>;
@@ -28,17 +32,17 @@ export interface ContactInfoStepProps
 // Form field configurations
 const FORM_CONFIGS = {
   contactPersonName: {
-    label: "Contact Person Name",
+    label: "Contact person name",
     placeholder: "Enter the name of the main contact person",
     description:
       "The name of the person customers should contact for inquiries and bookings.",
     required: true,
   },
   mobileNumber: {
-    label: "Mobile Number",
-    placeholder: "Enter your mobile number (e.g., +63 912 345 6789)",
+    label: "Mobile number",
+    placeholder: "Enter a phone number",
     description:
-      "Your primary contact number for customer inquiries and bookings. Include country code for international format.",
+      "Your primary contact number for customer inquiries and bookings.",
     required: true,
   },
 } as const;
@@ -89,7 +93,7 @@ export const ContactInfoStep = React.memo<ContactInfoStepProps>(
     return (
       <Form {...formProps}>
         <div className={cn("space-y-6", className)}>
-          <FormSection legend="Contact Information" disabled={disabled}>
+          <FormSection legend="Contact information" disabled={disabled}>
             <TextField
               control={controlProps}
               name="contactPersonName"
@@ -97,18 +101,17 @@ export const ContactInfoStep = React.memo<ContactInfoStepProps>(
               disabled={disabled}
             />
 
-            <TextField
+            <PhoneInputField
               control={controlProps}
               name="mobileNumber"
               config={fieldConfigs.mobileNumber}
-              type="tel"
               disabled={disabled}
             />
           </FormSection>
 
           <SocialMediaLinks control={controlProps} disabled={disabled} />
 
-          <InfoSection title="Contact Information Usage:" items={INFO_ITEMS} />
+          <InfoSection title="Contact information usage:" items={INFO_ITEMS} />
         </div>
       </Form>
     );

@@ -5,9 +5,18 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useMemo } from "react";
-import type {
-  AuthUser,
-} from "@/types";
+import type { User } from "@supabase/supabase-js";
+import type { Tables } from "@/database.types";
+
+/* ------------------------------------------------------------------ */
+/* Types                                                              */
+/* ------------------------------------------------------------------ */
+
+type Profile = Tables<"profiles"> | null;
+
+export interface AuthUser extends User {
+  profile: Profile;
+}
 
 /* ------------------------------------------------------------------ */
 /* Helpers & constants                                                */
@@ -67,6 +76,12 @@ export function useUser() {
 
         // 2️⃣ Get user data
         const { data: userData, error: userError } = await supabase.auth.getUser();
+        // Handle invalid/stale JWT referencing a non-existent user (common after switching projects)
+        if (userError?.message?.includes("User from sub claim in JWT does not exist")) {
+          // Clear local session so app can recover to login quietly
+          await supabase.auth.signOut({ scope: "local" });
+          return null;
+        }
         if (userError) {
           console.error("User fetch error:", userError);
           return null;
@@ -95,7 +110,20 @@ export function useUser() {
         return authUser;
       } catch (err: unknown) {
         // Handle specific auth errors gracefully
-        if (err && typeof err === "object" && "name" in err && err.name === "AuthSessionMissingError") {
+        if (err && typeof err === "object" && "name" in err && (err as any).name === "AuthSessionMissingError") {
+          return null;
+        }
+        // Handle case where SDK throws AuthApiError for missing user from sub claim
+        if (
+          err &&
+          typeof err === "object" &&
+          "message" in err &&
+          typeof (err as any).message === "string" &&
+          (err as any).message.includes("User from sub claim in JWT does not exist")
+        ) {
+          try {
+            await supabase.auth.signOut({ scope: "local" });
+          } catch {}
           return null;
         }
 
@@ -130,23 +158,74 @@ export function useSignOut() {
   });
 }
 
+// -- Provider status check ---------------------------------------------
+
+/**
+ * Hook to check if the current user has an active provider membership
+ * Uses the is_provider RPC function to check provider_members table
+ */
+export function useIsProvider() {
+  const supabase = getSupabase();
+  const userQuery = useUser();
+
+  return useQuery<boolean>({
+    queryKey: [...authKeys.user, 'isProvider'],
+    staleTime: STALE_10_MIN,
+    gcTime: GC_30_MIN,
+    enabled: !!userQuery.data, // Only run if user is authenticated
+    queryFn: async () => {
+      try {
+        // Use the is_provider RPC function to check for active membership
+        const { data, error } = await supabase.rpc('is_provider');
+
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔍 [AUTH] useIsProvider RPC result:', {
+            userId: userQuery.data?.id,
+            hasProviderMembership: data,
+            error: error?.message,
+          });
+        }
+
+        if (error) {
+          console.error('Error checking provider status:', error);
+          return false;
+        }
+
+        return data ?? false;
+      } catch (err) {
+        console.error('Unexpected error checking provider status:', err);
+        return false;
+      }
+    },
+  });
+}
+
 // -- Combined auth info ------------------------------------------------
 
 /**
- * Convenience hook that aggregates user and profile information
+ * Convenience hook that aggregates user, profile, and provider status
  * into a single object to avoid multiple hook invocations in components.
  */
 export function useAuthInfo() {
   const userQuery = useUser();
+  const isProviderQuery = useIsProvider();
 
   const info = useMemo(() => {
     return {
       user: userQuery.data,
       profile: userQuery.data?.profile || null,
-      isLoading: userQuery.isLoading,
-      error: userQuery.error,
+      isProvider: isProviderQuery.data ?? false,
+      isLoading: userQuery.isLoading || isProviderQuery.isLoading,
+      error: userQuery.error || isProviderQuery.error,
     };
-  }, [userQuery.data, userQuery.isLoading, userQuery.error]);
+  }, [
+    userQuery.data,
+    userQuery.isLoading,
+    userQuery.error,
+    isProviderQuery.data,
+    isProviderQuery.isLoading,
+    isProviderQuery.error,
+  ]);
 
   return info;
 }
@@ -213,7 +292,7 @@ export function useRefreshSession() {
       return sessionData;
     },
     onSuccess: () => {
-      if (IS_DEV) console.log("🎉 Session refresh successful, invalidating queries...");
+      if (IS_DEV) console.log("[SUCCESS] Session refresh successful, invalidating queries...");
 
       // Only invalidate specific auth-related queries instead of clearing everything
       qc.invalidateQueries({ queryKey: authKeys.user });
@@ -223,7 +302,7 @@ export function useRefreshSession() {
       toast.success("Session refreshed successfully!");
     },
     onError: (err: { message: string }) => {
-      console.error("❌ Session refresh failed:", err);
+      console.error("[ERROR] Session refresh failed:", err);
       toast.error(`Failed to refresh session: ${err.message}. Please try signing out and back in.`);
     },
   });

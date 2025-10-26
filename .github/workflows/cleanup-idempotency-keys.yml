@@ -1,0 +1,21 @@
+name: Cleanup Expired Idempotency Keys
+
+# Run daily at 2 AM UTC
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Supabase Edge Function
+        run: |
+          curl -X POST \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/cleanup-idempotency-keys" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "X-Cleanup-Token: ${{ secrets.CLEANUP_SECRET_TOKEN }}" \
+            -H "Content-Type: application/json"
+

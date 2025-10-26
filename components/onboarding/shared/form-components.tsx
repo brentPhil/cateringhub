@@ -8,6 +8,7 @@ import {
   type FieldPath,
   type FieldValues,
   type Control,
+  Controller,
 } from "react-hook-form";
 import {
   Field,
@@ -20,6 +21,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileUpload } from "@/components/ui/file-upload";
+import {
+  MultiSelectCombobox,
+  type ComboboxOption,
+} from "@/components/ui/multi-select-combobox";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { X, Plus } from "lucide-react";
 import type {
   FormFieldConfig,
@@ -35,7 +41,7 @@ import {
 // Generic typed form field component with enhanced type safety
 interface TypedFormFieldProps<
   TFieldValues extends FieldValues = FieldValues,
-  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
+  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
 > {
   control: Control<TFieldValues>;
   name: TName;
@@ -46,6 +52,7 @@ interface TypedFormFieldProps<
     onBlur: () => void;
     id: string;
     "aria-describedby": string | undefined;
+    "aria-invalid": boolean;
     hasError: boolean;
   }) => React.ReactNode;
   disabled?: boolean;
@@ -53,7 +60,7 @@ interface TypedFormFieldProps<
 
 export function TypedFormField<
   TFieldValues extends FieldValues,
-  TName extends FieldPath<TFieldValues>
+  TName extends FieldPath<TFieldValues>,
 >({
   control,
   name,
@@ -62,7 +69,7 @@ export function TypedFormField<
   disabled = false,
 }: TypedFormFieldProps<TFieldValues, TName>) {
   return (
-    <Field
+    <Controller
       control={control}
       name={name}
       disabled={disabled}
@@ -75,7 +82,7 @@ export function TypedFormField<
         );
 
         return (
-          <>
+          <Field data-invalid={!!fieldState.error}>
             <FieldLabel htmlFor={fieldId}>
               {config.label}
               {config.required && (
@@ -91,15 +98,21 @@ export function TypedFormField<
               ...field,
               id: fieldId,
               "aria-describedby": ariaDescribedBy,
+              "aria-invalid": !!fieldState.error,
               hasError: !!fieldState.error,
             })}
-            {config.description && (
+            {config.description && !fieldState.error && (
               <FieldDescription id={createFieldId(name, "description")}>
                 {config.description}
               </FieldDescription>
             )}
-            <FieldError id={createFieldId(name, "error")} />
-          </>
+            {fieldState.error && (
+              <FieldError
+                id={createFieldId(name, "error")}
+                errors={[fieldState.error]}
+              />
+            )}
+          </Field>
         );
       }}
     />
@@ -109,7 +122,7 @@ export function TypedFormField<
 // Text input field component
 interface TextFieldProps<
   TFieldValues extends FieldValues = FieldValues,
-  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
+  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
 > {
   control: Control<TFieldValues>;
   name: TName;
@@ -120,7 +133,7 @@ interface TextFieldProps<
 
 export function TextField<
   TFieldValues extends FieldValues,
-  TName extends FieldPath<TFieldValues>
+  TName extends FieldPath<TFieldValues>,
 >({
   control,
   name,
@@ -152,10 +165,55 @@ export function TextField<
   );
 }
 
+// Phone input field component with international phone number support
+interface PhoneInputFieldProps<
+  TFieldValues extends FieldValues = FieldValues,
+  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
+> {
+  control: Control<TFieldValues>;
+  name: TName;
+  config: FormFieldConfig;
+  disabled?: boolean;
+}
+
+export function PhoneInputField<
+  TFieldValues extends FieldValues,
+  TName extends FieldPath<TFieldValues>,
+>({
+  control,
+  name,
+  config,
+  disabled = false,
+}: PhoneInputFieldProps<TFieldValues, TName>) {
+  return (
+    <TypedFormField
+      control={control}
+      name={name}
+      config={config}
+      disabled={disabled}
+    >
+      {(field) => {
+        const { hasError, value, onChange, ...restProps } = field;
+
+        return (
+          <PhoneInput
+            value={value as string}
+            onChange={onChange as (value: string) => void}
+            placeholder={config.placeholder}
+            disabled={disabled}
+            defaultCountry="PH"
+            {...restProps}
+          />
+        );
+      }}
+    </TypedFormField>
+  );
+}
+
 // Textarea field component with improved accessibility
 interface TextareaFieldProps<
   TFieldValues extends FieldValues = FieldValues,
-  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
+  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
 > {
   control: Control<TFieldValues>;
   name: TName;
@@ -167,7 +225,7 @@ interface TextareaFieldProps<
 
 export function TextareaField<
   TFieldValues extends FieldValues,
-  TName extends FieldPath<TFieldValues>
+  TName extends FieldPath<TFieldValues>,
 >({
   control,
   name,
@@ -207,7 +265,7 @@ export function TextareaField<
 // File upload field component
 interface FileUploadFieldProps<
   TFieldValues extends FieldValues = FieldValues,
-  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
+  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
 > {
   control: Control<TFieldValues>;
   name: TName;
@@ -218,7 +276,7 @@ interface FileUploadFieldProps<
 
 export function FileUploadField<
   TFieldValues extends FieldValues,
-  TName extends FieldPath<TFieldValues>
+  TName extends FieldPath<TFieldValues>,
 >({
   control,
   name,
@@ -235,15 +293,69 @@ export function FileUploadField<
     >
       {(field) => (
         <FileUpload
-          onFileSelect={(file: File | null) =>
-            field.onChange(file as TFieldValues[TName])
-          }
-          value={field.value}
-          accept={uploadConfig.accept}
-          maxSize={uploadConfig.maxSize}
-          placeholder={config.placeholder}
-          showPreview={uploadConfig.showPreview}
+          onChange={(files: File[]) => {
+            // FileUpload component returns an array, but we need a single file
+            // Take the first file from the array, or undefined if empty
+            const file = files.length > 0 ? files[0] : undefined;
+            field.onChange(file as TFieldValues[TName]);
+          }}
+          accept={uploadConfig?.accept}
+          maxSize={uploadConfig?.maxSize}
+          showPreview={uploadConfig?.showPreview}
           disabled={disabled}
+        />
+      )}
+    </TypedFormField>
+  );
+}
+
+// Multi-select combobox field component (for service areas with Philippine cities)
+interface MultiSelectComboboxFieldProps<
+  TFieldValues extends FieldValues = FieldValues,
+  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
+> {
+  control: Control<TFieldValues>;
+  name: TName;
+  config: FormFieldConfig;
+  options: ComboboxOption[];
+  disabled?: boolean;
+  searchPlaceholder?: string;
+  emptyMessage?: string;
+  maxSelected?: number;
+}
+
+export function MultiSelectComboboxField<
+  TFieldValues extends FieldValues,
+  TName extends FieldPath<TFieldValues>,
+>({
+  control,
+  name,
+  config,
+  options,
+  disabled = false,
+  searchPlaceholder,
+  emptyMessage,
+  maxSelected,
+}: MultiSelectComboboxFieldProps<TFieldValues, TName>) {
+  return (
+    <TypedFormField
+      control={control}
+      name={name}
+      config={config}
+      disabled={disabled}
+    >
+      {(field) => (
+        <MultiSelectCombobox
+          options={options}
+          value={field.value as string[]}
+          onValueChange={(value) =>
+            field.onChange(value as TFieldValues[TName])
+          }
+          placeholder={config.placeholder}
+          searchPlaceholder={searchPlaceholder}
+          emptyMessage={emptyMessage}
+          disabled={disabled}
+          maxSelected={maxSelected}
         />
       )}
     </TypedFormField>
@@ -253,7 +365,7 @@ export function FileUploadField<
 // Dynamic array field component (for service areas, tags, etc.)
 interface DynamicArrayFieldProps<
   TFieldValues extends FieldValues = FieldValues,
-  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
+  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
 > {
   control: Control<TFieldValues>;
   name: TName;
@@ -269,7 +381,7 @@ interface DynamicArrayFieldProps<
 
 export function DynamicArrayField<
   TFieldValues extends FieldValues,
-  TName extends FieldPath<TFieldValues>
+  TName extends FieldPath<TFieldValues>,
 >({
   control,
   name,
@@ -318,33 +430,32 @@ export function DynamicArrayField<
           </div>
 
           {field.value && field.value.length > 0 && (
-            <div
-              className="flex flex-wrap gap-2"
-              role="list"
+            <ul
+              className="flex flex-wrap gap-2 list-none"
               aria-label={`Current ${config.label.toLowerCase()}`}
             >
               {field.value.map((item: string, index: number) => (
-                <Badge
-                  key={index}
-                  variant="secondary"
-                  className="flex items-center gap-1"
-                  role="listitem"
-                >
-                  {item}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-auto p-0 ml-1 hover:bg-transparent"
-                    onClick={() => onRemoveItem(index)}
-                    disabled={disabled}
-                    aria-label={`${ARIA_LABELS.REMOVE_ITEM} ${item}`}
+                <li key={index}>
+                  <Badge
+                    variant="secondary"
+                    className="flex items-center gap-1"
                   >
-                    <X className="w-3 h-3" />
-                  </Button>
-                </Badge>
+                    {item}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto p-0 ml-1 hover:bg-transparent"
+                      onClick={() => onRemoveItem(index)}
+                      disabled={disabled}
+                      aria-label={`${ARIA_LABELS.REMOVE_ITEM} ${item}`}
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  </Badge>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </div>
       )}
@@ -365,13 +476,13 @@ export const SocialMediaLinks = React.memo<SocialMediaLinksProps>(
       () => [
         {
           name: "socialMediaLinks.facebook" as const,
-          label: "Facebook Page",
+          label: "Facebook page",
           placeholder: "https://facebook.com/your-page",
           icon: "facebook",
         },
         {
           name: "socialMediaLinks.instagram" as const,
-          label: "Instagram Profile",
+          label: "Instagram profile",
           placeholder: "https://instagram.com/your-profile",
           icon: "instagram",
         },
@@ -389,7 +500,7 @@ export const SocialMediaLinks = React.memo<SocialMediaLinksProps>(
       <div className="space-y-4">
         <div>
           <h4 className="font-medium mb-2">
-            Social Media & Website (Optional)
+            Social media & website (optional)
           </h4>
           <p className="text-sm text-muted-foreground mb-4">
             Add your social media profiles and website to help customers learn

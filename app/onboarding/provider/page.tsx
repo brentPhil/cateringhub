@@ -49,7 +49,7 @@ export default function ProviderOnboardingPage() {
           {/* Hero Section */}
           <div className="text-center mb-12">
             <Typography variant="h1" className="mb-4">
-              Become a Catering Provider
+              Become a catering provider
             </Typography>
             <Typography variant="lead" className="max-w-2xl mx-auto mb-8">
               Join CateringHub as a catering provider and start managing your
@@ -63,7 +63,7 @@ export default function ProviderOnboardingPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Users className="h-5 w-5 text-primary" />
-                  Manage Services
+                  Manage services
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -78,7 +78,7 @@ export default function ProviderOnboardingPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Calendar className="h-5 w-5 text-primary" />
-                  Track Bookings
+                  Track bookings
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -93,7 +93,7 @@ export default function ProviderOnboardingPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <MessageSquare className="h-5 w-5 text-primary" />
-                  Customer Communication
+                  Customer communication
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -108,7 +108,7 @@ export default function ProviderOnboardingPage() {
           {/* Onboarding Steps Preview */}
           <Card className="mb-8">
             <CardHeader>
-              <CardTitle>What&apos;s Next?</CardTitle>
+              <CardTitle>What&apos;s next?</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -118,7 +118,7 @@ export default function ProviderOnboardingPage() {
                   </div>
                   <div>
                     <Typography variant="smallText" className="font-medium">
-                      Business Information
+                      Business information
                     </Typography>
                     <Typography variant="mutedText" className="text-sm">
                       Tell us about your catering business, upload your logo,
@@ -135,7 +135,7 @@ export default function ProviderOnboardingPage() {
                   </div>
                   <div>
                     <Typography variant="smallText" className="font-medium">
-                      Service Details
+                      Service details
                     </Typography>
                     <Typography variant="mutedText" className="text-sm">
                       Describe your services, coverage areas, and upload sample
@@ -152,7 +152,7 @@ export default function ProviderOnboardingPage() {
                   </div>
                   <div>
                     <Typography variant="smallText" className="font-medium">
-                      Contact Information
+                      Contact information
                     </Typography>
                     <Typography variant="mutedText" className="text-sm">
                       Provide contact details and social media links for
@@ -168,7 +168,7 @@ export default function ProviderOnboardingPage() {
           <div className="text-center">
             <Button size="lg" className="mb-4" asChild>
               <Link href="/onboarding/provider/flow">
-                Start Provider Onboarding
+                Start provider onboarding
               </Link>
             </Button>
             <Typography variant="mutedText" className="text-sm">
