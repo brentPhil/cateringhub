@@ -3,7 +3,7 @@
  */
 
 import { APIErrors } from './errors';
-import type { Database } from '@/database.types';
+import type { Database } from '@/types/supabase';
 
 type ProviderRole = Database['public']['Enums']['provider_role'];
 

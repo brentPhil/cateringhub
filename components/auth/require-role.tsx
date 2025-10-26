@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCurrentMembership } from "@/hooks/use-membership";
-import type { Database } from "@/database.types";
+import type { Database } from "@/types/supabase";
 import { Loader2 } from "lucide-react";
 
 type ProviderRole = Database["public"]["Enums"]["provider_role"];

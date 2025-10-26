@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
-import type { Tables, Json } from "@/database.types";
+import type { Tables, Json } from "@/types/supabase";
 import {
   createWorkerProfile as createWorkerProfileAction,
   updateWorkerProfile as updateWorkerProfileAction,

@@ -18,7 +18,7 @@
  */
 
 import { createClient } from '@/lib/supabase/server';
-import type { Database } from '@/database.types';
+import type { Database } from '@/types/supabase';
 
 type AuditLogAction = Database['public']['Tables']['audit_logs']['Row']['action'];
 type AuditLogResourceType = Database['public']['Tables']['audit_logs']['Row']['resource_type'];
@@ -40,7 +40,7 @@ export interface AuditLogEntry {
 /**
  * Membership change metadata
  */
-export interface MembershipChangeMetadata {
+export interface MembershipChangeMetadata extends Record<string, unknown> {
   targetUserId?: string;
   email?: string;
   role?: string;
@@ -54,7 +54,7 @@ export interface MembershipChangeMetadata {
 /**
  * Invitation metadata
  */
-export interface InvitationMetadata {
+export interface InvitationMetadata extends Record<string, unknown> {
   invitationId: string;
   email: string;
   role: string;
@@ -66,7 +66,7 @@ export interface InvitationMetadata {
 /**
  * Role change metadata
  */
-export interface RoleChangeMetadata {
+export interface RoleChangeMetadata extends Record<string, unknown> {
   targetUserId: string;
   targetMemberId: string;
   oldRole: string;
@@ -76,7 +76,7 @@ export interface RoleChangeMetadata {
 /**
  * Suspension metadata
  */
-export interface SuspensionMetadata {
+export interface SuspensionMetadata extends Record<string, unknown> {
   targetUserId: string;
   targetMemberId: string;
   reason?: string;
@@ -87,7 +87,7 @@ export interface SuspensionMetadata {
 /**
  * Booking assignment metadata
  */
-export interface AssignmentMetadata {
+export interface AssignmentMetadata extends Record<string, unknown> {
   bookingId: string;
   assignedToUserId: string;
   assignedToMemberId: string;
@@ -99,7 +99,7 @@ export interface AssignmentMetadata {
 /**
  * Profile update metadata
  */
-export interface ProfileUpdateMetadata {
+export interface ProfileUpdateMetadata extends Record<string, unknown> {
   fields: string[];
   changes?: Record<string, { old: unknown; new: unknown }>;
 }

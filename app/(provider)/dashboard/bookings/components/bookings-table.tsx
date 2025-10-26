@@ -9,7 +9,7 @@ import { AssignTeammateDialog } from "@/components/shifts/assign-teammate-dialog
 import { useShifts } from "../hooks/use-shifts";
 import { DataTable } from "@/components/ui/data-table";
 import { createBookingsColumns } from "./bookings-columns";
-import type { Database } from "@/database.types";
+import type { Database } from "@/types/supabase";
 
 type Booking = Database["public"]["Tables"]["bookings"]["Row"];
 

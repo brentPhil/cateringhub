@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import type { TablesInsert, TablesUpdate, Tables, Json } from "@/database.types";
+import type { TablesInsert, TablesUpdate, Tables, Json } from "@/types/supabase";
 
 export type ActionResult<T = unknown> = {
   success: boolean;

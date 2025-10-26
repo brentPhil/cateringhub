@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import type { Database } from "@/database.types";
+import type { Database } from "@/types/supabase";
 
 type ProviderRole = Database['public']['Enums']['provider_role'];
 type MemberStatus = Database['public']['Enums']['provider_member_status'];

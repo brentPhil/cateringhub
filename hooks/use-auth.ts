@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useMemo } from "react";
 import type { User } from "@supabase/supabase-js";
-import type { Tables } from "@/database.types";
+import { Tables } from "@/types/supabase";
 
 /* ------------------------------------------------------------------ */
 /* Types                                                              */

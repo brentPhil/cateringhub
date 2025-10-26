@@ -1,6 +1,6 @@
 "use server";
 
-import { TablesInsert } from "@/database.types";
+import { TablesInsert } from "@/types/supabase";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 

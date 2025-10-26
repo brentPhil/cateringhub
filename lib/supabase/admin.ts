@@ -7,7 +7,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@/database.types';
+import type { Database } from '@/types/supabase';
 
 // Validate that service role key is available
 if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {

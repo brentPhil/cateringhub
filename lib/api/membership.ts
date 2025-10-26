@@ -6,7 +6,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { APIErrors } from './errors';
 import { getAuthenticatedUser } from './auth';
-import type { Database } from '@/database.types';
+import type { Database } from '@/types/supabase';
 
 type ProviderRole = Database['public']['Enums']['provider_role'];
 type MemberStatus = Database['public']['Enums']['provider_member_status'];

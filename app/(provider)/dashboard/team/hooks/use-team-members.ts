@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
-import type { Tables, Enums } from "@/database.types";
+import type { Tables, Enums } from "@/types/supabase";
 
 // Types
 export type ProviderMember = Tables<"provider_members"> & {

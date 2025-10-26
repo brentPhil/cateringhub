@@ -1,5 +1,5 @@
 import { differenceInDays, differenceInHours, differenceInMinutes, isPast } from "date-fns";
-import type { Database } from "@/database.types";
+import type { Database } from "@/types/supabase";
 import type { StatusTimeline, ProviderConstraints, BookingDetailCapabilities } from "../../hooks/use-booking-detail";
 
 type BookingStatus = Database['public']['Enums']['booking_status'];

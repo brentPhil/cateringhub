@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getAuthenticatedUser, verifyProviderExists } from '@/lib/api/auth';
 import { handleAPIError, APIErrors } from '@/lib/api/errors';
 import { parseRequestBody, validateUUID } from '@/lib/api/validation';
-import type { Database } from '@/database.types';
+import type { Database } from '@/types/supabase';
 
 type ProviderRole = Database['public']['Enums']['provider_role'];
 

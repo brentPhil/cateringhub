@@ -9,7 +9,7 @@ import {
   checkOut as checkOutAction,
   deleteShift as deleteShiftAction,
 } from "../actions/shifts";
-import { Tables } from "@/database.types";
+import { Tables } from "@/types/supabase";
 import type { UserMetadata } from "@/types/api.types";
 
 // Types

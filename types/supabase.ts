@@ -755,45 +755,24 @@ export type Database = {
         Returns: Json
       }
       cleanup_expired_idempotency_keys: { Args: never; Returns: number }
-      create_provider_with_membership:
-        | {
-            Args: {
-              p_business_address?: string
-              p_business_name: string
-              p_client_ip?: string
-              p_contact_person_name: string
-              p_description: string
-              p_idempotency_key?: string
-              p_logo_url?: string
-              p_mobile_number: string
-              p_onboarding_completed?: boolean
-              p_onboarding_step?: number
-              p_sample_menu_url?: string
-              p_service_areas?: string[]
-              p_social_links?: Json
-              p_user_id: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_business_address?: string
-              p_business_name: string
-              p_client_ip?: unknown
-              p_contact_person_name: string
-              p_description: string
-              p_idempotency_key?: string
-              p_logo_url?: string
-              p_mobile_number: string
-              p_onboarding_completed?: boolean
-              p_onboarding_step?: number
-              p_sample_menu_url?: string
-              p_service_areas?: string[]
-              p_social_links?: Json
-              p_user_id: string
-            }
-            Returns: Json
-          }
+      create_provider_with_membership: {
+        Args: {
+          p_business_address?: string
+          p_business_name: string
+          p_client_ip?: string
+          p_contact_person_name: string
+          p_description: string
+          p_logo_url?: string
+          p_mobile_number: string
+          p_onboarding_completed?: boolean
+          p_onboarding_step?: number
+          p_sample_menu_url?: string
+          p_service_areas?: string[]
+          p_social_links?: Json
+          p_user_id: string
+        }
+        Returns: Json
+      }
       custom_access_token_hook: { Args: { event: Json }; Returns: Json }
       debug_jwt_claims: { Args: never; Returns: Json }
       get_booking_statistics: {

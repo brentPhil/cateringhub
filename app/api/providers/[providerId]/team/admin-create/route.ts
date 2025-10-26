@@ -12,7 +12,7 @@ import { parseRequestBody, validateEmail, validateProviderRole, validateRequired
 import { inviteTeamMember } from '@/lib/supabase/admin';
 import { AuditLogger } from '@/lib/audit/audit-logger';
 import { RateLimiters, createRateLimitError } from '@/lib/middleware/rate-limit';
-import type { Database } from '@/database.types';
+import type { Database } from '@/types/supabase';
 
 type ProviderRole = Database['public']['Enums']['provider_role'];
 
@@ -159,7 +159,7 @@ export async function POST(
       resourceType: 'member',
       resourceId: newMember.id,
       details: {
-        targetUserId: newUser.id,
+        targetUserId: newUser.userId,
         targetEmail: email,
         targetFullName: fullName,
         assignedRole: role,

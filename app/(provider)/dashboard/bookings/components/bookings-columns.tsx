@@ -22,7 +22,7 @@ import {
   ChevronRight,
   Users,
 } from "lucide-react";
-import type { Database } from "@/database.types";
+import type { Database } from "@/types/supabase";
 
 type Booking = Database["public"]["Tables"]["bookings"]["Row"];
 type BookingStatus = Database["public"]["Enums"]["booking_status"];

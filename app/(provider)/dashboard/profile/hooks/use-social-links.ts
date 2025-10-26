@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import type { Tables } from "@/database.types";
+import type { Tables } from "@/types/supabase";
 
 type DBSocialLink = Tables<"provider_social_links">;
 

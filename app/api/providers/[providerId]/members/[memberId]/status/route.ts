@@ -10,7 +10,7 @@ import { handleAPIError, APIErrors } from '@/lib/api/errors';
 import { parseRequestBody, validateUpdateMemberStatusRequest, validateUUID } from '@/lib/api/validation';
 import { AuditLogger } from '@/lib/audit/audit-logger';
 import { RateLimiters, createRateLimitError } from '@/lib/middleware/rate-limit';
-import type { Database } from '@/database.types';
+import type { Database } from '@/types/supabase';
 
 type ProviderRole = Database['public']['Enums']['provider_role'];
 type MemberStatus = Database['public']['Enums']['provider_member_status'];
