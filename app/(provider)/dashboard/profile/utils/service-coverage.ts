@@ -43,6 +43,10 @@ const CITY_COORDINATES: Record<string, [number, number]> = {
   TANAUAN: [14.0858, 121.1503],
   LIPA: [13.9411, 121.1624],
   BATANGAS: [13.7565, 121.0583],
+  // Leyte cities
+  BARUGO: [11.3002, 124.7327],
+  TACLOBAN: [11.2447, 125.0047],
+  ORMOC: [11.0059, 124.6074],
 };
 
 /**

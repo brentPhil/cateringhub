@@ -223,24 +223,36 @@ function createCircleGeoJSON(
 
   // Earth's radius in kilometers
   const earthRadius = 6371;
+
+  // Convert latitude to radians
+  const latRad = (lat * Math.PI) / 180;
+
+  // Calculate angular distance (radius / earth radius)
   const angularDistance = radiusInKm / earthRadius;
-  const degreesPerRadian = 180 / Math.PI;
-  const latitudeInRadians = (lat * Math.PI) / 180;
-  const latCosine = Math.cos(latitudeInRadians);
 
   for (let i = 0; i < points; i++) {
-    const angle = (i * 360) / points;
-    const angleRad = (angle * Math.PI) / 180;
+    // Bearing angle in radians (0 to 2π)
+    const bearing = (i * 2 * Math.PI) / points;
 
-    // Calculate offset in degrees
-    const latOffset = angularDistance * degreesPerRadian * Math.cos(angleRad);
-    const lonOffset =
-      angularDistance *
-      degreesPerRadian *
-      Math.sin(angleRad) *
-      (latCosine !== 0 ? 1 / latCosine : 0);
+    // Calculate destination point using Haversine formula
+    // This properly accounts for Earth's curvature
+    const destLatRad = Math.asin(
+      Math.sin(latRad) * Math.cos(angularDistance) +
+        Math.cos(latRad) * Math.sin(angularDistance) * Math.cos(bearing)
+    );
 
-    coords.push([lon + lonOffset, lat + latOffset]);
+    const destLonRad =
+      (lon * Math.PI) / 180 +
+      Math.atan2(
+        Math.sin(bearing) * Math.sin(angularDistance) * Math.cos(latRad),
+        Math.cos(angularDistance) - Math.sin(latRad) * Math.sin(destLatRad)
+      );
+
+    // Convert back to degrees
+    const destLat = (destLatRad * 180) / Math.PI;
+    const destLon = (destLonRad * 180) / Math.PI;
+
+    coords.push([destLon, destLat]);
   }
 
   // Close the polygon by adding the first point at the end
