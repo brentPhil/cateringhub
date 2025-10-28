@@ -43,13 +43,23 @@ export function useDashboardAnalytics(options: UseDashboardAnalyticsOptions) {
   } = options;
 
   // Memoize the date strings to prevent infinite re-renders
+  // Extract getTime() to separate variables for stable comparison
+  const startDateTime = startDate?.getTime();
+  const endDateTime = endDate?.getTime();
+
   const startDateStr = useMemo(
-    () => startDate?.toISOString().split("T")[0],
-    [startDate?.getTime()] // Use getTime() for stable comparison
+    () =>
+      startDateTime !== undefined
+        ? new Date(startDateTime).toISOString().split("T")[0]
+        : undefined,
+    [startDateTime]
   );
   const endDateStr = useMemo(
-    () => endDate?.toISOString().split("T")[0],
-    [endDate?.getTime()] // Use getTime() for stable comparison
+    () =>
+      endDateTime !== undefined
+        ? new Date(endDateTime).toISOString().split("T")[0]
+        : undefined,
+    [endDateTime]
   );
 
   return useQuery({
@@ -176,4 +186,3 @@ export function transformAnalyticsData(data: DashboardAnalytics) {
     budget,
   };
 }
-

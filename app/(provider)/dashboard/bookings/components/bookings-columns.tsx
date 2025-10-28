@@ -201,6 +201,18 @@ export const createBookingsColumns = (
     },
   },
   {
+    accessorKey: "source",
+    header: "Source",
+    cell: ({ row }) => {
+      const booking = row.original;
+      return booking.source === "manual" ? (
+        <Badge variant="secondary" className="capitalize">
+          Manual
+        </Badge>
+      ) : null;
+    },
+  },
+  {
     id: "assigned",
     header: "Assigned",
     cell: ({ row }) => {

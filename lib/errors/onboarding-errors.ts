@@ -161,15 +161,23 @@ export const POSTGRES_ERROR_CODES: Record<string, { message: string; errorClass:
 /**
  * Extract Postgres error code from error object
  */
-function getPostgresErrorCode(error: any): string | null {
+function getPostgresErrorCode(error: unknown): string | null {
   // Check various possible locations for error code
-  if (error.code) return error.code;
-  if (error.details?.code) return error.details.code;
-  if (error.error?.code) return error.error.code;
+  const err = error as Record<string, unknown>;
+  if (typeof err.code === 'string') return err.code;
+  if (typeof (err.details as Record<string, unknown>)?.code === 'string') {
+    return (err.details as Record<string, unknown>).code as string;
+  }
+  if (typeof (err.error as Record<string, unknown>)?.code === 'string') {
+    return (err.error as Record<string, unknown>).code as string;
+  }
 
   // Try to extract from message (format: "Error: [CODE] message")
-  const codeMatch = error.message?.match(/\[(\d{5})\]/);
-  if (codeMatch) return codeMatch[1];
+  const message = err.message;
+  if (typeof message === 'string') {
+    const codeMatch = message.match(/\[(\d{5})\]/);
+    if (codeMatch) return codeMatch[1];
+  }
 
   return null;
 }
@@ -183,8 +191,8 @@ export function parseOnboardingError(error: unknown): OnboardingError {
     return error;
   }
 
-  const err = error as any;
-  const rawMessage: string = (err?.message as string) || 'Something went wrong';
+  const err = error as Record<string, unknown>;
+  const rawMessage: string = (typeof err?.message === 'string' ? err.message : 'Something went wrong');
   const code = getPostgresErrorCode(err);
 
   // Duplicates (unique_violation)

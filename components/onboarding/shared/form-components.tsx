@@ -193,7 +193,7 @@ export function PhoneInputField<
       disabled={disabled}
     >
       {(field) => {
-        const { hasError, value, onChange, ...restProps } = field;
+        const { value, onChange, ...restProps } = field;
 
         return (
           <PhoneInput

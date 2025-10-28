@@ -48,6 +48,7 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
     const status = searchParams.get('status') || '';
+    const source = searchParams.get('source') || '';
     const assignedToMe = searchParams.get('assigned_to_me') === 'true';
     const page = parseInt(searchParams.get('page') || '1', 10);
     const pageSize = parseInt(searchParams.get('page_size') || '10', 10);
@@ -84,6 +85,11 @@ export async function GET(
     // Apply status filter
     if (status) {
       query = query.eq('status', status);
+    }
+
+    // Apply source filter
+    if (source) {
+      query = query.eq('source', source);
     }
 
     // Apply sorting
@@ -126,6 +132,7 @@ export async function GET(
       filters: {
         search,
         status,
+        source,
         assignedToMe,
         sortBy: sortField,
         sortOrder,

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useCurrentMembership } from "@/hooks/use-membership";
 import { useBookings } from "./hooks/use-bookings";
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Badge } from "@/components/ui/badge";
 import { BookingsTable } from "./components/bookings-table";
-import { Calendar, Search, UserCheck } from "lucide-react";
+import { CreateManualBookingDrawer } from "./components/create-manual-booking-drawer";
+import { Calendar, Search, UserCheck, Plus } from "lucide-react";
 import { parseAsBoolean, parseAsString, useQueryStates } from "nuqs";
 
 export default function BookingsPage() {
@@ -16,10 +18,14 @@ export default function BookingsPage() {
     useCurrentMembership();
   const providerId = membership?.providerId;
 
+  // Manual booking drawer state
+  const [manualBookingDrawerOpen, setManualBookingDrawerOpen] = useState(false);
+
   // URL state management with nuqs
   const [filters, setFilters] = useQueryStates({
     search: parseAsString.withDefault(""),
     status: parseAsString.withDefault(""),
+    source: parseAsString.withDefault(""),
     assigned_to_me: parseAsBoolean.withDefault(false),
   });
 
@@ -43,6 +49,13 @@ export default function BookingsPage() {
     { value: "cancelled", label: "Cancelled" },
   ];
 
+  // Source filter options
+  const sourceOptions: ComboboxOption[] = [
+    { value: "all", label: "All bookings" },
+    { value: "manual", label: "Manual only" },
+    { value: "auto", label: "Auto only" },
+  ];
+
   // Handlers
   const handleSearch = (value: string) => {
     setFilters({ search: value });
@@ -50,6 +63,10 @@ export default function BookingsPage() {
 
   const handleStatusFilter = (value: string) => {
     setFilters({ status: value === "all" ? "" : value });
+  };
+
+  const handleSourceFilter = (value: string) => {
+    setFilters({ source: value === "all" ? "" : value });
   };
 
   const handleAssignedToMeToggle = () => {
@@ -80,6 +97,10 @@ export default function BookingsPage() {
     );
   }
 
+  // Check if user can create manual bookings (staff or higher)
+  const canCreateManualBookings =
+    membership?.capabilities.canEditAllBookings || false;
+
   return (
     <div className="space-y-6">
       {/* Page header */}
@@ -92,11 +113,19 @@ export default function BookingsPage() {
               : "View your assigned bookings"}
           </p>
         </div>
-        {membership?.role && (
-          <Badge variant="outline" className="capitalize">
-            {membership.role}
-          </Badge>
-        )}
+        <div className="flex items-center gap-2">
+          {canCreateManualBookings && (
+            <Button onClick={() => setManualBookingDrawerOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create manual booking
+            </Button>
+          )}
+          {membership?.role && (
+            <Badge variant="outline" className="capitalize">
+              {membership.role}
+            </Badge>
+          )}
+        </div>
       </div>
 
       {/* Filters */}
@@ -121,6 +150,15 @@ export default function BookingsPage() {
           className="w-full sm:w-[180px]"
         />
 
+        {/* Source filter */}
+        <Combobox
+          options={sourceOptions}
+          value={filters.source || "all"}
+          onValueChange={handleSourceFilter}
+          placeholder="Filter by source"
+          className="w-full sm:w-[180px]"
+        />
+
         {/* Assigned to me filter */}
         <Button
           variant={filters.assigned_to_me ? "default" : "outline"}
@@ -140,6 +178,15 @@ export default function BookingsPage() {
         currentUserId={membership?.userId}
         providerId={providerId}
       />
+
+      {/* Manual booking drawer */}
+      {providerId && (
+        <CreateManualBookingDrawer
+          open={manualBookingDrawerOpen}
+          onOpenChange={setManualBookingDrawerOpen}
+          providerId={providerId}
+        />
+      )}
     </div>
   );
 }
