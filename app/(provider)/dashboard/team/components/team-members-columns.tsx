@@ -25,6 +25,7 @@ interface ColumnContext {
   onRemove: (memberId: string) => void;
   onEditRole?: (member: TeamMemberWithUser) => void;
   onResendInvitation?: (invitationId: string) => void;
+  onAssignTeam?: (member: TeamMemberWithUser) => void;
 }
 
 export const createTeamMembersColumns = (
@@ -84,6 +85,26 @@ export const createTeamMembersColumns = (
     },
   },
   {
+    accessorKey: "team",
+    header: "Team",
+    cell: ({ row }) => {
+      const member = row.original;
+      if (!member.team) {
+        return <span className="text-sm text-muted-foreground">No team</span>;
+      }
+      return (
+        <div className="flex flex-col">
+          <span className="text-sm font-medium">{member.team.name}</span>
+          {member.team.status !== "active" && (
+            <Badge variant="outline" className="w-fit mt-1 text-xs">
+              {member.team.status}
+            </Badge>
+          )}
+        </div>
+      );
+    },
+  },
+  {
     accessorKey: "last_active",
     header: ({ column }) => {
       return (
@@ -128,6 +149,11 @@ export const createTeamMembersColumns = (
               ? () => context.onResendInvitation!(member.id)
               : undefined
           }
+          onAssignTeam={
+            context.onAssignTeam
+              ? () => context.onAssignTeam!(member)
+              : undefined
+          }
         />
       );
     },
@@ -135,4 +161,3 @@ export const createTeamMembersColumns = (
     enableHiding: false,
   },
 ];
-

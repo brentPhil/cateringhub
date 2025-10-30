@@ -31,15 +31,22 @@ export async function GET(
       throw APIErrors.FORBIDDEN("You are not an active member of this provider");
     }
 
-    // Fetch all members
+    // Fetch all members with team information
     const { data: members, error: membersError } = await supabase
       .from("provider_members")
-      .select("*")
+      .select(`
+        *,
+        team:teams(
+          id,
+          name,
+          status
+        )
+      `)
       .eq("provider_id", providerId)
       .order("created_at", { ascending: false});
 
     if (membersError) {
-      throw APIErrors.DATABASE_ERROR("Failed to fetch team members", membersError);
+      throw APIErrors.INTERNAL("Failed to fetch team members", membersError);
     }
 
     // Fetch user metadata for each member from auth.users

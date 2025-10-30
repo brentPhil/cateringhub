@@ -19,10 +19,12 @@ import {
 import { useCurrentMembership } from "@/hooks/use-membership";
 import { AddWorkerModal } from "./components/add-worker-modal";
 import { EditWorkerDrawer } from "./components/edit-worker-drawer";
+import { AssignWorkerTeamDialog } from "./components/assign-worker-team-dialog";
 
 export default function WorkersPage() {
   const [addWorkerModalOpen, setAddWorkerModalOpen] = useState(false);
   const [editWorkerDrawerOpen, setEditWorkerDrawerOpen] = useState(false);
+  const [assignTeamDialogOpen, setAssignTeamDialogOpen] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState<WorkerProfile | null>(
     null
   );
@@ -128,6 +130,11 @@ export default function WorkersPage() {
     await deleteWorkerMutation.mutateAsync(workerId);
   };
 
+  const handleAssignTeam = (worker: WorkerProfile) => {
+    setSelectedWorker(worker);
+    setAssignTeamDialogOpen(true);
+  };
+
   // Check permissions
   const canManageWorkers =
     currentMembership?.capabilities?.canInviteMembers || false;
@@ -223,6 +230,7 @@ export default function WorkersPage() {
         canManage={canManageWorkers}
         onEdit={handleEditWorker}
         onDelete={handleDeleteWorker}
+        onAssignTeam={handleAssignTeam}
         error={error as Error | null}
       />
 
@@ -242,6 +250,16 @@ export default function WorkersPage() {
           worker={selectedWorker}
           onUpdate={handleUpdateWorker}
           isLoading={updateWorkerMutation.isPending}
+        />
+      )}
+
+      {/* Assign team dialog */}
+      {providerId && (
+        <AssignWorkerTeamDialog
+          open={assignTeamDialogOpen}
+          onOpenChange={setAssignTeamDialogOpen}
+          worker={selectedWorker}
+          providerId={providerId}
         />
       )}
     </div>

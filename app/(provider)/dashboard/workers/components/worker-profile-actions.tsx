@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Pencil, Trash2, UserPlus } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2, UserPlus, Users2 } from "lucide-react";
 import type { WorkerProfile } from "../hooks/use-worker-profiles";
 
 interface WorkerProfileActionsProps {
@@ -17,6 +17,7 @@ interface WorkerProfileActionsProps {
   onEdit: () => void;
   onDelete: () => void;
   onPromote?: () => void;
+  onAssignTeam?: () => void;
 }
 
 export function WorkerProfileActions({
@@ -24,6 +25,7 @@ export function WorkerProfileActions({
   onEdit,
   onDelete,
   onPromote,
+  onAssignTeam,
 }: WorkerProfileActionsProps) {
   return (
     <DropdownMenu>
@@ -40,6 +42,12 @@ export function WorkerProfileActions({
           <Pencil className="mr-2 h-4 w-4" />
           Edit profile
         </DropdownMenuItem>
+        {onAssignTeam && (
+          <DropdownMenuItem onClick={onAssignTeam}>
+            <Users2 className="mr-2 h-4 w-4" />
+            Assign to team
+          </DropdownMenuItem>
+        )}
         {onPromote && !worker.user_id && (
           <DropdownMenuItem onClick={onPromote}>
             <UserPlus className="mr-2 h-4 w-4" />
@@ -55,4 +63,3 @@ export function WorkerProfileActions({
     </DropdownMenu>
   );
 }
-

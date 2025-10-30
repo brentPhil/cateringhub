@@ -11,6 +11,7 @@ import { createTeamMembersColumns } from "./components/team-members-columns";
 import { InviteMemberModal } from "./components/invite-member-modal";
 import { AddStaffModal } from "./components/add-staff-modal";
 import { EditRoleDrawer } from "./components/edit-role-drawer";
+import { AssignTeamDialog } from "./components/assign-team-dialog";
 import { PlanLimitBanner } from "./components/plan-limit-banner";
 import {
   useTeamMembers,
@@ -23,12 +24,14 @@ import {
   type TeamMemberWithUser,
 } from "./hooks/use-team-members";
 import { useCurrentMembership } from "@/hooks/use-membership";
+import { useTeams } from "../teams/hooks/use-teams";
 import { toast } from "sonner";
 
 export default function TeamPage() {
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [addStaffModalOpen, setAddStaffModalOpen] = useState(false);
   const [editRoleDrawerOpen, setEditRoleDrawerOpen] = useState(false);
+  const [assignTeamDialogOpen, setAssignTeamDialogOpen] = useState(false);
   const [selectedMember, setSelectedMember] =
     useState<TeamMemberWithUser | null>(null);
 
@@ -45,12 +48,16 @@ export default function TeamPage() {
     pageSize: parseAsInteger.withDefault(10),
     role: parseAsString.withDefault(""),
     status: parseAsString.withDefault(""),
+    team: parseAsString.withDefault(""),
     sortBy: parseAsString.withDefault(""),
     sortOrder: parseAsString.withDefault("asc"),
   });
 
   // Fetch team members
   const { data: members = [], isLoading, error } = useTeamMembers(providerId);
+
+  // Fetch teams for filter dropdown
+  const { data: teams = [] } = useTeams(providerId, { status: "active" });
 
   // Mutations
   const inviteMutation = useInviteMember(providerId || "");
@@ -74,8 +81,17 @@ export default function TeamPage() {
       filtered = filtered.filter((member) => member.status === filters.status);
     }
 
+    // Filter by team
+    if (filters.team) {
+      if (filters.team === "no-team") {
+        filtered = filtered.filter((member) => !member.team_id);
+      } else {
+        filtered = filtered.filter((member) => member.team_id === filters.team);
+      }
+    }
+
     return filtered;
-  }, [members, filters.role, filters.status]);
+  }, [members, filters.role, filters.status, filters.team]);
 
   // Pagination
   const paginatedMembers = useMemo(() => {
@@ -144,6 +160,11 @@ export default function TeamPage() {
     setEditRoleDrawerOpen(true);
   };
 
+  const handleAssignTeam = (member: TeamMemberWithUser) => {
+    setSelectedMember(member);
+    setAssignTeamDialogOpen(true);
+  };
+
   const handleUpdateRole = async (memberId: string, role: string) => {
     await updateRoleMutation.mutateAsync({ memberId, role });
   };
@@ -180,6 +201,20 @@ export default function TeamPage() {
     { value: "suspended", label: "Suspended" },
   ];
 
+  // Team filter options
+  const teamOptions: ComboboxOption[] = useMemo(() => {
+    const options: ComboboxOption[] = [
+      { value: "all", label: "All teams" },
+      { value: "no-team", label: "No team assigned" },
+    ];
+
+    teams.forEach((team) => {
+      options.push({ value: team.id, label: team.name });
+    });
+
+    return options;
+  }, [teams]);
+
   // Check if user can invite (admin or owner)
   const canInvite = currentMembership?.capabilities.canInviteMembers || false;
 
@@ -194,6 +229,7 @@ export default function TeamPage() {
         onRemove: handleRemove,
         onEditRole: handleEditRole,
         onResendInvitation: handleResendInvitation,
+        onAssignTeam: handleAssignTeam,
       }),
     [
       currentMembership?.role,
@@ -290,6 +326,17 @@ export default function TeamPage() {
             className="w-[200px]"
           />
         </div>
+        <div>
+          <Combobox
+            options={teamOptions}
+            value={filters.team || "all"}
+            onValueChange={(value) =>
+              setFilters({ team: value === "all" ? "" : value, page: 1 })
+            }
+            placeholder="Filter by team"
+            className="w-[200px]"
+          />
+        </div>
       </div>
 
       {/* Team members table */}
@@ -348,6 +395,16 @@ export default function TeamPage() {
         onUpdateRole={handleUpdateRole}
         isLoading={updateRoleMutation.isPending}
       />
+
+      {/* Assign team dialog */}
+      {providerId && (
+        <AssignTeamDialog
+          open={assignTeamDialogOpen}
+          onOpenChange={setAssignTeamDialogOpen}
+          member={selectedMember}
+          providerId={providerId}
+        />
+      )}
     </div>
   );
 }

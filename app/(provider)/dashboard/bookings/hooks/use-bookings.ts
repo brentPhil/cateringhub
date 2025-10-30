@@ -3,13 +3,21 @@
 import { useQuery } from "@tanstack/react-query";
 import type { Database } from "@/types/supabase";
 
-type Booking = Database['public']['Tables']['bookings']['Row'];
+type Booking = Database['public']['Tables']['bookings']['Row'] & {
+  team?: {
+    id: string;
+    name: string;
+    status: string;
+  } | null;
+};
 type ProviderRole = Database['public']['Enums']['provider_role'];
 
 export interface BookingsFilters {
   search?: string;
   status?: string;
-  assigned_to_me?: boolean;
+  source?: string;
+  team?: string;
+  my_team?: boolean;
   page?: number;
   page_size?: number;
   sort_by?: string;
@@ -61,7 +69,9 @@ export function useBookings(
       const params = new URLSearchParams();
       if (filters.search) params.append('search', filters.search);
       if (filters.status) params.append('status', filters.status);
-      if (filters.assigned_to_me) params.append('assigned_to_me', 'true');
+      if (filters.source) params.append('source', filters.source);
+      if (filters.team) params.append('team', filters.team);
+      if (filters.my_team) params.append('my_team', 'true');
       if (filters.page) params.append('page', filters.page.toString());
       if (filters.page_size) params.append('page_size', filters.page_size.toString());
       if (filters.sort_by) params.append('sort_by', filters.sort_by);

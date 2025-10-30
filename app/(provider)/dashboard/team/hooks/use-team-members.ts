@@ -21,6 +21,11 @@ export type TeamMemberWithUser = ProviderMember & {
   email: string;
   avatar_url?: string;
   last_active?: string;
+  team?: {
+    id: string;
+    name: string;
+    status: string;
+  } | null;
 };
 
 // Query keys
@@ -417,6 +422,7 @@ export function useAddStaff(providerId: string) {
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
             first_login_at: null,
+            team_id: null,
             full_name: newStaff.full_name,
             email: newStaff.email,
             avatar_url: undefined,

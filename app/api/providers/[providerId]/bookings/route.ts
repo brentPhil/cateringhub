@@ -17,11 +17,13 @@ interface RouteContext {
 /**
  * GET /api/providers/[providerId]/bookings
  * Fetch bookings with role-based filtering
- * 
+ *
  * Query Parameters:
  * - search: Search by customer name, email, or event type
  * - status: Filter by booking status
- * - assigned_to_me: Filter to only bookings assigned to current user (true/false)
+ * - source: Filter by booking source (manual/auto)
+ * - team: Filter by team ID or 'no-team'
+ * - my_team: Filter to only bookings for current user's team (true/false)
  * - page: Page number (default: 1)
  * - page_size: Items per page (default: 10)
  * - sort_by: Field to sort by (default: event_date)
@@ -49,30 +51,42 @@ export async function GET(
     const search = searchParams.get('search') || '';
     const status = searchParams.get('status') || '';
     const source = searchParams.get('source') || '';
-    const assignedToMe = searchParams.get('assigned_to_me') === 'true';
+    const team = searchParams.get('team') || '';
+    const myTeam = searchParams.get('my_team') === 'true';
     const page = parseInt(searchParams.get('page') || '1', 10);
     const pageSize = parseInt(searchParams.get('page_size') || '10', 10);
     const sortBy = searchParams.get('sort_by') || 'event_date';
     const sortOrder = (searchParams.get('sort_order') || 'asc') as 'asc' | 'desc';
 
-    // Build base query
+    // Build base query with team information
     let query = supabase
       .from('bookings')
-      .select('*', { count: 'exact' })
+      .select(`
+        *,
+        team:teams(
+          id,
+          name,
+          status
+        )
+      `, { count: 'exact' })
       .eq('provider_id', providerId);
 
     // Apply role-based filtering
-    // Staff: See only bookings assigned to them
+    // Staff: See only bookings for their team
     // Manager/Admin/Owner: See all bookings
     // Viewer: See all bookings (read-only enforced in UI)
     if (!membership.capabilities.canViewAllBookings) {
-      // Staff role - only see assigned bookings
-      query = query.eq('assigned_to', membership.userId);
+      // Staff role - only see team bookings
+      if (membership.teamId) {
+        query = query.eq('team_id', membership.teamId);
+      }
+      // Note: Staff not assigned to a team will see no bookings
+      // This encourages proper team assignment for all staff members
     }
 
-    // Apply "assigned to me" filter if requested (works for all roles)
-    if (assignedToMe) {
-      query = query.eq('assigned_to', membership.userId);
+    // Apply "my team" filter if requested (works for all roles)
+    if (myTeam && membership.teamId) {
+      query = query.eq('team_id', membership.teamId);
     }
 
     // Apply search filter
@@ -90,6 +104,15 @@ export async function GET(
     // Apply source filter
     if (source) {
       query = query.eq('source', source);
+    }
+
+    // Apply team filter
+    if (team) {
+      if (team === 'no-team') {
+        query = query.is('team_id', null);
+      } else {
+        query = query.eq('team_id', team);
+      }
     }
 
     // Apply sorting
@@ -112,7 +135,7 @@ export async function GET(
     const { data: bookings, error: bookingsError, count } = await query;
 
     if (bookingsError) {
-      throw APIErrors.DATABASE_ERROR('Failed to fetch bookings', bookingsError);
+      throw APIErrors.INTERNAL('Failed to fetch bookings');
     }
 
     // Calculate pagination metadata
@@ -133,7 +156,7 @@ export async function GET(
         search,
         status,
         source,
-        assignedToMe,
+        myTeam,
         sortBy: sortField,
         sortOrder,
       },

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useCurrentMembership } from "@/hooks/use-membership";
 import { useBookings } from "./hooks/use-bookings";
+import { useTeams } from "../teams/hooks/use-teams";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
@@ -11,6 +12,7 @@ import { BookingsTable } from "./components/bookings-table";
 import { CreateManualBookingDrawer } from "./components/create-manual-booking-drawer";
 import { Calendar, Search, UserCheck, Plus } from "lucide-react";
 import { parseAsBoolean, parseAsString, useQueryStates } from "nuqs";
+import { useMemo } from "react";
 
 export default function BookingsPage() {
   // Get current user's membership
@@ -26,7 +28,8 @@ export default function BookingsPage() {
     search: parseAsString.withDefault(""),
     status: parseAsString.withDefault(""),
     source: parseAsString.withDefault(""),
-    assigned_to_me: parseAsBoolean.withDefault(false),
+    team: parseAsString.withDefault(""),
+    my_team: parseAsBoolean.withDefault(false),
   });
 
   // Fetch bookings with role-based filtering
@@ -34,6 +37,9 @@ export default function BookingsPage() {
     providerId,
     filters
   );
+
+  // Fetch teams for filter dropdown
+  const { data: teams = [] } = useTeams(providerId, { status: "active" });
 
   const isLoading = membershipLoading || bookingsLoading;
   const bookings = bookingsData?.data || [];
@@ -56,6 +62,20 @@ export default function BookingsPage() {
     { value: "auto", label: "Auto only" },
   ];
 
+  // Team filter options
+  const teamOptions: ComboboxOption[] = useMemo(() => {
+    const options: ComboboxOption[] = [
+      { value: "all", label: "All teams" },
+      { value: "no-team", label: "No team assigned" },
+    ];
+
+    teams.forEach((team) => {
+      options.push({ value: team.id, label: team.name });
+    });
+
+    return options;
+  }, [teams]);
+
   // Handlers
   const handleSearch = (value: string) => {
     setFilters({ search: value });
@@ -69,8 +89,12 @@ export default function BookingsPage() {
     setFilters({ source: value === "all" ? "" : value });
   };
 
-  const handleAssignedToMeToggle = () => {
-    setFilters({ assigned_to_me: !filters.assigned_to_me });
+  const handleTeamFilter = (value: string) => {
+    setFilters({ team: value === "all" ? "" : value });
+  };
+
+  const handleMyTeamToggle = () => {
+    setFilters({ my_team: !filters.my_team });
   };
 
   // Show message if user doesn't have a provider membership
@@ -110,7 +134,9 @@ export default function BookingsPage() {
           <p className="text-muted-foreground">
             {membership?.capabilities.canViewAllBookings
               ? "Manage all catering bookings and assignments"
-              : "View your assigned bookings"}
+              : membership?.teamId
+                ? "View your team's bookings"
+                : "View your assigned bookings"}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -159,15 +185,26 @@ export default function BookingsPage() {
           className="w-full sm:w-[180px]"
         />
 
-        {/* Assigned to me filter */}
-        <Button
-          variant={filters.assigned_to_me ? "default" : "outline"}
-          onClick={handleAssignedToMeToggle}
-          className="w-full sm:w-auto"
-        >
-          <UserCheck className="mr-2 h-4 w-4" />
-          Assigned to me
-        </Button>
+        {/* Team filter */}
+        <Combobox
+          options={teamOptions}
+          value={filters.team || "all"}
+          onValueChange={handleTeamFilter}
+          placeholder="Filter by team"
+          className="w-full sm:w-[180px]"
+        />
+
+        {/* My team filter - only show if user has a team */}
+        {membership?.teamId && (
+          <Button
+            variant={filters.my_team ? "default" : "outline"}
+            onClick={handleMyTeamToggle}
+            className="w-full sm:w-auto"
+          >
+            <UserCheck className="mr-2 h-4 w-4" />
+            My team&apos;s bookings
+          </Button>
+        )}
       </div>
 
       {/* Bookings table */}

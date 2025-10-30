@@ -31,6 +31,7 @@ export interface CurrentMembership {
   status: MemberStatus;
   capabilities: MembershipCapabilities;
   memberId: string;
+  teamId: string | null;
 }
 
 /**
@@ -97,7 +98,7 @@ export async function getCurrentMembership(
   if (providerId) {
     const { data: membership, error } = await supabase
       .from('provider_members')
-      .select('id, provider_id, user_id, role, status')
+      .select('id, provider_id, user_id, role, status, team_id')
       .eq('provider_id', providerId)
       .eq('user_id', user.id)
       .eq('status', 'active')
@@ -116,6 +117,7 @@ export async function getCurrentMembership(
       status: membership.status,
       capabilities: calculateCapabilities(membership.role),
       memberId: membership.id,
+      teamId: membership.team_id,
     };
 
     // Cache the result
@@ -126,7 +128,7 @@ export async function getCurrentMembership(
   // If no providerId provided, get user's first active membership
   const { data: memberships, error: membershipsError } = await supabase
     .from('provider_members')
-    .select('id, provider_id, user_id, role, status')
+    .select('id, provider_id, user_id, role, status, team_id')
     .eq('user_id', user.id)
     .eq('status', 'active')
     .order('created_at', { ascending: true })
@@ -147,6 +149,7 @@ export async function getCurrentMembership(
     status: membership.status,
     capabilities: calculateCapabilities(membership.role),
     memberId: membership.id,
+    teamId: membership.team_id,
   };
 
   // Cache the result

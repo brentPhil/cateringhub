@@ -11,6 +11,7 @@ interface ColumnContext {
   canManage: boolean;
   onEdit: (worker: WorkerProfile) => void;
   onDelete: (workerId: string) => void;
+  onAssignTeam?: (worker: WorkerProfile) => void;
 }
 
 export const createWorkerProfileColumns = (
@@ -164,6 +165,11 @@ export const createWorkerProfileColumns = (
                 worker={worker}
                 onEdit={() => context.onEdit(worker)}
                 onDelete={() => context.onDelete(worker.id)}
+                onAssignTeam={
+                  context.onAssignTeam
+                    ? () => context.onAssignTeam!(worker)
+                    : undefined
+                }
               />
             );
           },

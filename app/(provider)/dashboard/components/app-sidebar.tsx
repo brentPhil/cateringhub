@@ -4,11 +4,13 @@ import React from "react";
 import Link from "next/link";
 import {
   Users,
+  Users2,
   Settings,
   ChefHat,
   LayoutDashboard,
   UserCog,
   Calendar,
+  MapPin,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -68,6 +70,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       href: "/dashboard/team",
       icon: UserCog,
       description: "Manage your team members",
+    },
+    {
+      name: "Teams",
+      href: "/dashboard/teams",
+      icon: Users2,
+      description: "Manage operational teams",
+    },
+    {
+      name: "Locations",
+      href: "/dashboard/locations",
+      icon: MapPin,
+      description: "Manage service locations",
     },
     {
       name: "Workers",

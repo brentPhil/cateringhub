@@ -17,11 +17,13 @@ interface RouteContext {
 /**
  * GET /api/providers/[providerId]/bookings/[bookingId]
  * Fetch single booking with enriched metadata
- * 
+ *
  * Returns:
  * - Booking data
+ * - Team information (name, status, description, capacity)
+ * - Service location information (province, city, barangay, service radius)
  * - Status timestamps (created_at, confirmed_at, completed_at, cancelled_at)
- * - Assigned team member info
+ * - Assigned team member info (legacy individual assignment)
  * - Shift aggregates (count, total hours)
  * - Provider constraints (advance_booking_days, service_radius, daily_capacity)
  * - Related bookings count (same customer)
@@ -44,10 +46,31 @@ export async function GET(
 
     const supabase = await createClient();
 
-    // Fetch booking
+    // Fetch booking with team and service location information
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
-      .select('*')
+      .select(`
+        *,
+        team:teams(
+          id,
+          name,
+          status,
+          description,
+          daily_capacity,
+          max_concurrent_events,
+          service_location:service_locations(
+            id,
+            province,
+            city,
+            barangay,
+            street_address,
+            landmark,
+            postal_code,
+            service_radius,
+            is_primary
+          )
+        )
+      `)
       .eq('id', bookingId)
       .eq('provider_id', providerId)
       .single();
@@ -57,41 +80,12 @@ export async function GET(
     }
 
     // Apply role-based access control
-    // Staff can only see bookings assigned to them
+    // Staff can only see bookings for their team or individually assigned to them
     if (!membership.capabilities.canViewAllBookings) {
-      if (booking.assigned_to !== membership.userId) {
+      const hasTeamAccess = membership.teamId && booking.team_id === membership.teamId;
+
+      if (!hasTeamAccess) {
         throw APIErrors.FORBIDDEN('You do not have permission to view this booking');
-      }
-    }
-
-    // Fetch assigned team member info if assigned
-    let assignedMember = null;
-    if (booking.assigned_to) {
-      const { data: memberData } = await supabase
-        .from('provider_members')
-        .select(`
-          id,
-          role,
-          user_id,
-          profiles:user_id (
-            full_name,
-            avatar_url
-          )
-        `)
-        .eq('user_id', booking.assigned_to)
-        .eq('provider_id', providerId)
-        .eq('status', 'active')
-        .single();
-
-      if (memberData) {
-        const profile = memberData.profiles as { full_name?: string; avatar_url?: string | null } | null;
-        assignedMember = {
-          id: memberData.id,
-          userId: memberData.user_id,
-          role: memberData.role,
-          fullName: profile?.full_name || 'Unknown',
-          avatarUrl: profile?.avatar_url || null,
-        };
       }
     }
 
@@ -166,7 +160,6 @@ export async function GET(
       success: true,
       data: {
         ...booking,
-        assignedMember,
         shiftAggregates,
         providerConstraints,
         relatedBookingsCount,

@@ -6,14 +6,6 @@ import type { Database } from "@/types/supabase";
 type Booking = Database['public']['Tables']['bookings']['Row'];
 type ProviderRole = Database['public']['Enums']['provider_role'];
 
-export interface AssignedMember {
-  id: string;
-  userId: string;
-  role: ProviderRole;
-  fullName: string;
-  avatarUrl: string | null;
-}
-
 export interface ShiftAggregates {
   totalShifts: number;
   scheduledShifts: number;
@@ -38,8 +30,30 @@ export interface StatusTimeline {
   lastUpdated: string;
 }
 
+export interface ServiceLocation {
+  id: string;
+  province: string | null;
+  city: string | null;
+  barangay: string | null;
+  street_address: string | null;
+  landmark: string | null;
+  postal_code: string | null;
+  service_radius: number | null;
+  is_primary: boolean;
+}
+
+export interface TeamInfo {
+  id: string;
+  name: string;
+  status: string;
+  description: string | null;
+  daily_capacity: number | null;
+  max_concurrent_events: number | null;
+  service_location: ServiceLocation | null;
+}
+
 export interface BookingDetailData extends Booking {
-  assignedMember: AssignedMember | null;
+  team: TeamInfo | null;
   shiftAggregates: ShiftAggregates;
   providerConstraints: ProviderConstraints;
   relatedBookingsCount: number;

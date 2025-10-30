@@ -24,7 +24,13 @@ import {
 } from "lucide-react";
 import type { Database } from "@/types/supabase";
 
-type Booking = Database["public"]["Tables"]["bookings"]["Row"];
+type Booking = Database["public"]["Tables"]["bookings"]["Row"] & {
+  team?: {
+    id: string;
+    name: string;
+    status: string;
+  } | null;
+};
 type BookingStatus = Database["public"]["Enums"]["booking_status"];
 
 interface ColumnContext {
@@ -213,23 +219,22 @@ export const createBookingsColumns = (
     },
   },
   {
-    id: "assigned",
-    header: "Assigned",
+    id: "team",
+    header: "Team",
     cell: ({ row }) => {
       const booking = row.original;
-      return booking.assigned_to ? (
-        <Badge
-          variant={
-            booking.assigned_to === context.currentUserId
-              ? "default"
-              : "outline"
-          }
-          className="capitalize"
-        >
-          {booking.assigned_to === context.currentUserId ? "You" : "Assigned"}
-        </Badge>
-      ) : (
-        <span className="text-muted-foreground">Unassigned</span>
+      if (!booking.team) {
+        return <span className="text-sm text-muted-foreground">No team</span>;
+      }
+      return (
+        <div className="flex flex-col">
+          <span className="text-sm font-medium">{booking.team.name}</span>
+          {booking.team.status !== "active" && (
+            <Badge variant="outline" className="w-fit mt-1 text-xs">
+              {booking.team.status}
+            </Badge>
+          )}
+        </div>
       );
     },
     enableSorting: false,

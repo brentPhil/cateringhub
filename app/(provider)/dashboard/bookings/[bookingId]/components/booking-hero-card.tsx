@@ -9,7 +9,6 @@ import {
   MapPin,
   Users as UsersIcon,
   AlertCircle,
-  UserPlus,
 } from "lucide-react";
 import { format } from "date-fns";
 import type { BookingDetailData } from "../../hooks/use-booking-detail";
@@ -90,10 +89,8 @@ export function BookingHeroCard({ booking }: BookingHeroCardProps) {
           </div>
         </div>
 
-        {/* Venue, Assigned, Special requests - compact */}
-        {(booking.venue_name ||
-          booking.assignedMember ||
-          booking.special_requests) && (
+        {/* Venue, Special requests - compact */}
+        {(booking.venue_name || booking.special_requests) && (
           <>
             <Separator />
             <div className="space-y-2 text-sm">
@@ -109,17 +106,6 @@ export function BookingHeroCard({ booking }: BookingHeroCardProps) {
                       </span>
                     )}
                   </div>
-                </div>
-              )}
-              {booking.assignedMember && (
-                <div className="flex items-center gap-2">
-                  <UserPlus className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="font-medium">
-                    {booking.assignedMember.fullName}
-                  </span>
-                  <Badge variant="outline" className="text-xs">
-                    {booking.assignedMember.role}
-                  </Badge>
                 </div>
               )}
               {booking.special_requests && (

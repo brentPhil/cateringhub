@@ -8,6 +8,7 @@ import {
   createWorkerProfile as createWorkerProfileAction,
   updateWorkerProfile as updateWorkerProfileAction,
   deleteWorkerProfile as deleteWorkerProfileAction,
+  assignWorkerToTeam as assignWorkerToTeamAction,
 } from "../actions/worker-profiles";
 
 // Types
@@ -336,3 +337,49 @@ export function useWorkerTags(providerId: string | undefined) {
   });
 }
 
+/**
+ * Hook to assign or remove worker from a team
+ */
+export function useAssignWorkerToTeam() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { workerId: string; teamId: string | null }) => {
+      const result = await assignWorkerToTeamAction(params);
+
+      if (!result.success) {
+        throw new Error(result.error || "Failed to assign worker to team");
+      }
+
+      return result.data;
+    },
+    onMutate: async (variables) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({
+        queryKey: workerProfilesKeys.detail(variables.workerId),
+      });
+      await queryClient.cancelQueries({
+        queryKey: workerProfilesKeys.lists(),
+      });
+    },
+    onSuccess: (data, variables) => {
+      // Invalidate and refetch
+      queryClient.invalidateQueries({
+        queryKey: workerProfilesKeys.detail(variables.workerId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: workerProfilesKeys.lists(),
+      });
+
+      // Show success toast
+      if (variables.teamId) {
+        toast.success("Worker assigned to team successfully");
+      } else {
+        toast.success("Worker removed from team successfully");
+      }
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to assign worker to team");
+    },
+  });
+}

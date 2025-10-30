@@ -1,0 +1,363 @@
+{
+  "audit_metadata": {
+    "date": "2025-10-28",
+    "auditor": "Senior Product+Platform Auditor",
+    "scope": "Bookings & Assignment Infrastructure for Location/Team-Based Dispatch Redesign",
+    "stack": {
+      "framework": "Next.js (App Router)",
+      "database": "Supabase (Postgres with RLS)",
+      "state_management": ["TanStack Query", "nuqs"],
+      "ui": "shadcn/ui"
+    }
+  },
+  "db": {
+    "tables": [
+      {
+        "name": "bookings",
+        "purpose": "Core booking entity with individual assignment model",
+        "criticality": "CRITICAL",
+        "columns": [
+          {"name": "id", "type": "uuid", "nullable": false, "pk": true},
+          {"name": "provider_id", "type": "uuid", "nullable": false, "fk": "providers(id)"},
+          {"name": "customer_id", "type": "uuid", "nullable": true, "fk": "auth.users(id)"},
+          {"name": "assigned_to", "type": "uuid", "nullable": true, "fk": "auth.users(id)", "gap": "Individual assignment blocks concurrent events"},
+          {"name": "event_date", "type": "date", "nullable": false},
+          {"name": "event_time", "type": "time", "nullable": true},
+          {"name": "status", "type": "booking_status", "nullable": false, "default": "pending"},
+          {"name": "source", "type": "booking_source", "nullable": false, "default": "auto", "immutable": true},
+          {"name": "created_by", "type": "uuid", "nullable": true, "fk": "auth.users(id)", "auto_set": true},
+          {"name": "venue_address", "type": "text", "nullable": true},
+          {"name": "base_price", "type": "numeric(10,2)", "nullable": true},
+          {"name": "total_price", "type": "numeric(10,2)", "nullable": true, "auto_calculated": true},
+          {"name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()"},
+          {"name": "updated_at", "type": "timestamptz", "nullable": false, "default": "now()"},
+          {"name": "confirmed_at", "type": "timestamptz", "nullable": true},
+          {"name": "completed_at", "type": "timestamptz", "nullable": true},
+          {"name": "cancelled_at", "type": "timestamptz", "nullable": true}
+        ],
+        "indexes": [
+          {"name": "bookings_pkey", "columns": ["id"], "type": "PRIMARY KEY"},
+          {"name": "idx_bookings_assigned_to", "columns": ["assigned_to"], "gap": "Optimized for individual assignment"},
+          {"name": "idx_bookings_assigned_status", "columns": ["assigned_to", "status"], "where": "assigned_to IS NOT NULL"},
+          {"name": "idx_bookings_provider_assigned_status", "columns": ["provider_id", "assigned_to", "status"]},
+          {"name": "idx_bookings_provider_event_date_status", "columns": ["provider_id", "event_date DESC", "status"]},
+          {"name": "idx_bookings_provider_status", "columns": ["provider_id", "status"]}
+        ],
+        "rls_policies": [
+          {"name": "Provider members can view bookings", "operation": "SELECT", "role": "staff", "filter": "assigned_to = auth.uid()", "gap": "Hardcoded individual assignment"},
+          {"name": "Provider members can view bookings", "operation": "SELECT", "role": "manager+", "filter": "is_provider_member(provider_id, auth.uid(), 'manager')"},
+          {"name": "Provider members can update bookings", "operation": "UPDATE", "role": "staff", "filter": "assigned_to = auth.uid()"},
+          {"name": "Provider members can update bookings", "operation": "UPDATE", "role": "manager+", "filter": "is_provider_member(provider_id, auth.uid(), 'manager')"},
+          {"name": "Customers can view their bookings", "operation": "SELECT", "role": "customer", "filter": "customer_id = auth.uid()"}
+        ],
+        "triggers": [
+          {"name": "trigger_audit_booking_changes", "function": "audit_booking_changes()", "events": ["INSERT", "UPDATE", "DELETE"]},
+          {"name": "set_booking_created_by_trigger", "function": "set_created_by()", "events": ["INSERT"]},
+          {"name": "prevent_booking_source_change_trigger", "function": "prevent_source_change()", "events": ["UPDATE"]},
+          {"name": "calculate_booking_total_price_insert", "function": "calculate_total_price()", "events": ["INSERT"]},
+          {"name": "calculate_booking_total_price_update", "function": "calculate_total_price()", "events": ["UPDATE"]}
+        ],
+        "gaps": [
+          "No service_location_id column - cannot link bookings to service locations",
+          "No team_id column - cannot assign to teams",
+          "assigned_to is individual-based - blocks concurrent team events",
+          "Indexes optimized for assigned_to queries - need new indexes for location/team queries"
+        ]
+      },
+      {
+        "name": "service_locations",
+        "purpose": "Multi-location support for providers",
+        "criticality": "HIGH",
+        "status": "EXISTS_BUT_NOT_INTEGRATED",
+        "columns": [
+          {"name": "id", "type": "uuid", "nullable": false, "pk": true},
+          {"name": "provider_id", "type": "uuid", "nullable": false, "fk": "providers(id)"},
+          {"name": "province", "type": "text", "nullable": true},
+          {"name": "city", "type": "text", "nullable": true},
+          {"name": "barangay", "type": "text", "nullable": true},
+          {"name": "street_address", "type": "text", "nullable": true},
+          {"name": "postal_code", "type": "text", "nullable": true},
+          {"name": "is_primary", "type": "boolean", "nullable": false, "default": false, "constraint": "Only one per provider"},
+          {"name": "service_radius", "type": "integer", "nullable": false, "default": 50, "unit": "km"},
+          {"name": "landmark", "type": "text", "nullable": true},
+          {"name": "service_area_notes", "type": "text", "nullable": true},
+          {"name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()"},
+          {"name": "updated_at", "type": "timestamptz", "nullable": false, "default": "now()"}
+        ],
+        "indexes": [
+          {"name": "service_locations_pkey", "columns": ["id"], "type": "PRIMARY KEY"},
+          {"name": "idx_service_locations_provider_id", "columns": ["provider_id"]},
+          {"name": "idx_service_locations_provider_primary", "columns": ["provider_id", "is_primary"]},
+          {"name": "idx_service_locations_service_radius", "columns": ["service_radius"]}
+        ],
+        "rls_policies": [
+          {"name": "Team members can view service locations", "operation": "SELECT", "role": "staff+", "filter": "Active provider member"},
+          {"name": "Team members can manage service locations", "operation": "INSERT/UPDATE/DELETE", "role": "manager+", "filter": "is_provider_member(provider_id, auth.uid(), 'manager')"}
+        ],
+        "triggers": [
+          {"name": "trigger_ensure_single_primary_location", "function": "ensure_single_primary_location()", "events": ["INSERT", "UPDATE"]},
+          {"name": "trigger_enforce_max_service_radius", "function": "enforce_max_service_radius()", "events": ["INSERT", "UPDATE"]}
+        ],
+        "gaps": [
+          "No daily_capacity or max_concurrent_events columns - cannot enforce per-location capacity",
+          "No link to bookings table - orphaned from assignment flow",
+          "No link to teams - cannot assign teams to locations"
+        ]
+      },
+      {
+        "name": "provider_members",
+        "purpose": "Team members with role hierarchy",
+        "criticality": "HIGH",
+        "columns": [
+          {"name": "id", "type": "uuid", "nullable": false, "pk": true},
+          {"name": "provider_id", "type": "uuid", "nullable": false, "fk": "providers(id)"},
+          {"name": "user_id", "type": "uuid", "nullable": false, "fk": "auth.users(id)"},
+          {"name": "role", "type": "provider_role", "nullable": false, "default": "viewer"},
+          {"name": "status", "type": "provider_member_status", "nullable": false, "default": "pending"},
+          {"name": "invitation_method", "type": "invitation_method", "nullable": true},
+          {"name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()"},
+          {"name": "updated_at", "type": "timestamptz", "nullable": false, "default": "now()"}
+        ],
+        "unique_constraints": [
+          {"name": "unique_provider_user", "columns": ["provider_id", "user_id"]}
+        ],
+        "indexes": [
+          {"name": "provider_members_pkey", "columns": ["id"], "type": "PRIMARY KEY"},
+          {"name": "idx_provider_members_provider", "columns": ["provider_id"]},
+          {"name": "idx_provider_members_provider_status", "columns": ["provider_id", "status"]},
+          {"name": "idx_provider_members_user", "columns": ["user_id"]}
+        ],
+        "gaps": [
+          "No team_id column - cannot group members into location-based teams",
+          "Flat structure - all members are equal within a role, no team hierarchy"
+        ]
+      },
+      {
+        "name": "shifts",
+        "purpose": "Crew assignments to bookings (supports multiple workers per booking)",
+        "criticality": "MEDIUM",
+        "status": "PARTIAL_TEAM_CONCEPT",
+        "columns": [
+          {"name": "id", "type": "uuid", "nullable": false, "pk": true},
+          {"name": "booking_id", "type": "uuid", "nullable": false, "fk": "bookings(id)"},
+          {"name": "user_id", "type": "uuid", "nullable": true, "fk": "auth.users(id)"},
+          {"name": "worker_profile_id", "type": "uuid", "nullable": true, "fk": "worker_profiles(id)"},
+          {"name": "role", "type": "text", "nullable": true, "description": "Job role (e.g., Server, Chef)"},
+          {"name": "scheduled_start", "type": "timestamptz", "nullable": true},
+          {"name": "scheduled_end", "type": "timestamptz", "nullable": true},
+          {"name": "actual_start", "type": "timestamptz", "nullable": true},
+          {"name": "actual_end", "type": "timestamptz", "nullable": true},
+          {"name": "status", "type": "text", "nullable": true, "values": ["scheduled", "checked_in", "checked_out", "cancelled"]},
+          {"name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()"},
+          {"name": "updated_at", "type": "timestamptz", "nullable": false, "default": "now()"}
+        ],
+        "gaps": [
+          "No team_id - cannot assign entire team to a booking",
+          "Individual assignment (user_id or worker_profile_id) - still person-centric"
+        ]
+      },
+      {
+        "name": "worker_profiles",
+        "purpose": "Non-login staff members for shift assignments",
+        "criticality": "MEDIUM",
+        "columns": [
+          {"name": "id", "type": "uuid", "nullable": false, "pk": true},
+          {"name": "provider_id", "type": "uuid", "nullable": false, "fk": "providers(id)"},
+          {"name": "full_name", "type": "text", "nullable": false},
+          {"name": "phone", "type": "text", "nullable": true},
+          {"name": "email", "type": "text", "nullable": true},
+          {"name": "status", "type": "worker_status", "nullable": false, "default": "active"},
+          {"name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()"},
+          {"name": "updated_at", "type": "timestamptz", "nullable": false, "default": "now()"}
+        ],
+        "gaps": [
+          "No team_id - cannot assign workers to specific teams",
+          "Separate from provider_members - two sources of team members"
+        ]
+      }
+    ],
+    "enums": [
+      {"name": "provider_role", "values": ["owner", "admin", "manager", "staff", "viewer"], "hierarchy": "owner > admin > manager > staff > viewer"},
+      {"name": "provider_member_status", "values": ["pending", "active", "suspended"]},
+      {"name": "booking_status", "values": ["pending", "confirmed", "in_progress", "completed", "cancelled"]},
+      {"name": "booking_source", "values": ["auto", "manual"], "immutable": true},
+      {"name": "invitation_method", "values": ["email_invite", "admin_created", "onboarding"]},
+      {"name": "worker_status", "values": ["active", "inactive"]},
+      {"name": "expense_category", "values": ["ingredients", "labor", "transportation", "equipment", "utilities", "marketing", "other"]}
+    ],
+    "functions": [
+      {"name": "is_provider_member", "params": ["provider_id uuid", "user_id uuid", "min_role provider_role"], "returns": "boolean", "purpose": "Check if user has at least min_role in provider"},
+      {"name": "get_user_capabilities", "params": ["provider_id uuid", "user_id uuid"], "returns": "jsonb", "purpose": "Returns user's capabilities (canViewAllBookings, canEditBookings, etc.)"},
+      {"name": "calculate_total_price", "returns": "trigger", "purpose": "Auto-calculate total_price from base_price"},
+      {"name": "audit_booking_changes", "returns": "trigger", "purpose": "Log all booking changes to booking_audits"}
+    ]
+  },
+  "api": [
+    {
+      "route": "GET /api/providers/[providerId]/bookings",
+      "auth": "Active provider membership",
+      "input": {"query_params": ["search", "status", "source", "assigned_to_me", "page", "page_size", "sort_by", "sort_order"]},
+      "logic": "Staff role filters by assigned_to = userId, managers see all",
+      "output": {"success": "boolean", "data": "Booking[]", "pagination": "object", "filters": "object", "userRole": "string", "canEditBookings": "boolean"},
+      "side_effects": "None (read-only)",
+      "evidence": "app/api/providers/[providerId]/bookings/route.ts:L45-48, L60-62",
+      "gaps": ["Hardcoded individual assignment filter for staff role"]
+    },
+    {
+      "route": "GET /api/providers/[providerId]/bookings/[bookingId]",
+      "auth": "Membership, staff can only view assigned bookings",
+      "input": {"path_params": ["providerId", "bookingId"]},
+      "logic": "Staff role checks if booking.assigned_to === userId",
+      "output": "Enriched booking with assigned team member, shift aggregates, provider constraints",
+      "side_effects": "None (read-only)",
+      "evidence": "app/api/providers/[providerId]/bookings/[bookingId]/route.ts",
+      "gaps": ["Individual assignment check blocks team-based access"]
+    },
+    {
+      "route": "GET /api/providers/[providerId]/members",
+      "auth": "Active provider membership",
+      "input": {"path_params": ["providerId"]},
+      "logic": "Fetches all team members with user metadata",
+      "output": "TeamMemberWithUser[]",
+      "side_effects": "None (read-only)",
+      "evidence": "app/api/providers/[providerId]/members/route.ts"
+    },
+    {
+      "route": "POST /api/providers/[providerId]/team/admin-create",
+      "auth": "Admin or owner role",
+      "input": {"body": {"email": "string", "full_name": "string", "role": "string"}},
+      "logic": "Creates user account via Supabase Admin API, sends welcome email",
+      "output": {"success": "boolean", "data": {"user": "object", "member": "object"}},
+      "side_effects": "Creates auth.users record, sends email",
+      "evidence": "app/api/providers/[providerId]/team/admin-create/route.ts"
+    },
+    {
+      "route": "saveServiceLocations (Server Action)",
+      "auth": "Manager+ role (enforced via RLS)",
+      "input": {"providerId": "string", "locations": "ServiceLocation[]"},
+      "logic": "CRUD on service_locations table, validates is_primary constraint",
+      "output": {"success": "boolean", "data": "ServiceLocation[]"},
+      "side_effects": "CRUD on service_locations table",
+      "evidence": "app/(provider)/dashboard/profile/actions/service-locations.ts"
+    }
+  ],
+  "client": [
+    {
+      "component": "BookingsPage",
+      "path": "app/(provider)/dashboard/bookings/page.tsx",
+      "state_management": {"url_state": ["search", "status", "source", "assigned_to_me"], "library": "nuqs"},
+      "queries": ["useCurrentMembership()", "useBookings(providerId, filters)"],
+      "filters": ["Search input", "Status combobox", "Source combobox", "Assigned to me toggle"],
+      "evidence": "Lines 25-30 (nuqs filters), 111-114 (role messaging), 163-170 (assigned_to_me toggle)",
+      "gaps": ["Messaging assumes individual assignment (View your assigned bookings)"]
+    },
+    {
+      "component": "BookingsTable",
+      "path": "app/(provider)/dashboard/bookings/components/bookings-table.tsx",
+      "features": ["Expandable rows for shifts", "Drag-and-drop reordering", "AssignTeammateDialog"],
+      "evidence": "Lines 170-186 (DataTable with expandable rows), 189-196 (AssignTeammateDialog)"
+    },
+    {
+      "component": "TeamPage",
+      "path": "app/(provider)/dashboard/team/page.tsx",
+      "state_management": {"url_state": ["page", "page_size", "role_filter", "status_filter"], "library": "nuqs"},
+      "queries": ["useCurrentMembership()", "useTeamMembers(providerId)"],
+      "mutations": ["useInviteMember", "useAddStaff", "useUpdateMemberStatus", "useRemoveMember", "useUpdateMemberRole"],
+      "modals": ["InviteMemberModal", "AddStaffModal", "EditRoleDrawer"],
+      "evidence": "Lines 52-60 (queries and mutations), 327-350 (modals)"
+    }
+  ],
+  "query_cache": [
+    {"hook": "useBookings", "staleTime": "30s", "gcTime": "5min", "refetchOnWindowFocus": false, "refetchOnMount": false},
+    {"hook": "useTeamMembers", "staleTime": "10s", "gcTime": "default", "refetchOnWindowFocus": true, "refetchOnMount": true},
+    {"hook": "useDashboardAnalytics", "staleTime": "2min", "gcTime": "10min", "refetchOnWindowFocus": false, "refetchOnMount": false},
+    {"hook": "useSupabaseQuery (generic)", "staleTime": "30s", "gcTime": "5min", "refetchOnWindowFocus": false, "refetchOnMount": false},
+    {"global_defaults": {"staleTime": "10min", "gcTime": "30min", "refetchOnWindowFocus": false, "refetchOnMount": false}}
+  ],
+  "gaps": [
+    {
+      "id": "GAP-001",
+      "title": "No Service Location → Booking Link",
+      "severity": "CRITICAL",
+      "description": "bookings table has no service_location_id foreign key",
+      "impact": "Cannot assign bookings to specific service locations or teams tied to locations",
+      "real_world_need": "Catering businesses operate from multiple kitchens/depots, each serving different geographic areas with dedicated teams",
+      "evidence": "service_locations table exists but is orphaned from booking flow"
+    },
+    {
+      "id": "GAP-002",
+      "title": "No Team Entity or Location → Team Mapping",
+      "severity": "CRITICAL",
+      "description": "provider_members is a flat list of users with roles, no team grouping",
+      "impact": "Cannot organize staff into location-based teams (e.g., North Team, South Team)",
+      "real_world_need": "Each service location needs a dedicated team to handle concurrent events in that area",
+      "evidence": "No teams table, no team_id in provider_members or bookings"
+    },
+    {
+      "id": "GAP-003",
+      "title": "Individual Assignment Prevents Concurrent Events",
+      "severity": "CRITICAL",
+      "description": "bookings.assigned_to is a single UUID, RLS policies filter by assigned_to = auth.uid() for staff",
+      "impact": "One staff member can only be assigned to one booking at a time; no team-level visibility",
+      "real_world_need": "Multiple events can happen simultaneously in different areas, each handled by a different team",
+      "evidence": "app/api/providers/[providerId]/bookings/route.ts:L45-48, RLS policy: is_provider_member(..., 'staff') AND assigned_to = auth.uid()"
+    },
+    {
+      "id": "GAP-004",
+      "title": "Indexes Optimized for Wrong Query Patterns",
+      "severity": "HIGH",
+      "description": "Indexes like idx_bookings_assigned_to, idx_bookings_assigned_status assume individual assignment queries",
+      "impact": "Future location/team-based queries will be slow without new indexes",
+      "real_world_need": "Queries like all bookings for North Team or bookings in service_location X",
+      "evidence": "No indexes on hypothetical service_location_id or team_id columns"
+    },
+    {
+      "id": "GAP-005",
+      "title": "No Capacity Planning per Location",
+      "severity": "HIGH",
+      "description": "providers.daily_capacity is a single global number (nullable)",
+      "impact": "Cannot enforce different capacity limits per service location",
+      "real_world_need": "Each kitchen/depot has its own capacity (e.g., North location: 5 events/day, South: 3 events/day)",
+      "evidence": "service_locations table has no daily_capacity or max_concurrent_events column"
+    }
+  ],
+  "risks": [
+    {
+      "id": "RISK-001",
+      "title": "RLS Policy Rewrite Required",
+      "severity": "HIGH",
+      "description": "All staff-level RLS policies assume assigned_to = auth.uid()",
+      "impact": "Changing to team-based access requires rewriting 10+ policies",
+      "mitigation": "Create new helper functions like is_team_member_for_booking(booking_id, user_id) before migration"
+    },
+    {
+      "id": "RISK-002",
+      "title": "Data Migration for Existing Bookings",
+      "severity": "HIGH",
+      "description": "1000s of existing bookings have assigned_to set; need to map to new team structure",
+      "impact": "Downtime or dual-write complexity during migration",
+      "mitigation": "Phased rollout: add new columns, backfill, deprecate old columns"
+    },
+    {
+      "id": "RISK-003",
+      "title": "Client Code Assumes Individual Assignment",
+      "severity": "MEDIUM",
+      "description": "15+ components/hooks filter by assigned_to_me or currentUserId",
+      "impact": "UI will break if backend changes without coordinated frontend updates",
+      "mitigation": "Feature flag for team-based mode, gradual rollout"
+    }
+  ],
+  "open_questions": [
+    "Should bookings be auto-assigned to teams based on venue proximity to service location, or manual selection?",
+    "Can a single booking span multiple teams (e.g., large event needs North + South teams)?",
+    "Can a user belong to multiple teams? If yes, how to handle RLS visibility?",
+    "Should the system hard-block bookings exceeding location capacity, or just warn?",
+    "Should old bookings (pre-migration) remain visible to originally assigned individuals, or migrate to team visibility?",
+    "Who decides which service location handles a booking—customer, system auto-routing, or provider admin?",
+    "Do teams need their own role hierarchy (team lead, team member), or inherit from provider_members.role?",
+    "Is max_concurrent_events per location a hard limit, or can it be overridden by admins?",
+    "Should shifts remain individual (current) or also support team-level assignments?",
+    "What is the acceptable P95 latency for get all bookings for my team query? (Current individual queries: ~50-100ms)"
+  ]
+}
+

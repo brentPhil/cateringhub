@@ -25,6 +25,7 @@ import { StaffingShiftsCard } from "./staffing-shifts-card";
 import { FinancialsCard } from "./financials-card";
 import { NotesActivityCard } from "./notes-activity-card";
 import { WorkflowActionsBar } from "./workflow-actions-bar";
+import { TeamLocationCard } from "./team-location-card";
 
 interface BookingDetailClientProps {
   bookingId: string;
@@ -248,7 +249,7 @@ export function BookingDetailClient({ bookingId }: BookingDetailClientProps) {
         {/* Main content area - Left side on desktop (2/3 width) */}
         <div className="lg:col-span-2 space-y-4">
           {/* Phase 2: Hero Card - Always visible */}
-          <BookingHeroCard booking={booking}/>
+          <BookingHeroCard booking={booking} />
 
           {/* Tabbed content - Phases 3-8 */}
           <Tabs value={tabValue} onValueChange={setActiveTab}>
@@ -276,6 +277,7 @@ export function BookingDetailClient({ bookingId }: BookingDetailClientProps) {
             {/* Tab 1: Overview - Only visible on mobile */}
             <TabsContent value="overview" className="lg:hidden">
               <CustomerInfoCard booking={booking} />
+              <TeamLocationCard booking={booking} />
               <EventLogisticsCard
                 booking={booking}
                 capabilities={capabilities}
@@ -317,6 +319,7 @@ export function BookingDetailClient({ bookingId }: BookingDetailClientProps) {
         {/* Sidebar - Right side on desktop (1/3 width) | Hidden on mobile */}
         <div className="hidden lg:flex lg:flex-col lg:space-y-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
           <CustomerInfoCard booking={booking} />
+          <TeamLocationCard booking={booking} />
           <EventLogisticsCard
             booking={booking}
             capabilities={capabilities}

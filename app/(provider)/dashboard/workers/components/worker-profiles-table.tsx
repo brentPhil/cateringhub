@@ -13,6 +13,7 @@ interface WorkerProfilesTableProps {
   canManage: boolean;
   onEdit: (worker: WorkerProfile) => void;
   onDelete: (workerId: string) => void;
+  onAssignTeam?: (worker: WorkerProfile) => void;
   error?: Error | null;
 }
 
@@ -22,11 +23,13 @@ export function WorkerProfilesTable({
   canManage,
   onEdit,
   onDelete,
+  onAssignTeam,
   error,
 }: WorkerProfilesTableProps) {
   const columns = React.useMemo(
-    () => createWorkerProfileColumns({ canManage, onEdit, onDelete }),
-    [canManage, onEdit, onDelete]
+    () =>
+      createWorkerProfileColumns({ canManage, onEdit, onDelete, onAssignTeam }),
+    [canManage, onEdit, onDelete, onAssignTeam]
   );
 
   // Loading skeleton

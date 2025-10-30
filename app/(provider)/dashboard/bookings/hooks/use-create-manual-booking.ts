@@ -20,6 +20,7 @@ export interface CreateManualBookingParams {
   specialRequests?: string;
   notes?: string;
   basePrice?: number;
+  teamId?: string;
   status?: "pending" | "confirmed" | "in_progress" | "completed" | "cancelled";
 }
 
@@ -59,6 +60,7 @@ export function useCreateManualBooking() {
         p_special_requests: params.specialRequests || null,
         p_notes: params.notes || null,
         p_base_price: params.basePrice || null,
+        p_team_id: params.teamId || null,
         p_status: params.status || "pending",
       });
 

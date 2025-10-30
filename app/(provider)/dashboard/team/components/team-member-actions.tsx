@@ -7,6 +7,7 @@ import {
   Trash2,
   Mail,
   Edit,
+  Users2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +30,7 @@ interface TeamMemberActionsProps {
   onRemove: () => void;
   onEditRole?: () => void;
   onResendInvitation?: () => void;
+  onAssignTeam?: () => void;
 }
 
 export function TeamMemberActions({
@@ -40,6 +42,7 @@ export function TeamMemberActions({
   onRemove,
   onEditRole,
   onResendInvitation,
+  onAssignTeam,
 }: TeamMemberActionsProps) {
   const isCurrentUser = member.user_id === currentUserId;
   const canManage =
@@ -87,6 +90,14 @@ export function TeamMemberActions({
               <DropdownMenuItem onClick={onEditRole}>
                 <Edit className="mr-2 h-4 w-4" />
                 Edit role
+              </DropdownMenuItem>
+            )}
+
+            {/* Assign to team */}
+            {onAssignTeam && !isPending && (
+              <DropdownMenuItem onClick={onAssignTeam}>
+                <Users2 className="mr-2 h-4 w-4" />
+                Assign to team
               </DropdownMenuItem>
             )}
 

@@ -110,6 +110,127 @@ export async function createWorkerProfile(params: {
 }
 
 /**
+ * Assign or remove worker from a team
+ */
+export async function assignWorkerToTeam(params: {
+  workerId: string;
+  teamId: string | null;
+}): Promise<ActionResult<Tables<"worker_profiles">>> {
+  try {
+    console.log("[assignWorkerToTeam] Starting with params:", params);
+
+    const supabase = await createClient();
+
+    // Get authenticated user
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      console.error("[assignWorkerToTeam] Auth error:", authError);
+      return {
+        success: false,
+        error: "You must be logged in to assign workers to teams",
+      };
+    }
+
+    // Get the worker profile to verify access
+    const { data: worker, error: workerError } = await supabase
+      .from("worker_profiles")
+      .select("id, provider_id, name")
+      .eq("id", params.workerId)
+      .single();
+
+    if (workerError || !worker) {
+      console.error("[assignWorkerToTeam] Worker not found:", workerError);
+      return {
+        success: false,
+        error: "Worker profile not found",
+      };
+    }
+
+    // Verify user is a member of the provider with manager+ role
+    const { data: membership, error: membershipError } = await supabase
+      .from("provider_members")
+      .select("id, role, status")
+      .eq("provider_id", worker.provider_id)
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .single();
+
+    if (membershipError || !membership) {
+      console.error("[assignWorkerToTeam] Membership error:", membershipError);
+      return {
+        success: false,
+        error: "You don't have access to this worker profile",
+      };
+    }
+
+    // Verify user has permission to assign teams (manager or above)
+    if (!["owner", "admin", "manager"].includes(membership.role)) {
+      return {
+        success: false,
+        error: "Only managers and above can assign workers to teams",
+      };
+    }
+
+    // If teamId is provided, verify it exists and belongs to the same provider
+    if (params.teamId) {
+      const { data: team, error: teamError } = await supabase
+        .from("teams")
+        .select("id, provider_id, name")
+        .eq("id", params.teamId)
+        .eq("provider_id", worker.provider_id)
+        .single();
+
+      if (teamError || !team) {
+        console.error("[assignWorkerToTeam] Team not found:", teamError);
+        return {
+          success: false,
+          error: "Team not found or doesn't belong to this provider",
+        };
+      }
+    }
+
+    // Update worker's team assignment
+    const { data: updatedWorker, error: updateError } = await supabase
+      .from("worker_profiles")
+      .update({ team_id: params.teamId })
+      .eq("id", params.workerId)
+      .select()
+      .single<Tables<"worker_profiles">>();
+
+    if (updateError) {
+      console.error("[assignWorkerToTeam] Update error:", updateError);
+      return {
+        success: false,
+        error: "Failed to assign worker to team. Please try again.",
+      };
+    }
+
+    console.log(
+      "[assignWorkerToTeam] Worker assigned successfully:",
+      updatedWorker
+    );
+
+    // Revalidate the workers page
+    revalidatePath("/dashboard/workers");
+
+    return {
+      success: true,
+      data: updatedWorker,
+    };
+  } catch (error) {
+    console.error("[assignWorkerToTeam] Error:", error);
+    return {
+      success: false,
+      error: "An unexpected error occurred. Please try again.",
+    };
+  }
+}
+
+/**
  * Update an existing worker profile
  */
 export async function updateWorkerProfile(params: {
