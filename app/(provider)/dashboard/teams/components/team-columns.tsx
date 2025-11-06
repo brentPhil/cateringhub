@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Pencil, Archive, Users } from "lucide-react";
+import { MoreHorizontal, Pencil, Archive, Users, ChevronDown, ChevronRight, Trash2 } from "lucide-react";
 import type { Team } from "../hooks/use-teams";
 import type { Enums } from "@/types/supabase";
 
@@ -19,16 +19,47 @@ interface CreateTeamColumnsOptions {
   canManage: boolean;
   onEdit: (team: Team) => void;
   onArchive?: (team: Team) => void;
+  onDelete?: (team: Team) => void;
   onViewMembers?: (team: Team) => void;
+  onToggleExpand?: (teamId: string) => void;
+  isExpanded?: (teamId: string) => boolean;
 }
 
 export function createTeamColumns({
   canManage,
   onEdit,
   onArchive,
+  onDelete,
   onViewMembers,
+  onToggleExpand,
+  isExpanded,
 }: CreateTeamColumnsOptions): ColumnDef<Team>[] {
   return [
+    {
+      id: "expander",
+      header: () => null,
+      cell: ({ row }) => {
+        const team = row.original;
+        const expanded = isExpanded?.(team.id) ?? false;
+        return (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => onToggleExpand?.(team.id)}
+          >
+            {expanded ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+            <span className="sr-only">Toggle team members</span>
+          </Button>
+        );
+      },
+      enableSorting: false,
+      enableHiding: false,
+    },
     {
       accessorKey: "name",
       header: "Team name",
@@ -172,6 +203,19 @@ export function createTeamColumns({
                       </DropdownMenuItem>
                     </>
                   )}
+
+                  {onDelete && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => onDelete(team)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete permanently
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </>
               )}
             </DropdownMenuContent>
@@ -181,4 +225,3 @@ export function createTeamColumns({
     },
   ];
 }
-

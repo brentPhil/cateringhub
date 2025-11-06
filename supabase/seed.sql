@@ -7,7 +7,7 @@
 -- Before running this script, create the following test users via Supabase Auth:
 -- 1. owner@test.com (will be provider owner)
 -- 2. admin@test.com (will be admin)
--- 3. manager@test.com (will be manager)
+-- 3. admin2@test.com (additional admin)
 -- 4. staff@test.com (will be staff member)
 -- 5. viewer@test.com (will be viewer)
 -- 6. customer@test.com (will be customer making bookings)
@@ -20,7 +20,7 @@ DECLARE
   -- User IDs (UPDATE THESE after creating test users)
   v_owner_id UUID := '63cc10eb-611c-4e76-928e-fb639181e1e6';  -- Replace with actual owner user ID
   v_admin_id UUID := 'afde1174-29ad-4095-b42f-c74168ac8070';  -- Replace with actual admin user ID
-  v_manager_id UUID := 'f09e733f-fb71-45b1-a033-8003d4ad69b0';  -- Replace with actual manager user ID
+  v_admin2_id UUID := 'f09e733f-fb71-45b1-a033-8003d4ad69b0';  -- Replace with actual additional admin user ID
   v_staff_id UUID := '6977ac22-4891-4873-8ba8-3fd0f1981e3d';  -- Replace with actual staff user ID
   v_viewer_id UUID;  -- Will be created or use existing
   v_customer_id UUID;  -- Will be created or use existing
@@ -105,7 +105,7 @@ BEGIN
   );
   RAISE NOTICE 'Created admin member';
   
-  -- Manager (can manage bookings and assignments)
+-- Additional Admin (provider-wide management)
   INSERT INTO public.provider_members (
     provider_id,
     user_id,
@@ -116,14 +116,14 @@ BEGIN
     joined_at
   ) VALUES (
     v_provider_id,
-    v_manager_id,
-    'manager',
+    v_admin2_id,
+    'admin',
     'active',
     v_owner_id,
     NOW() - INTERVAL '45 days',
     NOW() - INTERVAL '44 days'
   );
-  RAISE NOTICE 'Created manager member';
+  RAISE NOTICE 'Created additional admin member';
   
   -- Staff (can view assigned bookings only)
   INSERT INTO public.provider_members (
@@ -417,10 +417,9 @@ BEGIN
   RAISE NOTICE 'Seed data creation completed!';
   RAISE NOTICE '========================================';
   RAISE NOTICE 'Provider ID: %', v_provider_id;
-  RAISE NOTICE 'Team Members: 4 active (owner, admin, manager, staff)';
+  RAISE NOTICE 'Team Members: 4 active (owner, admin, admin, staff)';
   RAISE NOTICE 'Pending Invitations: 2';
   RAISE NOTICE 'Sample Bookings: 5 (1 pending, 1 confirmed, 1 in-progress, 1 completed, 1 cancelled)';
   RAISE NOTICE '========================================';
   
 END $$;
-

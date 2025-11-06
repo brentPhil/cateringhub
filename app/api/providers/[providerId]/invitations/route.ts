@@ -79,7 +79,7 @@ export async function POST(
     const roleHierarchy: Record<string, number> = {
       owner: 1,
       admin: 2,
-      manager: 3,
+      supervisor: 3,
       staff: 4,
       viewer: 5,
     };
@@ -207,4 +207,3 @@ export async function POST(
     return handleAPIError(error);
   }
 }
-

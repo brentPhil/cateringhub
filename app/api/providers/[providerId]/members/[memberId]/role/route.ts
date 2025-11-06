@@ -8,15 +8,13 @@ import { createClient } from '@/lib/supabase/server';
 import { getAuthenticatedUser, verifyProviderExists } from '@/lib/api/auth';
 import { handleAPIError, APIErrors } from '@/lib/api/errors';
 import { parseRequestBody, validateUUID } from '@/lib/api/validation';
-import type { Database } from '@/types/supabase';
-
-type ProviderRole = Database['public']['Enums']['provider_role'];
+import { ProviderRoleSchema, ROLE_HIERARCHY, type ProviderRole } from '@/lib/roles';
 
 interface RouteContext {
   params: Promise<{ providerId: string; memberId: string }>;
 }
 
-const VALID_ROLES: ProviderRole[] = ['owner', 'admin', 'manager', 'staff', 'viewer'];
+const VALID_ROLES = ProviderRoleSchema.options;
 
 /**
  * PATCH /api/providers/[providerId]/members/[memberId]/role
@@ -53,15 +51,7 @@ export async function PATCH(
     }
 
     // Check if user has admin or owner role
-    const roleHierarchy: Record<string, number> = {
-      owner: 1,
-      admin: 2,
-      manager: 3,
-      staff: 4,
-      viewer: 5,
-    };
-
-    if (roleHierarchy[currentMember.role] > roleHierarchy['admin']) {
+    if (ROLE_HIERARCHY[currentMember.role as ProviderRole] > ROLE_HIERARCHY['admin']) {
       throw APIErrors.FORBIDDEN('You do not have permission to update member roles');
     }
 
@@ -80,7 +70,7 @@ export async function PATCH(
     // Get target member details
     const { data: targetMember, error: memberError } = await supabase
       .from('provider_members')
-      .select('id, provider_id, user_id, role, status')
+      .select('id, provider_id, user_id, role, status, team_id')
       .eq('id', memberId)
       .eq('provider_id', providerId)
       .single();
@@ -112,6 +102,14 @@ export async function PATCH(
           message: `Member already has the ${role} role`,
         },
         { status: 200 }
+      );
+    }
+
+    // If promoting to supervisor, ensure member is already assigned to a team
+    if (role === 'supervisor' && !targetMember.team_id) {
+      return NextResponse.json(
+        { error: { message: 'Assign this member to a team before promoting to supervisor.' } },
+        { status: 400 }
       );
     }
 
@@ -161,4 +159,3 @@ export async function PATCH(
     return handleAPIError(error);
   }
 }
-

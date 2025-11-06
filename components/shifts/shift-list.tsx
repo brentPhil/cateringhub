@@ -16,6 +16,8 @@ interface ShiftListProps {
   error?: Error | null;
   canManage: boolean;
   onAssignClick: () => void;
+  assignCtaLabel?: string;
+  assignEmptyDescription?: string;
 }
 
 export function ShiftList({
@@ -26,6 +28,8 @@ export function ShiftList({
   error,
   canManage,
   onAssignClick,
+  assignCtaLabel,
+  assignEmptyDescription,
 }: ShiftListProps) {
   const columns = React.useMemo(
     () => createShiftColumns({ bookingId, canManage }),
@@ -69,15 +73,15 @@ export function ShiftList({
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center border rounded-lg bg-muted/20">
         <Clock className="h-12 w-12 text-muted-foreground mb-3" />
-        <h3 className="text-lg font-semibold mb-1">No team members assigned</h3>
+        <h3 className="text-lg font-semibold mb-1">No assignments</h3>
         <p className="text-muted-foreground mb-4 max-w-sm">
-          Assign team members to this booking to track attendance and manage
-          shifts.
+          {assignEmptyDescription ||
+            "Assign team members to this booking to track attendance and manage shifts."}
         </p>
         {canManage && (
           <Button onClick={onAssignClick} size="sm">
             <UserPlus className="mr-2 h-4 w-4" />
-            Assign team member
+            {assignCtaLabel || "Assign team member"}
           </Button>
         )}
       </div>
@@ -95,7 +99,7 @@ export function ShiftList({
           </p>
           <Button onClick={onAssignClick} size="sm" variant="outline">
             <UserPlus className="mr-2 h-4 w-4" />
-            Assign team member
+            {assignCtaLabel || "Assign team member"}
           </Button>
         </div>
       )}

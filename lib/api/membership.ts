@@ -7,8 +7,7 @@ import { createClient } from '@/lib/supabase/server';
 import { APIErrors } from './errors';
 import { getAuthenticatedUser } from './auth';
 import type { Database } from '@/types/supabase';
-
-type ProviderRole = Database['public']['Enums']['provider_role'];
+import { ROLE_HIERARCHY, type ProviderRole } from '@/lib/roles';
 type MemberStatus = Database['public']['Enums']['provider_member_status'];
 
 export interface MembershipCapabilities {
@@ -38,32 +37,24 @@ export interface CurrentMembership {
  * Calculate capabilities based on role
  */
 function calculateCapabilities(role: ProviderRole): MembershipCapabilities {
-  const roleHierarchy: Record<ProviderRole, number> = {
-    owner: 1,
-    admin: 2,
-    manager: 3,
-    staff: 4,
-    viewer: 5,
-  };
-
-  const roleLevel = roleHierarchy[role];
+  const roleLevel = ROLE_HIERARCHY[role];
 
   return {
     // Team management capabilities
-    canInviteMembers: roleLevel <= roleHierarchy.admin, // owner, admin
-    canRemoveMembers: roleLevel <= roleHierarchy.admin, // owner, admin
-    canManageRoles: roleLevel <= roleHierarchy.admin, // owner, admin
+    canInviteMembers: roleLevel <= ROLE_HIERARCHY.admin, // owner, admin
+    canRemoveMembers: roleLevel <= ROLE_HIERARCHY.admin, // owner, admin
+    canManageRoles: roleLevel <= ROLE_HIERARCHY.admin, // owner, admin
 
     // Booking capabilities
-    canViewAllBookings: roleLevel <= roleHierarchy.manager, // owner, admin, manager
-    canEditAllBookings: roleLevel <= roleHierarchy.manager, // owner, admin, manager
-    canAssignBookings: roleLevel <= roleHierarchy.manager, // owner, admin, manager
+    canViewAllBookings: roleLevel <= ROLE_HIERARCHY.admin, // owner, admin (supervisors: team-scoped)
+    canEditAllBookings: roleLevel <= ROLE_HIERARCHY.admin, // owner, admin (supervisors: team-scoped)
+    canAssignBookings: roleLevel <= ROLE_HIERARCHY.admin, // owner, admin (supervisors: team-scoped)
 
     // Analytics and financial capabilities
-    canViewAnalytics: roleLevel <= roleHierarchy.admin, // owner, admin
-    canManageBilling: roleLevel <= roleHierarchy.admin, // owner, admin
-    canManagePayouts: roleLevel <= roleHierarchy.admin, // owner, admin
-    canEditProviderSettings: roleLevel <= roleHierarchy.admin, // owner, admin
+    canViewAnalytics: roleLevel <= ROLE_HIERARCHY.admin, // owner, admin
+    canManageBilling: roleLevel <= ROLE_HIERARCHY.admin, // owner, admin
+    canManagePayouts: roleLevel <= ROLE_HIERARCHY.admin, // owner, admin
+    canEditProviderSettings: roleLevel <= ROLE_HIERARCHY.admin, // owner, admin
   };
 }
 
@@ -171,15 +162,7 @@ export async function requireRole(
 ): Promise<CurrentMembership> {
   const membership = await getCurrentMembership(providerId);
 
-  const roleHierarchy: Record<ProviderRole, number> = {
-    owner: 1,
-    admin: 2,
-    manager: 3,
-    staff: 4,
-    viewer: 5,
-  };
-
-  if (roleHierarchy[membership.role] > roleHierarchy[minRole]) {
+  if (ROLE_HIERARCHY[membership.role] > ROLE_HIERARCHY[minRole]) {
     throw APIErrors.FORBIDDEN(
       `This action requires ${minRole} role or higher. You have ${membership.role} role.`
     );
@@ -232,8 +215,8 @@ export function clearMembershipCache(): void {
  * // Require admin or owner role
  * const membership = await requireMembership(providerId, ['owner', 'admin']);
  *
- * // Require manager or higher
- * const membership = await requireMembership(providerId, ['owner', 'admin', 'manager']);
+ * // Require supervisor or higher
+ * const membership = await requireMembership(providerId, ['owner', 'admin', 'supervisor']);
  */
 export async function requireMembership(
   providerId: string,
@@ -250,4 +233,3 @@ export async function requireMembership(
 
   return membership;
 }
-

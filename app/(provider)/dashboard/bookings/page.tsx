@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useCurrentMembership } from "@/hooks/use-membership";
 import { useBookings } from "./hooks/use-bookings";
 import { useTeams } from "../teams/hooks/use-teams";
+import { useLocations } from "../locations/hooks/use-locations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
@@ -29,6 +30,7 @@ export default function BookingsPage() {
     status: parseAsString.withDefault(""),
     source: parseAsString.withDefault(""),
     team: parseAsString.withDefault(""),
+    service_location_id: parseAsString.withDefault(""),
     my_team: parseAsBoolean.withDefault(false),
   });
 
@@ -38,8 +40,12 @@ export default function BookingsPage() {
     filters
   );
 
-  // Fetch teams for filter dropdown
-  const { data: teams = [] } = useTeams(providerId, { status: "active" });
+  // Fetch service locations and teams (teams filtered by location when selected)
+  const { data: locations = [] } = useLocations(providerId);
+  const { data: teams = [] } = useTeams(providerId, {
+    status: "active",
+    service_location_id: filters.service_location_id || undefined,
+  });
 
   const isLoading = membershipLoading || bookingsLoading;
   const bookings = bookingsData?.data || [];
@@ -76,6 +82,17 @@ export default function BookingsPage() {
     return options;
   }, [teams]);
 
+  // Service location options
+  const locationOptions: ComboboxOption[] = useMemo(() => {
+    const opts: ComboboxOption[] = [{ value: "all", label: "All locations" }];
+    locations.forEach((loc) => {
+      const parts = [loc.barangay, loc.city, loc.province].filter(Boolean);
+      const label = parts.join(", ") || "Unknown location";
+      opts.push({ value: loc.id, label: loc.is_primary ? `${label} (Primary)` : label });
+    });
+    return opts;
+  }, [locations]);
+
   // Handlers
   const handleSearch = (value: string) => {
     setFilters({ search: value });
@@ -91,6 +108,11 @@ export default function BookingsPage() {
 
   const handleTeamFilter = (value: string) => {
     setFilters({ team: value === "all" ? "" : value });
+  };
+
+  const handleLocationFilter = (value: string) => {
+    // When location changes, reset team filter if it no longer matches
+    setFilters({ service_location_id: value === "all" ? "" : value, team: "" });
   };
 
   const handleMyTeamToggle = () => {
@@ -146,11 +168,7 @@ export default function BookingsPage() {
               Create manual booking
             </Button>
           )}
-          {membership?.role && (
-            <Badge variant="outline" className="capitalize">
-              {membership.role}
-            </Badge>
-          )}
+        
         </div>
       </div>
 
@@ -185,13 +203,22 @@ export default function BookingsPage() {
           className="w-full sm:w-[180px]"
         />
 
-        {/* Team filter */}
+        {/* Service location filter */}
+        <Combobox
+          options={locationOptions}
+          value={filters.service_location_id || "all"}
+          onValueChange={handleLocationFilter}
+          placeholder="Filter by location"
+          className="w-full sm:w-[220px]"
+        />
+
+        {/* Team filter (constrained by location) */}
         <Combobox
           options={teamOptions}
           value={filters.team || "all"}
           onValueChange={handleTeamFilter}
           placeholder="Filter by team"
-          className="w-full sm:w-[180px]"
+          className="w-full sm:w-[220px]"
         />
 
         {/* My team filter - only show if user has a team */}

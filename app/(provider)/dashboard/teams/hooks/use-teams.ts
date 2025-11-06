@@ -142,6 +142,7 @@ export function useCreateTeam(providerId: string) {
       description?: string;
       daily_capacity?: number;
       max_concurrent_events?: number;
+      supervisor_member_id: string;
     }) => {
       const response = await fetch(`/api/providers/${providerId}/teams`, {
         method: "POST",
@@ -250,6 +251,35 @@ export function useArchiveTeam(providerId: string) {
 }
 
 /**
+ * Hook to permanently delete a team
+ */
+export function useDeleteTeam(providerId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (teamId: string) => {
+      const response = await fetch(`/api/providers/${providerId}/teams/${teamId}?permanent=1`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error?.message || "Failed to delete team");
+      }
+
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: teamsKeys.lists() });
+      toast.success(data.message || "Team deleted successfully");
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to delete team");
+    },
+  });
+}
+
+/**
  * Hook to assign a member to a team
  */
 export function useAssignMemberToTeam(providerId: string) {
@@ -275,7 +305,9 @@ export function useAssignMemberToTeam(providerId: string) {
       queryClient.invalidateQueries({ queryKey: teamsKeys.lists() });
       if (variables.teamId) {
         queryClient.invalidateQueries({ queryKey: teamsKeys.detail(providerId, variables.teamId) });
+        queryClient.invalidateQueries({ queryKey: teamsKeys.members(providerId, variables.teamId) });
       }
+      // Legacy key invalidation retained for backward-compatibility
       queryClient.invalidateQueries({ queryKey: ["team", "members", providerId] });
       toast.success(data.message || "Member assigned successfully");
     },

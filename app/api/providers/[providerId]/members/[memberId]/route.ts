@@ -15,7 +15,7 @@ interface RouteContext {
 
 /**
  * DELETE /api/providers/[providerId]/members/[memberId]
- * Remove a member from the provider team
+ * Permanently delete a member from the provider team (hard delete)
  */
 export async function DELETE(
   request: NextRequest,
@@ -51,7 +51,7 @@ export async function DELETE(
     const roleHierarchy: Record<string, number> = {
       owner: 1,
       admin: 2,
-      manager: 3,
+      supervisor: 3,
       staff: 4,
       viewer: 5,
     };
@@ -63,7 +63,7 @@ export async function DELETE(
     // Get target member details
     const { data: targetMember, error: memberError } = await supabase
       .from('provider_members')
-      .select('id, provider_id, user_id, role, status')
+      .select('id, provider_id, user_id, role, status, team_id')
       .eq('id', memberId)
       .eq('provider_id', providerId)
       .single();
@@ -101,6 +101,28 @@ export async function DELETE(
     // Prevent non-owners from removing owners
     if (targetMember.role === 'owner' && currentMember.role !== 'owner') {
       throw APIErrors.FORBIDDEN('Only owners can remove other owners');
+    }
+
+    // Prevent deleting the last supervisor from a team (friendly check)
+    if (targetMember.role === 'supervisor' && targetMember.team_id) {
+      const { count: otherSupervisorsCount, error: supErr } = await supabase
+        .from('provider_members')
+        .select('id', { count: 'exact', head: true })
+        .eq('provider_id', providerId)
+        .eq('team_id', targetMember.team_id)
+        .eq('role', 'supervisor')
+        .eq('status', 'active')
+        .neq('id', targetMember.id);
+
+      if (supErr) {
+        throw APIErrors.INTERNAL('Failed to verify team supervisors');
+      }
+
+      if ((otherSupervisorsCount as unknown as number) === 0) {
+        throw APIErrors.INVALID_INPUT(
+          'Cannot remove the last supervisor from this team. Assign another supervisor first.'
+        );
+      }
     }
 
     // Get all bookings assigned to this member
@@ -144,20 +166,23 @@ export async function DELETE(
       }
     }
 
-    // Soft delete: Update status to 'suspended' and add a deleted_at timestamp
-    // We'll use the updated_at field to track when they were removed
-    // Note: We could add a deleted_at column in a future migration
-    const { error: deleteError } = await supabase
+    // Hard delete: remove the provider_members row
+    const { error: hardDeleteError } = await supabase
       .from('provider_members')
-      .update({
-        status: 'suspended',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', memberId);
+      .delete()
+      .eq('id', memberId)
+      .eq('provider_id', providerId);
 
-    if (deleteError) {
-      console.error('Error removing member:', deleteError);
-      throw APIErrors.INTERNAL('Failed to remove member');
+    if (hardDeleteError) {
+      console.error('Error deleting member:', hardDeleteError);
+      const msg = (hardDeleteError as unknown as { message?: string })?.message || '';
+      if (msg.toLowerCase().includes('last supervisor')) {
+        return NextResponse.json(
+          { error: { message: 'Cannot remove the last supervisor from this team. Assign another supervisor first.' } },
+          { status: 400 }
+        );
+      }
+      throw APIErrors.INTERNAL('Failed to delete member');
     }
 
     // Create audit log entry
@@ -165,7 +190,7 @@ export async function DELETE(
       await supabase.from('audit_logs').insert({
         provider_id: providerId,
         user_id: user.id,
-        action: 'member_removed',
+        action: 'member_deleted',
         resource_type: 'member',
         resource_id: memberId,
         details: {
@@ -181,7 +206,7 @@ export async function DELETE(
 
     return NextResponse.json(
       {
-        message: 'Member removed successfully',
+        message: 'Member permanently deleted',
         data: {
           removed_member_id: memberId,
           bookings_reassigned: assignedBookings?.length || 0,
@@ -193,4 +218,3 @@ export async function DELETE(
     return handleAPIError(error);
   }
 }
-

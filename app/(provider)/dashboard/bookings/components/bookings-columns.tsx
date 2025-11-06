@@ -39,6 +39,7 @@ interface ColumnContext {
   onToggleExpand: (bookingId: string) => void;
   isExpanded: (bookingId: string) => boolean;
   onViewDetails: (bookingId: string) => void;
+  onAssignTeam?: (booking: Booking) => void;
 }
 
 // Status badge styling
@@ -257,11 +258,9 @@ export const createBookingsColumns = (
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem
-                onClick={() => context.onToggleExpand(booking.id)}
-              >
+              <DropdownMenuItem onClick={() => context.onToggleExpand(booking.id)}>
                 <Users className="mr-2 h-4 w-4" />
-                {isExpanded ? "Hide" : "View"} team
+                {isExpanded ? "Hide" : "View"} shifts
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => context.onViewDetails(booking.id)}
@@ -271,11 +270,13 @@ export const createBookingsColumns = (
               </DropdownMenuItem>
               {context.canEdit && (
                 <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem>
-                    <Edit className="mr-2 h-4 w-4" />
-                    Edit booking
+                  <DropdownMenuItem
+                    onClick={() => context.onAssignTeam?.(booking)}
+                  >
+                    <Users className="mr-2 h-4 w-4" />
+                    Assign team
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem className="text-destructive">
                     <Trash2 className="mr-2 h-4 w-4" />
                     Cancel booking

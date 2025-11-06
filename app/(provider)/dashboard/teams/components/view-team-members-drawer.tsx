@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Sheet,
   SheetContent,
@@ -25,9 +25,19 @@ import {
   X,
   UserPlus,
 } from "lucide-react";
-import { useTeamMembers, type TeamMember } from "../hooks/use-teams";
+import { useTeamMembers, type TeamMember, teamsKeys } from "../hooks/use-teams";
 import { useAssignMemberToTeam } from "../hooks/use-teams";
-import { useAssignWorkerToTeam } from "../../workers/hooks/use-worker-profiles";
+import { useAssignWorkerToTeam, useWorkerProfiles } from "../../workers/hooks/use-worker-profiles";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 interface ViewTeamMembersDrawerProps {
@@ -46,6 +56,11 @@ export function ViewTeamMembersDrawer({
   providerId,
 }: ViewTeamMembersDrawerProps) {
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
+  const [addStaffOpen, setAddStaffOpen] = useState(false);
+  const [addWorkerOpen, setAddWorkerOpen] = useState(false);
+  const [selectedStaffId, setSelectedStaffId] = useState("");
+  const [selectedWorkerId, setSelectedWorkerId] = useState("");
+  const queryClient = useQueryClient();
 
   // Fetch team members
   const {
@@ -82,6 +97,8 @@ export function ViewTeamMembersDrawer({
       toast.success(`${member.name} removed from team successfully`);
     } catch (error) {
       console.error("Error removing member:", error);
+      const message = error instanceof Error ? error.message : "Failed to remove member";
+      toast.error(message);
     } finally {
       setRemovingMemberId(null);
     }
@@ -189,6 +206,17 @@ export function ViewTeamMembersDrawer({
         </SheetHeader>
 
         <div className="mt-6 space-y-4">
+          {/* Actions: Add staff/worker */}
+          {teamId && (
+            <div className="flex items-center gap-2 justify-end">
+              <Button size="sm" onClick={() => setAddStaffOpen(true)}>
+                <UserPlus className="mr-2 h-4 w-4" /> Add staff
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setAddWorkerOpen(true)}>
+                <Users2 className="mr-2 h-4 w-4" /> Add worker
+              </Button>
+            </div>
+          )}
           {/* Loading state */}
           {isLoading && (
             <div className="space-y-3">
@@ -268,8 +296,172 @@ export function ViewTeamMembersDrawer({
             </>
           )}
         </div>
+
+        {/* Add staff dialog */}
+        {teamId && (
+          <AddStaffDialog
+            open={addStaffOpen}
+            onOpenChange={setAddStaffOpen}
+            providerId={providerId}
+            teamId={teamId}
+            onAssigned={() => {
+              queryClient.invalidateQueries({ queryKey: teamsKeys.members(providerId, teamId) });
+              setSelectedStaffId("");
+            }}
+            selectedStaffId={selectedStaffId}
+            onSelectedStaffId={setSelectedStaffId}
+          />
+        )}
+
+        {/* Add worker dialog */}
+        {teamId && (
+          <AddWorkerDialog
+            open={addWorkerOpen}
+            onOpenChange={setAddWorkerOpen}
+            providerId={providerId}
+            teamId={teamId}
+            onAssigned={() => {
+              queryClient.invalidateQueries({ queryKey: teamsKeys.members(providerId, teamId) });
+              setSelectedWorkerId("");
+            }}
+            selectedWorkerId={selectedWorkerId}
+            onSelectedWorkerId={setSelectedWorkerId}
+          />
+        )}
       </SheetContent>
     </Sheet>
   );
 }
 
+// Inline dialogs
+function AddStaffDialog({
+  open,
+  onOpenChange,
+  providerId,
+  teamId,
+  onAssigned,
+  selectedStaffId,
+  onSelectedStaffId,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  providerId: string;
+  teamId: string;
+  onAssigned: () => void;
+  selectedStaffId: string;
+  onSelectedStaffId: (val: string) => void;
+}) {
+  const assignMemberMutation = useAssignMemberToTeam(providerId);
+  const { data: providerMembers = [] } = useQuery({
+    queryKey: ["provider-members", providerId],
+    queryFn: async () => {
+      const res = await fetch(`/api/providers/${providerId}/members`);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error?.message || "Failed to fetch members");
+      }
+      const json = await res.json();
+      return (json.data || []) as Array<{
+        id: string;
+        role: import("@/lib/roles").ProviderRole;
+        status: "pending" | "active" | "suspended";
+        team_id?: string | null;
+        full_name: string;
+        email: string;
+      }>;
+    },
+  });
+
+  const staffOptions: ComboboxOption[] = useMemo(() => {
+    const eligible = providerMembers.filter(
+      (m) => m.status === "active" && (m.role === "staff" || m.role === "supervisor") && m.team_id !== teamId
+    );
+    return eligible.map((m) => ({ value: m.id, label: `${m.full_name} (${m.email})` }));
+  }, [providerMembers, teamId]);
+
+  const onAdd = async () => {
+    if (!selectedStaffId) return;
+    await assignMemberMutation.mutateAsync({ memberId: selectedStaffId, teamId });
+    onAssigned();
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[480px]">
+        <DialogHeader>
+          <DialogTitle>Add staff</DialogTitle>
+          <DialogDescription>Assign a staff member to this team</DialogDescription>
+        </DialogHeader>
+        <Combobox
+          options={staffOptions}
+          value={selectedStaffId}
+          onValueChange={onSelectedStaffId}
+          placeholder="Select staff"
+        />
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={onAdd} disabled={!selectedStaffId}>Add staff</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AddWorkerDialog({
+  open,
+  onOpenChange,
+  providerId,
+  teamId,
+  onAssigned,
+  selectedWorkerId,
+  onSelectedWorkerId,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  providerId: string;
+  teamId: string;
+  onAssigned: () => void;
+  selectedWorkerId: string;
+  onSelectedWorkerId: (val: string) => void;
+}) {
+  const assignWorkerMutation = useAssignWorkerToTeam();
+  const { data: workers = [] } = useWorkerProfiles(providerId, { status: "active" });
+
+  const workerOptions: ComboboxOption[] = useMemo(() => {
+    const eligible = workers.filter((w) => w.team_id !== teamId);
+    return eligible.map((w) => ({ value: w.id, label: w.name }));
+  }, [workers, teamId]);
+
+  const onAdd = async () => {
+    if (!selectedWorkerId) return;
+    await assignWorkerMutation.mutateAsync({ workerId: selectedWorkerId, teamId });
+    onAssigned();
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[480px]">
+        <DialogHeader>
+          <DialogTitle>Add worker</DialogTitle>
+          <DialogDescription>Assign a worker to this team</DialogDescription>
+        </DialogHeader>
+        <Combobox
+          options={workerOptions}
+          value={selectedWorkerId}
+          onValueChange={onSelectedWorkerId}
+          placeholder="Select worker"
+        />
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={onAdd} disabled={!selectedWorkerId}>Add worker</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

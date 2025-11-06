@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Users } from "lucide-react";
 import { ShiftList } from "@/components/shifts/shift-list";
-import { AssignTeammateDialog } from "@/components/shifts/assign-teammate-dialog";
+import { AssignBookingTeamDialog } from "./assign-booking-team-dialog";
 import { useShifts } from "../hooks/use-shifts";
 import { DataTable } from "@/components/ui/data-table";
 import { createBookingsColumns } from "./bookings-columns";
@@ -43,10 +43,6 @@ function ExpandedRowContent({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Users className="h-5 w-5 text-muted-foreground" />
-        <h3 className="text-lg font-semibold">Team assignments</h3>
-      </div>
       <ShiftList
         bookingId={booking.id}
         shifts={shifts}
@@ -55,6 +51,8 @@ function ExpandedRowContent({
         error={shiftsErrorData}
         canManage={canEdit}
         onAssignClick={onAssignClick}
+        assignCtaLabel="Assign team"
+        assignEmptyDescription="Assign a team to this booking to automatically add its members to the shift list."
       />
     </div>
   );
@@ -72,8 +70,14 @@ export function BookingsTable({
   const [expandedBookingIds, setExpandedBookingIds] = React.useState<
     Set<string>
   >(new Set());
-  const [assignDialogBookingId, setAssignDialogBookingId] = React.useState<
-    string | null
+  const [assignTeamDialog, setAssignTeamDialog] = React.useState<
+    | {
+        bookingId: string;
+        serviceLocationId?: string | null;
+        teamId?: string | null;
+        eventDate?: string | null;
+      }
+    | null
   >(null);
 
   const [localBookings, setLocalBookings] = React.useState<Booking[]>(bookings);
@@ -126,6 +130,13 @@ export function BookingsTable({
         onToggleExpand: handleToggleExpand,
         isExpanded,
         onViewDetails: handleViewDetails,
+        onAssignTeam: (booking) =>
+          setAssignTeamDialog({
+            bookingId: booking.id,
+            serviceLocationId: booking.service_location_id ?? null,
+            teamId: booking.team_id ?? null,
+            eventDate: booking.event_date ?? null,
+          }),
       }),
     [canEdit, currentUserId, handleToggleExpand, isExpanded, handleViewDetails]
   );
@@ -177,7 +188,14 @@ export function BookingsTable({
           <ExpandedRowContent
             booking={booking}
             canEdit={canEdit}
-            onAssignClick={() => setAssignDialogBookingId(booking.id)}
+            onAssignClick={() =>
+              setAssignTeamDialog({
+                bookingId: booking.id,
+                serviceLocationId: booking.service_location_id ?? null,
+                teamId: booking.team_id ?? null,
+                eventDate: booking.event_date ?? null,
+              })
+            }
           />
         )}
         enableRowDragging={canEdit}
@@ -185,13 +203,16 @@ export function BookingsTable({
         getRowId={(booking: Booking) => booking.id}
       />
 
-      {/* Assign teammate dialog */}
-      {providerId && assignDialogBookingId && (
-        <AssignTeammateDialog
-          bookingId={assignDialogBookingId}
+      {/* Assign booking team dialog */}
+      {providerId && assignTeamDialog && (
+        <AssignBookingTeamDialog
+          open={!!assignTeamDialog}
+          onOpenChange={(open) => !open && setAssignTeamDialog(null)}
           providerId={providerId}
-          open={!!assignDialogBookingId}
-          onOpenChange={(open) => !open && setAssignDialogBookingId(null)}
+          bookingId={assignTeamDialog.bookingId}
+          serviceLocationId={assignTeamDialog.serviceLocationId}
+          initialTeamId={assignTeamDialog.teamId}
+          eventDate={assignTeamDialog.eventDate}
         />
       )}
     </>

@@ -34,10 +34,10 @@ export async function PATCH(
     // Verify provider exists
     await verifyProviderExists(providerId);
 
-    // Check user has manager or above role
+    // Check user has admin/owner role or supervisor (team-scoped)
     const { data: currentMember, error: currentMemberError } = await supabase
       .from('provider_members')
-      .select('id, provider_id, user_id, role, status')
+      .select('id, provider_id, user_id, role, status, team_id')
       .eq('provider_id', providerId)
       .eq('user_id', user.id)
       .eq('status', 'active')
@@ -47,18 +47,8 @@ export async function PATCH(
       throw APIErrors.FORBIDDEN('You are not an active member of this provider');
     }
 
-    // Check if user has manager or above role
-    const roleHierarchy: Record<string, number> = {
-      owner: 1,
-      admin: 2,
-      manager: 3,
-      staff: 4,
-      viewer: 5,
-    };
-
-    if (roleHierarchy[currentMember.role] > roleHierarchy['manager']) {
-      throw APIErrors.FORBIDDEN('You do not have permission to assign team members');
-    }
+    // Determine permissions
+    const isOwnerOrAdmin = currentMember.role === 'owner' || currentMember.role === 'admin';
 
     // Parse and validate request body
     const body = await parseRequestBody(request);
@@ -72,7 +62,7 @@ export async function PATCH(
     // Get target member details
     const { data: targetMember, error: memberError } = await supabase
       .from('provider_members')
-      .select('id, provider_id, user_id, team_id, status')
+      .select('id, provider_id, user_id, role, team_id, status')
       .eq('id', memberId)
       .eq('provider_id', providerId)
       .single();
@@ -96,6 +86,53 @@ export async function PATCH(
 
       if (team.status !== 'active') {
         throw APIErrors.INVALID_INPUT('Cannot assign members to an inactive or archived team');
+      }
+    }
+
+    // If removing/moving a supervisor, ensure they are not the last supervisor of the team
+    if (
+      targetMember.role === 'supervisor' &&
+      targetMember.team_id &&
+      (team_id === null || team_id === undefined || team_id !== targetMember.team_id)
+    ) {
+      const { count: otherSupervisorsCount, error: supErr } = await supabase
+        .from('provider_members')
+        .select('id', { count: 'exact', head: true })
+        .eq('provider_id', providerId)
+        .eq('team_id', targetMember.team_id)
+        .eq('role', 'supervisor')
+        .eq('status', 'active')
+        .neq('id', targetMember.id);
+
+      if (supErr) {
+        throw APIErrors.INTERNAL('Failed to verify team supervisors');
+      }
+
+      if ((otherSupervisorsCount as unknown as number) === 0) {
+        return NextResponse.json(
+          {
+            error: {
+              message:
+                'Cannot remove the last supervisor from this team. Assign another supervisor first.',
+            },
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Enforce supervisor's team-scoped permission: supervisors can only manage staff within their own team
+    if (!isOwnerOrAdmin && currentMember.role === 'supervisor') {
+      // Only allow changes for staff members
+      if (targetMember.role !== 'staff') {
+        throw APIErrors.FORBIDDEN('Supervisors can only manage staff assignments');
+      }
+      // Only allow assigning to their own team or removing from their own team
+      const supTeamId = currentMember.team_id;
+      const isAssigningToOwnTeam = !!team_id && supTeamId && team_id === supTeamId;
+      const isRemovingFromOwnTeam = (team_id === null || team_id === undefined) && targetMember.team_id === supTeamId;
+      if (!isAssigningToOwnTeam && !isRemovingFromOwnTeam) {
+        throw APIErrors.FORBIDDEN('Supervisors can only assign staff to their own team or remove them from it');
       }
     }
 
@@ -127,6 +164,18 @@ export async function PATCH(
 
     if (updateError) {
       console.error('Error updating member team assignment:', updateError);
+      const msg = (updateError as unknown as { message?: string })?.message || '';
+      if (msg.toLowerCase().includes('last supervisor')) {
+        return NextResponse.json(
+          {
+            error: {
+              message:
+                'Cannot remove the last supervisor from this team. Assign another supervisor first.',
+            },
+          },
+          { status: 400 }
+        );
+      }
       throw APIErrors.INTERNAL('Failed to update member team assignment');
     }
 
@@ -164,4 +213,3 @@ export async function PATCH(
     return handleAPIError(error);
   }
 }
-

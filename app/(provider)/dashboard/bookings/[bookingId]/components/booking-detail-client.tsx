@@ -1,6 +1,7 @@
 "use client";
 
 import { useCurrentMembership } from "@/hooks/use-membership";
+import { useState } from "react";
 import { useBookingDetail } from "../../hooks/use-booking-detail";
 import { LoadingState } from "@/components/ui/loading-state";
 import {
@@ -26,6 +27,7 @@ import { FinancialsCard } from "./financials-card";
 import { NotesActivityCard } from "./notes-activity-card";
 import { WorkflowActionsBar } from "./workflow-actions-bar";
 import { TeamLocationCard } from "./team-location-card";
+import { AssignBookingTeamDialog } from "../../components/assign-booking-team-dialog";
 
 interface BookingDetailClientProps {
   bookingId: string;
@@ -39,6 +41,9 @@ export function BookingDetailClient({ bookingId }: BookingDetailClientProps) {
   const [activeTab, setActiveTab] = useQueryState("tab", {
     defaultValue: "overview",
   });
+
+  // Dialog states (must be before any early returns)
+  const [assignTeamOpen, setAssignTeamOpen] = useState(false);
 
   // Compute tab value: on desktop, coerce "overview" to "team" since overview is sidebar-only
   const isDesktop = !isMobile;
@@ -182,10 +187,7 @@ export function BookingDetailClient({ bookingId }: BookingDetailClientProps) {
   const { data: booking, capabilities } = bookingResponse;
 
   // Action handlers (placeholders for future implementation)
-  const handleAssignTeam = () => {
-    // TODO: Open assign team dialog
-    console.log("Assign team clicked");
-  };
+  const handleAssignTeam = () => setAssignTeamOpen(true);
 
   const handleEditBooking = () => {
     // TODO: Open edit logistics dialog
@@ -343,6 +345,19 @@ export function BookingDetailClient({ bookingId }: BookingDetailClientProps) {
         onReschedule={handleReschedule}
         onDelete={handleDelete}
       />
+
+      {/* Assign booking team dialog */}
+      {providerId && (
+        <AssignBookingTeamDialog
+          open={assignTeamOpen}
+          onOpenChange={setAssignTeamOpen}
+          providerId={providerId}
+          bookingId={booking.id}
+          serviceLocationId={booking.service_location_id}
+          initialTeamId={booking.team_id}
+          eventDate={booking.event_date}
+        />
+      )}
     </div>
   );
 }

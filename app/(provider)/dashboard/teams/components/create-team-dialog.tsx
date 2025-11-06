@@ -28,6 +28,7 @@ import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Loader2 } from "lucide-react";
 import { useCreateTeam } from "../hooks/use-teams";
 import { useProviderProfile } from "../../profile/hooks/use-provider-profile";
+import { useQuery } from "@tanstack/react-query";
 
 const createTeamSchema = z.object({
   service_location_id: z.string().min(1, "Service location is required"),
@@ -45,6 +46,7 @@ const createTeamSchema = z.object({
     .positive("Max concurrent events must be greater than zero")
     .optional()
     .or(z.literal("")),
+  supervisor_member_id: z.string().min(1, "Supervisor is required"),
 });
 
 type CreateTeamFormData = z.infer<typeof createTeamSchema>;
@@ -76,6 +78,7 @@ export function CreateTeamDialog({
       description: "",
       daily_capacity: "" as unknown as number,
       max_concurrent_events: "" as unknown as number,
+      supervisor_member_id: "",
     },
   });
 
@@ -88,6 +91,7 @@ export function CreateTeamDialog({
         description: data.description || undefined,
         daily_capacity: data.daily_capacity || undefined,
         max_concurrent_events: data.max_concurrent_events || undefined,
+        supervisor_member_id: data.supervisor_member_id,
       });
       form.reset();
       onOpenChange(false);
@@ -114,6 +118,32 @@ export function CreateTeamDialog({
       };
     });
   }, [serviceLocations]);
+
+  // Fetch provider members for supervisor selection
+  const { data: members = [] } = useQuery({
+    queryKey: ["provider-members", providerId],
+    queryFn: async () => {
+      const res = await fetch(`/api/providers/${providerId}/members`);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error?.message || "Failed to fetch members");
+      }
+      const json = await res.json();
+      return (json.data || []) as Array<{
+        id: string;
+        role: import("@/lib/roles").ProviderRole;
+        status: "pending" | "active" | "suspended";
+        full_name: string;
+        email: string;
+      }>;
+    },
+  });
+
+  const supervisorOptions: ComboboxOption[] = useMemo(() => {
+    return members
+      .filter((m) => m.status === "active" && (m.role === "staff" || m.role === "supervisor"))
+      .map((m) => ({ value: m.id, label: `${m.full_name} (${m.email})` }));
+  }, [members]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -145,6 +175,30 @@ export function CreateTeamDialog({
                   </FormControl>
                   <FormDescription>
                     The location where this team will operate
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Supervisor */}
+            <FormField
+              control={form.control}
+              name="supervisor_member_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Supervisor</FormLabel>
+                  <FormControl>
+                    <Combobox
+                      options={supervisorOptions}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder="Select a supervisor"
+                      emptyMessage="No eligible members found"
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Choose an active staff member to supervise this team
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -263,4 +317,3 @@ export function CreateTeamDialog({
     </Dialog>
   );
 }
-

@@ -133,7 +133,7 @@ export function NotesActivityCard({
       id: "3",
       action: "booking_confirmed",
       resourceType: "booking",
-      userName: "Manager",
+      userName: "Supervisor",
       timestamp:
         booking.confirmed_at ||
         new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),

@@ -17,6 +17,7 @@ export interface BookingsFilters {
   status?: string;
   source?: string;
   team?: string;
+  service_location_id?: string;
   my_team?: boolean;
   page?: number;
   page_size?: number;
@@ -71,6 +72,7 @@ export function useBookings(
       if (filters.status) params.append('status', filters.status);
       if (filters.source) params.append('source', filters.source);
       if (filters.team) params.append('team', filters.team);
+      if (filters.service_location_id) params.append('service_location_id', filters.service_location_id);
       if (filters.my_team) params.append('my_team', 'true');
       if (filters.page) params.append('page', filters.page.toString());
       if (filters.page_size) params.append('page_size', filters.page_size.toString());
@@ -120,4 +122,3 @@ export function useBooking(bookingId: string | undefined) {
     gcTime: 5 * 60 * 1000,
   });
 }
-

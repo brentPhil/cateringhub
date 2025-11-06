@@ -3,9 +3,7 @@
  */
 
 import { APIErrors } from './errors';
-import type { Database } from '@/types/supabase';
-
-type ProviderRole = Database['public']['Enums']['provider_role'];
+import { ProviderRoleSchema, mapLegacyProviderRole, type ProviderRole } from '@/lib/roles';
 
 /**
  * Validate email format
@@ -25,16 +23,14 @@ export function validateEmail(email: string): string {
  * Validate provider role
  */
 export function validateProviderRole(role: string): ProviderRole {
-  const validRoles: ProviderRole[] = ['owner', 'admin', 'manager', 'staff', 'viewer'];
-  
-  if (!validRoles.includes(role as ProviderRole)) {
+  const mapped = mapLegacyProviderRole(role);
+  if (!mapped) {
     throw APIErrors.INVALID_INPUT(
-      `Invalid role. Must be one of: ${validRoles.join(', ')}`,
-      { providedRole: role, validRoles }
+      `Invalid role. Must be one of: ${ProviderRoleSchema.options.join(', ')}`,
+      { providedRole: role, validRoles: ProviderRoleSchema.options }
     );
   }
-  
-  return role as ProviderRole;
+  return mapped;
 }
 
 /**
@@ -135,4 +131,3 @@ export function validateUpdateMemberStatusRequest(body: unknown): UpdateMemberSt
 
   return { status };
 }
-

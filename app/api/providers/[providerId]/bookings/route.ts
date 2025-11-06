@@ -23,6 +23,7 @@ interface RouteContext {
  * - status: Filter by booking status
  * - source: Filter by booking source (manual/auto)
  * - team: Filter by team ID or 'no-team'
+ * - service_location_id: Filter by service location
  * - my_team: Filter to only bookings for current user's team (true/false)
  * - page: Page number (default: 1)
  * - page_size: Items per page (default: 10)
@@ -52,6 +53,7 @@ export async function GET(
     const status = searchParams.get('status') || '';
     const source = searchParams.get('source') || '';
     const team = searchParams.get('team') || '';
+    const serviceLocationId = searchParams.get('service_location_id') || '';
     const myTeam = searchParams.get('my_team') === 'true';
     const page = parseInt(searchParams.get('page') || '1', 10);
     const pageSize = parseInt(searchParams.get('page_size') || '10', 10);
@@ -73,8 +75,8 @@ export async function GET(
 
     // Apply role-based filtering
     // Staff: See only bookings for their team
-    // Manager/Admin/Owner: See all bookings
-    // Viewer: See all bookings (read-only enforced in UI)
+    // Owner/Admin: See all bookings
+    // Supervisor: See team bookings (enforced via filters/UI); RLS protects data
     if (!membership.capabilities.canViewAllBookings) {
       // Staff role - only see team bookings
       if (membership.teamId) {
@@ -113,6 +115,11 @@ export async function GET(
       } else {
         query = query.eq('team_id', team);
       }
+    }
+
+    // Apply service location filter
+    if (serviceLocationId) {
+      query = query.eq('service_location_id', serviceLocationId);
     }
 
     // Apply sorting
@@ -167,4 +174,3 @@ export async function GET(
     return handleAPIError(error);
   }
 }
-

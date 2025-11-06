@@ -12,7 +12,7 @@
 - **Tables:** 15 core tables including `bookings`, `providers`, `provider_members`, `service_locations`, `shifts`, `worker_profiles`, `expenses`, `booking_audits`
 - **Assignment Model:** Individual-based via `bookings.assigned_to` (UUID → auth.users)
 - **Service Locations:** Multi-location support exists (`service_locations` table) but **not integrated** with booking assignment flow
-- **Team Structure:** `provider_members` table with role hierarchy (owner > admin > manager > staff > viewer)
+- **Team Structure:** `provider_members` table with role hierarchy (owner > admin > supervisor > staff > viewer)
 - **Crew Assignments:** `shifts` table supports multiple team members/workers per booking (partial team concept)
 - **Indexes:** 47 indexes optimized for current individual assignment queries (`idx_bookings_assigned_to`, `idx_bookings_assigned_status`)
 - **RLS Policies:** 52 policies enforcing role-based access; staff can only see bookings assigned to them individually
@@ -180,4 +180,3 @@
 ---
 
 **See `AUDIT_TECHNICAL_DETAILS.md` for full technical audit with evidence log and machine-readable JSON output.**
-

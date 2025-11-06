@@ -120,10 +120,10 @@ export function getRoleHierarchy(role: ProviderRole): number {
   const hierarchy: Record<ProviderRole, number> = {
     owner: 1,
     admin: 2,
-    manager: 3,
+    supervisor: 3,
     staff: 4,
     viewer: 5,
-  };
+  } as const;
   return hierarchy[role];
 }
 
@@ -133,4 +133,3 @@ export function getRoleHierarchy(role: ProviderRole): number {
 export function hasHigherOrEqualRole(role1: ProviderRole, role2: ProviderRole): boolean {
   return getRoleHierarchy(role1) <= getRoleHierarchy(role2);
 }
-

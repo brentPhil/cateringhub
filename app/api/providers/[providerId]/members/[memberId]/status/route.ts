@@ -11,8 +11,7 @@ import { parseRequestBody, validateUpdateMemberStatusRequest, validateUUID } fro
 import { AuditLogger } from '@/lib/audit/audit-logger';
 import { RateLimiters, createRateLimitError } from '@/lib/middleware/rate-limit';
 import type { Database } from '@/types/supabase';
-
-type ProviderRole = Database['public']['Enums']['provider_role'];
+import type { ProviderRole } from '@/lib/roles';
 type MemberStatus = Database['public']['Enums']['provider_member_status'];
 
 interface RouteContext {
@@ -74,7 +73,7 @@ export async function PATCH(
     const roleHierarchy: Record<string, number> = {
       owner: 1,
       admin: 2,
-      manager: 3,
+      supervisor: 3,
       staff: 4,
       viewer: 5,
     };
@@ -169,4 +168,3 @@ export async function PATCH(
     return handleAPIError(error);
   }
 }
-

@@ -122,7 +122,7 @@ export function TeamMemberActions({
 
             <DropdownMenuItem onClick={onRemove} variant="destructive">
               <Trash2 className="mr-2 h-4 w-4" />
-              Remove member
+              Delete permanently
             </DropdownMenuItem>
           </>
         )}

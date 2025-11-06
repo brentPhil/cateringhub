@@ -67,19 +67,12 @@ export async function createShift(params: {
       };
     }
 
-    // Check role permissions - only owner, admin, manager can create shifts
-    const roleHierarchy: Record<string, number> = {
-      owner: 1,
-      admin: 2,
-      manager: 3,
-      staff: 4,
-      viewer: 5,
-    };
-
-    if (roleHierarchy[membership.role] > roleHierarchy.manager) {
+    // Check permissions - owners/admins (provider-wide) or supervisors (team-scoped)
+    const { ROLE_HIERARCHY } = await import('@/lib/roles');
+    if (ROLE_HIERARCHY[membership.role as keyof typeof ROLE_HIERARCHY] > ROLE_HIERARCHY.supervisor) {
       return {
         success: false,
-        error: "Only owners, admins, and managers can assign to bookings",
+        error: "Only owners, admins, and supervisors can assign to bookings",
       };
     }
 
@@ -438,6 +431,175 @@ export async function checkOut(shiftId: string): Promise<ActionResult> {
 }
 
 /**
+ * Create shifts for all members of a team (bulk assignment)
+ * Useful for assigning entire team to a booking at once
+ */
+export async function createBulkShifts(params: {
+  bookingId: string;
+  teamId: string;
+  role?: string;
+  scheduledStart?: string;
+  scheduledEnd?: string;
+  notes?: string;
+}): Promise<ActionResult<{ created: number; skipped: number; errors: string[] }>> {
+  try {
+    console.log("[createBulkShifts] Starting with params:", params);
+
+    const supabase = await createClient();
+
+    // Get authenticated user
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      console.error("[createBulkShifts] Auth error:", authError);
+      return {
+        success: false,
+        error: "You must be logged in to create shifts",
+      };
+    }
+
+    // Verify user has access through provider membership
+    const { data: membership, error: membershipError } = await supabase
+      .from("provider_members")
+      .select("id, provider_id, role, status")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .single();
+
+    if (membershipError || !membership) {
+      return {
+        success: false,
+        error: "You must be an active provider member to create shifts",
+      };
+    }
+
+    // Check permissions - owners/admins (provider-wide) or supervisors (team-scoped)
+    const { ROLE_HIERARCHY } = await import('@/lib/roles');
+    if (ROLE_HIERARCHY[membership.role as keyof typeof ROLE_HIERARCHY] > ROLE_HIERARCHY.supervisor) {
+      return {
+        success: false,
+        error: "Only owners, admins, and supervisors can assign to bookings",
+      };
+    }
+
+    // Verify the booking belongs to the user's provider
+    const { data: booking, error: bookingError } = await supabase
+      .from("bookings")
+      .select("id, provider_id")
+      .eq("id", params.bookingId)
+      .eq("provider_id", membership.provider_id)
+      .single();
+
+    if (bookingError || !booking) {
+      return {
+        success: false,
+        error: "Booking not found or you don't have access to it",
+      };
+    }
+
+    // Get all active team members for the team
+    const { data: teamMembers, error: teamMembersError } = await supabase
+      .from("provider_members")
+      .select("id, user_id")
+      .eq("provider_id", membership.provider_id)
+      .eq("team_id", params.teamId)
+      .eq("status", "active");
+
+    if (teamMembersError) {
+      return {
+        success: false,
+        error: "Failed to fetch team members",
+      };
+    }
+
+    if (!teamMembers || teamMembers.length === 0) {
+      return {
+        success: false,
+        error: "No active members found in this team",
+      };
+    }
+
+    // Get existing shifts for this booking to avoid duplicates
+    const { data: existingShifts } = await supabase
+      .from("shifts")
+      .select("user_id")
+      .eq("booking_id", params.bookingId);
+
+    const existingUserIds = new Set(
+      existingShifts?.map((s) => s.user_id).filter(Boolean) || []
+    );
+
+    // Prepare shifts to create (skip members who already have shifts)
+    const shiftsToCreate: TablesInsert<"shifts">[] = [];
+    const skippedMembers: string[] = [];
+
+    for (const member of teamMembers) {
+      if (existingUserIds.has(member.user_id)) {
+        skippedMembers.push(member.user_id);
+        continue;
+      }
+
+      shiftsToCreate.push({
+        booking_id: params.bookingId,
+        user_id: member.user_id,
+        worker_profile_id: null,
+        role: params.role || null,
+        scheduled_start: params.scheduledStart || null,
+        scheduled_end: params.scheduledEnd || null,
+        notes: params.notes || null,
+        status: "scheduled",
+      });
+    }
+
+    if (shiftsToCreate.length === 0) {
+      return {
+        success: false,
+        error: "All team members are already assigned to this booking",
+      };
+    }
+
+    // Bulk insert shifts
+    const { data: createdShifts, error: insertError } = await supabase
+      .from("shifts")
+      .insert(shiftsToCreate)
+      .select();
+
+    if (insertError) {
+      console.error("[createBulkShifts] Insert error:", insertError);
+      return {
+        success: false,
+        error: "Failed to create shifts. Please try again.",
+      };
+    }
+
+    console.log(
+      `[createBulkShifts] Created ${createdShifts?.length || 0} shifts, skipped ${skippedMembers.length}`
+    );
+
+    // Revalidate the bookings page
+    revalidatePath("/dashboard/bookings");
+
+    return {
+      success: true,
+      data: {
+        created: createdShifts?.length || 0,
+        skipped: skippedMembers.length,
+        errors: [],
+      },
+    };
+  } catch (error) {
+    console.error("[createBulkShifts] Error:", error);
+    return {
+      success: false,
+      error: "An unexpected error occurred. Please try again.",
+    };
+  }
+}
+
+/**
  * Delete a shift assignment
  * Only allows deletion if shift hasn't been checked in yet
  */
@@ -487,19 +649,19 @@ export async function deleteShift(shiftId: string): Promise<ActionResult> {
       };
     }
 
-    // Check role permissions - only owner, admin, manager can delete shifts
+    // Check role permissions - owner, admin, or supervisor can delete shifts (team-scoped for supervisors)
     const roleHierarchy: Record<string, number> = {
       owner: 1,
       admin: 2,
-      manager: 3,
+      supervisor: 3,
       staff: 4,
       viewer: 5,
     };
 
-    if (roleHierarchy[membership.role] > roleHierarchy.manager) {
+    if (roleHierarchy[membership.role] > roleHierarchy.supervisor) {
       return {
         success: false,
-        error: "Only owners, admins, and managers can remove team members from bookings",
+        error: "Only owners, admins, and supervisors can remove team members from bookings",
       };
     }
 
@@ -554,4 +716,3 @@ export async function deleteShift(shiftId: string): Promise<ActionResult> {
     };
   }
 }
-

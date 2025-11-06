@@ -123,7 +123,7 @@ export async function PATCH(
     const user = await getAuthenticatedUser();
     const supabase = await createClient();
 
-    // Verify user is a manager or above
+    // Verify user is an admin or owner
     const { data: currentMember, error: memberError } = await supabase
       .from("provider_members")
       .select("id, role, status")
@@ -136,8 +136,8 @@ export async function PATCH(
       throw APIErrors.FORBIDDEN("You are not an active member of this provider");
     }
 
-    if (!["owner", "admin", "manager"].includes(currentMember.role)) {
-      throw APIErrors.FORBIDDEN("Only managers and above can update teams");
+    if (!["owner", "admin"].includes(currentMember.role)) {
+      throw APIErrors.FORBIDDEN("Only admins and owners can update teams");
     }
 
     // Verify team exists and belongs to this provider
@@ -224,7 +224,7 @@ export async function PATCH(
  * Archive a team (soft delete)
  */
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ providerId: string; teamId: string }> }
 ) {
   try {
@@ -232,7 +232,7 @@ export async function DELETE(
     const user = await getAuthenticatedUser();
     const supabase = await createClient();
 
-    // Verify user is a manager or above
+    // Verify user is an admin or owner
     const { data: currentMember, error: memberError } = await supabase
       .from("provider_members")
       .select("id, role, status")
@@ -245,8 +245,8 @@ export async function DELETE(
       throw APIErrors.FORBIDDEN("You are not an active member of this provider");
     }
 
-    if (!["owner", "admin", "manager"].includes(currentMember.role)) {
-      throw APIErrors.FORBIDDEN("Only managers and above can delete teams");
+    if (!["owner", "admin"].includes(currentMember.role)) {
+      throw APIErrors.FORBIDDEN("Only admins and owners can delete teams");
     }
 
     // Verify team exists and belongs to this provider
@@ -261,22 +261,83 @@ export async function DELETE(
       throw APIErrors.NOT_FOUND("Team not found");
     }
 
-    // Soft delete by setting status to 'archived'
-    const { error: updateError } = await supabase
-      .from("teams")
-      .update({ status: "archived" })
-      .eq("id", teamId);
+    // Determine if this is a permanent delete
+    const permanentParam = request.nextUrl.searchParams.get('permanent') || request.nextUrl.searchParams.get('hard');
+    const isPermanent = ["1","true","yes"].includes((permanentParam || '').toLowerCase());
 
-    if (updateError) {
-      throw APIErrors.INTERNAL("Failed to archive team");
+    if (!isPermanent) {
+      // Soft delete by setting status to 'archived'
+      const { error: updateError } = await supabase
+        .from("teams")
+        .update({ status: "archived" })
+        .eq("id", teamId);
+
+      if (updateError) {
+        throw APIErrors.INTERNAL("Failed to archive team");
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Team archived successfully",
+      });
+    }
+
+    // Permanent deletion path
+    // Pre-check: if team has any active supervisors, block with friendly error
+    const { count: supervisorCount, error: countError } = await supabase
+      .from('provider_members')
+      .select('id', { count: 'exact', head: true })
+      .eq('provider_id', providerId)
+      .eq('team_id', teamId)
+      .eq('role', 'supervisor')
+      .eq('status', 'active');
+
+    if (countError) {
+      throw APIErrors.INTERNAL('Failed to verify team supervisors');
+    }
+
+    if ((supervisorCount as unknown as number) > 0) {
+      return NextResponse.json(
+        { error: { message: 'Cannot delete team while it has active supervisors. Reassign or change their roles first.' } },
+        { status: 400 }
+      );
+    }
+
+    // Optional: get counts for reporting
+    const [{ count: bookingsToUnassign }, { count: membersToUnassign }, { count: workersToUnassign }] = await Promise.all([
+      supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('team_id', teamId),
+      supabase.from('provider_members').select('id', { count: 'exact', head: true }).eq('team_id', teamId),
+      supabase.from('worker_profiles').select('id', { count: 'exact', head: true }).eq('team_id', teamId),
+    ]);
+
+    // Delete the team. FKs (SET NULL) will clear team_id on dependent rows.
+    const { error: deleteError } = await supabase
+      .from('teams')
+      .delete()
+      .eq('id', teamId)
+      .eq('provider_id', providerId);
+
+    if (deleteError) {
+      const msg = (deleteError as unknown as { message?: string })?.message?.toLowerCase() || '';
+      if (msg.includes('last supervisor')) {
+        return NextResponse.json(
+          { error: { message: 'Cannot delete team because it would remove the last supervisor. Reassign or change supervisor roles first.' } },
+          { status: 400 }
+        );
+      }
+      throw APIErrors.INTERNAL('Failed to delete team');
     }
 
     return NextResponse.json({
       success: true,
-      message: "Team archived successfully",
+      message: 'Team permanently deleted',
+      data: {
+        bookings_unassigned: (bookingsToUnassign as unknown as number) || 0,
+        members_unassigned: (membersToUnassign as unknown as number) || 0,
+        workers_unassigned: (workersToUnassign as unknown as number) || 0,
+      }
     });
   } catch (error) {
     return handleAPIError(error);
   }
 }
-

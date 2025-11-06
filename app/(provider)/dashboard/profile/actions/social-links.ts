@@ -52,16 +52,9 @@ export async function saveSocialLinks(
       };
     }
 
-    // Check if user has edit permissions (owner, admin, or manager)
-    const roleHierarchy: Record<string, number> = {
-      owner: 1,
-      admin: 2,
-      manager: 3,
-      staff: 4,
-      viewer: 5,
-    };
-
-    if (roleHierarchy[membership.role] > roleHierarchy['manager']) {
+    // Check if user has edit permissions (owner or admin)
+    const { ROLE_HIERARCHY } = await import('@/lib/roles');
+    if (ROLE_HIERARCHY[membership.role as keyof typeof ROLE_HIERARCHY] > ROLE_HIERARCHY['admin']) {
       return {
         success: false,
         error: "You do not have permission to edit social links",
@@ -227,4 +220,3 @@ export async function deleteSocialLink(linkId: string) {
     };
   }
 }
-

@@ -26,17 +26,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
-import {
-  getAvailableRoles,
-  formatRoleDisplay,
-  getRoleDescription,
-} from "../lib/team-utils";
+import { getAvailableRoles, formatRoleDisplay, getRoleDescription } from "../lib/team-utils";
+import { InvitableRoleSchema } from "@/lib/roles";
 
 const inviteSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
-  role: z.enum(["admin", "manager", "staff", "viewer"], {
-    required_error: "Please select a role",
-  }),
+  role: InvitableRoleSchema,
   note: z.string().max(500, "Note must be less than 500 characters").optional(),
 });
 

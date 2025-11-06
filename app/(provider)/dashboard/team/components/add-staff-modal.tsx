@@ -24,18 +24,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle, UserPlus } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  getRolePermissions,
-  getRoleDescription,
-  type ProviderRole,
-} from "../lib/team-utils";
+import { getRolePermissions, getRoleDescription, type ProviderRole } from "../lib/team-utils";
+import { InvitableRoleSchema } from "@/lib/roles";
 
 const addStaffSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   full_name: z.string().min(2, "Full name must be at least 2 characters"),
-  role: z.enum(["admin", "manager", "staff", "viewer"], {
-    required_error: "Please select a role",
-  }),
+  role: InvitableRoleSchema,
 });
 
 type AddStaffFormData = z.infer<typeof addStaffSchema>;
@@ -82,7 +77,7 @@ export function AddStaffModal({
   // Role options for Combobox
   const roleOptions: ComboboxOption[] = [
     { value: "admin", label: "Admin" },
-    { value: "manager", label: "Manager" },
+    { value: "supervisor", label: "Supervisor" },
     { value: "staff", label: "Staff" },
     { value: "viewer", label: "Viewer" },
   ];

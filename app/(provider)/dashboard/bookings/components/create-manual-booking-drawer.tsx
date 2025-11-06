@@ -25,6 +25,12 @@ import { Button } from "@/components/ui/button";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { useCreateManualBooking } from "../hooks/use-create-manual-booking";
 import { useTeams } from "../../teams/hooks/use-teams";
+import { useProviderProfile } from "../../profile/hooks/use-provider-profile";
+import { useQuery } from "@tanstack/react-query";
+import { createClient } from "@/lib/supabase/client";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { AlertTriangle } from "lucide-react";
 import { Loader2 } from "lucide-react";
 
 // Validation schema matching server-side validation
@@ -59,6 +65,7 @@ const createManualBookingSchema = z.object({
     .nonnegative("Base price must be non-negative")
     .optional()
     .or(z.literal("")),
+  serviceLocationId: z.string().optional(),
   teamId: z.string().optional(),
   status: z.enum([
     "pending",
@@ -86,6 +93,8 @@ export function CreateManualBookingDrawer({
 
   // Fetch active teams for the provider
   const { data: teams = [] } = useTeams(providerId, { status: "active" });
+  // Provider service locations from profile (used to filter teams)
+  const { data: profileData } = useProviderProfile();
 
   const form = useForm<CreateManualBookingFormData>({
     resolver: zodResolver(createManualBookingSchema),
@@ -103,6 +112,7 @@ export function CreateManualBookingDrawer({
       specialRequests: "",
       notes: "",
       basePrice: "" as unknown as number,
+      serviceLocationId: "",
       teamId: "",
       status: "pending",
     },
@@ -114,6 +124,7 @@ export function CreateManualBookingDrawer({
         providerId,
         customerName: data.customerName,
         eventDate: data.eventDate,
+        serviceLocationId: data.serviceLocationId || undefined,
         customerPhone: data.customerPhone || undefined,
         customerEmail: data.customerEmail || undefined,
         eventTime: data.eventTime || undefined,
@@ -155,21 +166,59 @@ export function CreateManualBookingDrawer({
     { value: "cancelled", label: "Cancelled" },
   ];
 
-  // Team options for Combobox
+  // Watch selected service location to filter teams
+  const selectedLocationId = form.watch("serviceLocationId");
+
+  // Fetch teams filtered by service location
+  const { data: filteredTeams = [] } = useTeams(providerId, {
+    status: "active",
+    service_location_id: selectedLocationId || undefined,
+  });
+
+  // Team options for Combobox (filtered by location)
   const teamOptions: ComboboxOption[] = useMemo(() => {
     const options: ComboboxOption[] = [
       { value: "", label: "No team (unassigned)" },
     ];
 
-    teams.forEach((team) => {
+    (filteredTeams || teams).forEach((team) => {
       options.push({ value: team.id, label: team.name });
     });
 
     return options;
-  }, [teams]);
+  }, [filteredTeams, teams]);
 
   const isSubmitting = createManualBookingMutation.isPending;
   const isFormValid = form.formState.isValid;
+
+  // Capacity info for selected team on selected date
+  type CapacityInfo = {
+    team_id: string;
+    team_name: string;
+    daily_capacity: number | null;
+    max_concurrent_events: number | null;
+    bookings_on_date: number;
+    remaining_capacity: number | null;
+  } | null;
+
+  const selectedTeamId = form.watch("teamId") || "";
+  const eventDate = form.watch("eventDate") || "";
+  const { data: capacityInfo } = useQuery<CapacityInfo>({
+    queryKey: ["create-booking-capacity", selectedTeamId, eventDate, open],
+    queryFn: async () => {
+      if (!selectedTeamId || !eventDate) return null;
+      const supabase = createClient();
+      const { data, error } = await supabase.rpc("get_team_capacity_info", {
+        p_team_id: selectedTeamId,
+        p_event_date: eventDate,
+      });
+      if (error) return null;
+      const first = (data as unknown as CapacityInfo[] | null)?.[0] || null;
+      return first;
+    },
+    enabled: !!selectedTeamId && !!eventDate && open,
+    staleTime: 10_000,
+  });
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
@@ -186,6 +235,38 @@ export function CreateManualBookingDrawer({
             onSubmit={form.handleSubmit(handleSubmit)}
             className="space-y-4 mt-6"
           >
+            {/* Service Location (for filtering teams) */}
+            <Controller
+              control={form.control}
+              name="serviceLocationId"
+              render={({ field }) => {
+                const serviceLocations = (profileData?.profile?.service_locations || []) as Array<any>;
+                const locationOptions: ComboboxOption[] = serviceLocations.map((loc) => {
+                  const parts = [loc.barangay, loc.city, loc.province].filter(Boolean);
+                  const label = parts.join(", ") || "Unknown location";
+                  return {
+                    value: loc.id,
+                    label: loc.is_primary ? `${label} (Primary)` : label,
+                  };
+                });
+                return (
+                  <Field>
+                    <FieldLabel htmlFor="serviceLocationId">Service location</FieldLabel>
+                    <Combobox
+                      options={locationOptions}
+                      value={field.value || ""}
+                      onValueChange={field.onChange}
+                      placeholder={
+                        serviceLocations.length ? "Select a location (optional)" : "No locations configured"
+                      }
+                    />
+                    <FieldDescription>
+                      Selecting a location filters the teams list to those serving that area
+                    </FieldDescription>
+                  </Field>
+                );
+              }}
+            />
             {/* Customer Name - Required */}
             <Controller
               control={form.control}
@@ -522,7 +603,7 @@ export function CreateManualBookingDrawer({
                     options={teamOptions}
                     value={field.value || ""}
                     onValueChange={field.onChange}
-                    placeholder="Select a team (optional)"
+                    placeholder={selectedLocationId ? "Select a team (optional)" : "Select a location to filter teams (optional)"}
                   />
                   <FieldDescription>
                     Optionally assign this booking to an operational team
@@ -533,6 +614,23 @@ export function CreateManualBookingDrawer({
                 </Field>
               )}
             />
+
+            {selectedTeamId && capacityInfo && capacityInfo.daily_capacity !== null && (
+              <Alert variant={capacityInfo.remaining_capacity !== null && capacityInfo.remaining_capacity <= 0 ? "destructive" : "default"}>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  {capacityInfo.team_name}: {capacityInfo.bookings_on_date} / {capacityInfo.daily_capacity} events booked on {eventDate}.
+                  {" "}
+                  {capacityInfo.remaining_capacity !== null && (
+                    capacityInfo.remaining_capacity <= 0 ? (
+                      <Badge variant="destructive" className="ml-2">At capacity</Badge>
+                    ) : (
+                      <Badge variant="secondary" className="ml-2">{capacityInfo.remaining_capacity} remaining</Badge>
+                    )
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
 
             <SheetFooter className="gap-2">
               <Button
@@ -545,7 +643,11 @@ export function CreateManualBookingDrawer({
               </Button>
               <Button
                 type="submit"
-                disabled={isSubmitting || !isFormValid}
+                disabled={
+                  isSubmitting ||
+                  !isFormValid ||
+                  (!!selectedTeamId && !!capacityInfo && capacityInfo.remaining_capacity !== null && capacityInfo.remaining_capacity <= 0)
+                }
                 aria-label="Create manual booking"
               >
                 {isSubmitting && (

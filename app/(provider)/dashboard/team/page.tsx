@@ -146,7 +146,7 @@ export default function TeamPage() {
     (memberId: string) => {
       if (
         confirm(
-          "Are you sure you want to remove this member? This action cannot be undone."
+          "Permanently delete this member? This will remove their team access and cannot be undone."
         )
       ) {
         removeMemberMutation.mutate(memberId);
@@ -189,7 +189,7 @@ export default function TeamPage() {
     { value: "all", label: "All roles" },
     { value: "owner", label: "Owner" },
     { value: "admin", label: "Admin" },
-    { value: "manager", label: "Manager" },
+    { value: "supervisor", label: "Supervisor" },
     { value: "staff", label: "Staff" },
     { value: "viewer", label: "Viewer" },
   ];

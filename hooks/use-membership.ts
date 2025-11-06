@@ -3,8 +3,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import type { Database } from "@/types/supabase";
+import { ROLE_HIERARCHY, type ProviderRole } from "@/lib/roles";
 
-type ProviderRole = Database['public']['Enums']['provider_role'];
+// ProviderRole type sourced via roles module
 type MemberStatus = Database['public']['Enums']['provider_member_status'];
 
 export interface MembershipCapabilities {
@@ -34,32 +35,24 @@ export interface CurrentMembership {
  * Calculate capabilities based on role
  */
 function calculateCapabilities(role: ProviderRole): MembershipCapabilities {
-  const roleHierarchy: Record<ProviderRole, number> = {
-    owner: 1,
-    admin: 2,
-    manager: 3,
-    staff: 4,
-    viewer: 5,
-  };
-
-  const roleLevel = roleHierarchy[role];
+  const roleLevel = ROLE_HIERARCHY[role];
 
   return {
     // Team management capabilities
-    canInviteMembers: roleLevel <= roleHierarchy.admin, // owner, admin
-    canRemoveMembers: roleLevel <= roleHierarchy.admin, // owner, admin
-    canManageRoles: roleLevel <= roleHierarchy.admin, // owner, admin
+    canInviteMembers: roleLevel <= ROLE_HIERARCHY.admin, // owner, admin
+    canRemoveMembers: roleLevel <= ROLE_HIERARCHY.admin, // owner, admin
+    canManageRoles: roleLevel <= ROLE_HIERARCHY.admin, // owner, admin
 
-    // Booking capabilities
-    canViewAllBookings: roleLevel <= roleHierarchy.manager, // owner, admin, manager
-    canEditAllBookings: roleLevel <= roleHierarchy.manager, // owner, admin, manager
-    canAssignBookings: roleLevel <= roleHierarchy.manager, // owner, admin, manager
+    // Booking capabilities (provider-wide)
+    canViewAllBookings: roleLevel <= ROLE_HIERARCHY.admin, // owner, admin (supervisors: team-scoped)
+    canEditAllBookings: roleLevel <= ROLE_HIERARCHY.admin, // owner, admin (supervisors: team-scoped)
+    canAssignBookings: roleLevel <= ROLE_HIERARCHY.admin, // owner, admin (supervisors: team-scoped)
 
     // Analytics and financial capabilities
-    canViewAnalytics: roleLevel <= roleHierarchy.admin, // owner, admin
-    canManageBilling: roleLevel <= roleHierarchy.admin, // owner, admin
-    canManagePayouts: roleLevel <= roleHierarchy.admin, // owner, admin
-    canEditProviderSettings: roleLevel <= roleHierarchy.admin, // owner, admin
+    canViewAnalytics: roleLevel <= ROLE_HIERARCHY.admin, // owner, admin
+    canManageBilling: roleLevel <= ROLE_HIERARCHY.admin, // owner, admin
+    canManagePayouts: roleLevel <= ROLE_HIERARCHY.admin, // owner, admin
+    canEditProviderSettings: roleLevel <= ROLE_HIERARCHY.admin, // owner, admin
   };
 }
 
@@ -182,4 +175,3 @@ export function useHasCapability(
 
   return membership.capabilities[capability];
 }
-

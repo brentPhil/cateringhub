@@ -32,11 +32,10 @@ import {
 } from "../lib/team-utils";
 import type { TeamMemberWithUser } from "../hooks/use-team-members";
 import type { ProviderRole } from "../lib/team-utils";
+import { InvitableRoleSchema } from "@/lib/roles";
 
 const editRoleSchema = z.object({
-  role: z.enum(["admin", "manager", "staff", "viewer"], {
-    required_error: "Please select a role",
-  }),
+  role: InvitableRoleSchema,
 });
 
 type EditRoleFormData = z.infer<typeof editRoleSchema>;

@@ -167,11 +167,11 @@ export async function assignWorkerToTeam(params: {
       };
     }
 
-    // Verify user has permission to assign teams (manager or above)
-    if (!["owner", "admin", "manager"].includes(membership.role)) {
+    // Verify user has permission to assign teams (admin or supervisor of the team)
+    if (!["owner", "admin", "supervisor"].includes(membership.role)) {
       return {
         success: false,
-        error: "Only managers and above can assign workers to teams",
+        error: "Only admins and supervisors can assign workers to teams",
       };
     }
 
@@ -436,4 +436,3 @@ export async function deleteWorkerProfile(
     };
   }
 }
-

@@ -1,10 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Loader2, Users, UserCog } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { createClient } from "@/lib/supabase/client";
+import {
+  Loader2,
+  Users,
+  UserCog,
+  AlertCircle,
+  Building2,
+  UsersRound,
+  AlertTriangle,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -27,9 +37,15 @@ import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { useTeamMembers } from "@/app/(provider)/dashboard/team/hooks/use-team-members";
 import { useWorkerProfiles } from "@/app/(provider)/dashboard/workers/hooks/use-worker-profiles";
-import { useCreateShift } from "@/app/(provider)/dashboard/bookings/hooks/use-shifts";
+import {
+  useCreateShift,
+  useCreateBulkShifts,
+} from "@/app/(provider)/dashboard/bookings/hooks/use-shifts";
+import { useBookingDetail } from "@/app/(provider)/dashboard/bookings/hooks/use-booking-detail";
 
 const assignTeammateSchema = z
   .object({
@@ -64,6 +80,35 @@ export function AssignTeammateDialog({
     "team_member"
   );
 
+  // Fetch booking details to get the assigned team
+  const { data: bookingResponse, isLoading: loadingBooking } = useBookingDetail(
+    providerId,
+    bookingId
+  );
+  const booking = bookingResponse?.data;
+
+  // Fetch team capacity info if team is assigned
+  const { data: capacityInfo, isLoading: loadingCapacity } = useQuery({
+    queryKey: ["team-capacity", booking?.team?.id, booking?.event_date],
+    queryFn: async () => {
+      if (!booking?.team?.id || !booking?.event_date) return null;
+
+      const supabase = createClient();
+      const { data, error } = await supabase.rpc("get_team_capacity_info", {
+        p_team_id: booking.team.id,
+        p_event_date: booking.event_date,
+      });
+
+      if (error) {
+        console.error("[AssignTeammateDialog] Error fetching capacity:", error);
+        return null;
+      }
+
+      return data?.[0] || null;
+    },
+    enabled: !!booking?.team?.id && !!booking?.event_date,
+  });
+
   const { data: teamMembers = [], isLoading: loadingMembers } =
     useTeamMembers(providerId);
   const { data: workers = [], isLoading: loadingWorkers } = useWorkerProfiles(
@@ -71,6 +116,35 @@ export function AssignTeammateDialog({
     { status: "active" }
   );
   const createShiftMutation = useCreateShift(bookingId);
+  const createBulkShiftsMutation = useCreateBulkShifts(bookingId);
+
+  // Calculate smart defaults for shift times based on booking event date/time
+  const smartDefaults = useMemo(() => {
+    if (!booking?.event_date) return { scheduledStart: "", scheduledEnd: "" };
+
+    const eventDate = booking.event_date; // Format: YYYY-MM-DD
+    const eventTime = booking.event_time || "09:00:00"; // Format: HH:MM:SS
+
+    // Combine date and time for start (1 hour before event)
+    const eventDateTime = new Date(`${eventDate}T${eventTime}`);
+    const startTime = new Date(eventDateTime.getTime() - 60 * 60 * 1000); // 1 hour before
+    const endTime = new Date(eventDateTime.getTime() + 4 * 60 * 60 * 1000); // 4 hours after event
+
+    // Format for datetime-local input: YYYY-MM-DDTHH:MM
+    const formatForInput = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      const hours = String(date.getHours()).padStart(2, "0");
+      const minutes = String(date.getMinutes()).padStart(2, "0");
+      return `${year}-${month}-${day}T${hours}:${minutes}`;
+    };
+
+    return {
+      scheduledStart: formatForInput(startTime),
+      scheduledEnd: formatForInput(endTime),
+    };
+  }, [booking?.event_date, booking?.event_time]);
 
   const form = useForm<AssignTeammateFormData>({
     resolver: zodResolver(assignTeammateSchema),
@@ -78,11 +152,19 @@ export function AssignTeammateDialog({
       userId: "",
       workerProfileId: "",
       role: "",
-      scheduledStart: "",
-      scheduledEnd: "",
+      scheduledStart: smartDefaults.scheduledStart,
+      scheduledEnd: smartDefaults.scheduledEnd,
       notes: "",
     },
   });
+
+  // Update form when smart defaults change (when booking loads)
+  useEffect(() => {
+    if (smartDefaults.scheduledStart && smartDefaults.scheduledEnd) {
+      form.setValue("scheduledStart", smartDefaults.scheduledStart);
+      form.setValue("scheduledEnd", smartDefaults.scheduledEnd);
+    }
+  }, [smartDefaults.scheduledStart, smartDefaults.scheduledEnd, form]);
 
   const onSubmit = async (data: AssignTeammateFormData) => {
     createShiftMutation.mutate(
@@ -120,14 +202,60 @@ export function AssignTeammateDialog({
     }
   };
 
-  // Filter out active members only
-  const activeMembers = teamMembers.filter((m) => m.status === "active");
+  const handleBulkAssign = () => {
+    if (!booking?.team?.id) return;
+
+    const formData = form.getValues();
+
+    createBulkShiftsMutation.mutate(
+      {
+        teamId: booking.team.id,
+        role: formData.role || undefined,
+        scheduledStart: formData.scheduledStart || undefined,
+        scheduledEnd: formData.scheduledEnd || undefined,
+        notes: formData.notes || undefined,
+      },
+      {
+        onSuccess: () => {
+          form.reset();
+          onOpenChange(false);
+        },
+      }
+    );
+  };
+
+  // Filter team members based on booking's assigned team
+  const { eligibleMembers, showingAllMembers } = useMemo(() => {
+    const activeMembers = teamMembers.filter((m) => m.status === "active");
+
+    // If booking has a team assigned, filter to only show members of that team
+    if (booking?.team?.id) {
+      const filtered = activeMembers.filter(
+        (m) => m.team_id === booking?.team?.id
+      );
+      return {
+        eligibleMembers: filtered,
+        showingAllMembers: false,
+      };
+    }
+
+    // If no team assigned to booking, show all active members
+    return {
+      eligibleMembers: activeMembers,
+      showingAllMembers: true,
+    };
+  }, [teamMembers, booking?.team?.id]);
 
   // Prepare Combobox options for team members
-  const teamMemberOptions: ComboboxOption[] = activeMembers.map((member) => ({
-    value: member.user_id,
-    label: member.full_name,
-  }));
+  const teamMemberOptions: ComboboxOption[] = eligibleMembers.map((member) => {
+    // Show team badge if displaying all members
+    const teamBadge =
+      showingAllMembers && member.team?.name ? ` (${member.team.name})` : "";
+    return {
+      value: member.user_id,
+      label: `${member.full_name}${teamBadge}`,
+    };
+  });
 
   // Prepare Combobox options for workers
   const workerOptions: ComboboxOption[] = workers.map((worker) => ({
@@ -145,6 +273,100 @@ export function AssignTeammateDialog({
             details.
           </DialogDescription>
         </DialogHeader>
+
+        {/* Team Context Display */}
+        {loadingBooking ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading booking details...
+          </div>
+        ) : booking?.team ? (
+          <div className="space-y-3">
+            <Alert>
+              <Building2 className="h-4 w-4" />
+              <AlertDescription>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Assigned team:</span>
+                  <Badge variant="secondary">{booking.team.name}</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Showing only members from this team
+                </p>
+              </AlertDescription>
+            </Alert>
+
+            {/* Bulk assignment button */}
+            {eligibleMembers.length > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={handleBulkAssign}
+                disabled={createBulkShiftsMutation.isPending || loadingMembers}
+              >
+                {createBulkShiftsMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Assigning team...
+                  </>
+                ) : (
+                  <>
+                    <UsersRound className="mr-2 h-4 w-4" />
+                    Assign entire team ({eligibleMembers.length} members)
+                  </>
+                )}
+              </Button>
+            )}
+
+            {/* Capacity warning */}
+            {!loadingCapacity && capacityInfo && (
+              <Alert
+                variant={
+                  capacityInfo.remaining_capacity !== null &&
+                  capacityInfo.remaining_capacity < 0
+                    ? "destructive"
+                    : "default"
+                }
+              >
+                {capacityInfo.remaining_capacity !== null &&
+                capacityInfo.remaining_capacity < 0 ? (
+                  <AlertTriangle className="h-4 w-4" />
+                ) : (
+                  <Building2 className="h-4 w-4" />
+                )}
+                <AlertDescription>
+                  <div className="space-y-1">
+                    <p className="font-medium">
+                      {capacityInfo.daily_capacity !== null
+                        ? `Team capacity: ${capacityInfo.bookings_on_date}/${capacityInfo.daily_capacity} bookings`
+                        : "No capacity limit set"}
+                    </p>
+                    {capacityInfo.remaining_capacity !== null && (
+                      <p className="text-xs text-muted-foreground">
+                        {capacityInfo.remaining_capacity > 0
+                          ? `${capacityInfo.remaining_capacity} slots remaining for this date`
+                          : capacityInfo.remaining_capacity === 0
+                            ? "Team is at full capacity for this date"
+                            : `Team is over capacity by ${Math.abs(capacityInfo.remaining_capacity)} bookings`}
+                      </p>
+                    )}
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+        ) : (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <p className="font-medium">No team assigned to this booking</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Showing all active team members. Consider assigning a team to
+                this booking first.
+              </p>
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -175,17 +397,30 @@ export function AssignTeammateDialog({
                           field.onChange(value);
                         }}
                         placeholder={
-                          loadingMembers
+                          loadingMembers || loadingBooking
                             ? "Loading..."
-                            : activeMembers.length === 0
-                              ? "No active team members found"
+                            : eligibleMembers.length === 0
+                              ? booking?.team
+                                ? "No members in this team"
+                                : "No active team members found"
                               : "Select a team member"
                         }
-                        disabled={loadingMembers}
-                        emptyMessage="No active team members found"
+                        disabled={loadingMembers || loadingBooking}
+                        emptyMessage={
+                          booking?.team
+                            ? "No members found in this team"
+                            : "No active team members found"
+                        }
                       />
                       <FormDescription>
                         Select a team member with login access
+                        {booking?.team && eligibleMembers.length > 0 && (
+                          <span className="block text-xs mt-1">
+                            {eligibleMembers.length} member
+                            {eligibleMembers.length !== 1 ? "s" : ""} available
+                            from {booking.team.name}
+                          </span>
+                        )}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

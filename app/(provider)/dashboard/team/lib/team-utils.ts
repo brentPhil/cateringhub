@@ -14,7 +14,7 @@ export function getRoleBadgeVariant(role: ProviderRole): "default" | "secondary"
       return "default"; // Purple/primary
     case "admin":
       return "secondary"; // Blue
-    case "manager":
+    case "supervisor":
       return "outline"; // Green
     case "staff":
       return "outline"; // Gray
@@ -34,7 +34,7 @@ export function getRoleBadgeClassName(role: ProviderRole): string {
       return "bg-purple-500 text-white hover:bg-purple-600 border-purple-500";
     case "admin":
       return "bg-blue-500 text-white hover:bg-blue-600 border-blue-500";
-    case "manager":
+    case "supervisor":
       return "bg-green-500 text-white hover:bg-green-600 border-green-500";
     case "staff":
       return "bg-gray-500 text-white hover:bg-gray-600 border-gray-500";
@@ -113,7 +113,7 @@ export function getRoleHierarchy(role: ProviderRole): number {
       return 1;
     case "admin":
       return 2;
-    case "manager":
+    case "supervisor":
       return 3;
     case "staff":
       return 4;
@@ -135,7 +135,7 @@ export function canManageUser(currentUserRole: ProviderRole, targetUserRole: Pro
  * Get available roles for invitation (excludes owner)
  */
 export function getAvailableRoles(): ProviderRole[] {
-  return ["admin", "manager", "staff", "viewer"];
+  return ["admin", "supervisor", "staff", "viewer"];
 }
 
 /**
@@ -147,8 +147,8 @@ export function getRoleDescription(role: ProviderRole): string {
       return "Full access, can manage all members, cannot be removed";
     case "admin":
       return "Can invite, manage members, view all data";
-    case "manager":
-      return "Can view and edit bookings, limited member management";
+    case "supervisor":
+      return "Manages staff within their team, can view and act on team bookings";
     case "staff":
       return "Can view and edit assigned bookings only";
     case "viewer":
@@ -179,13 +179,11 @@ export function getRolePermissions(role: ProviderRole): string[] {
         "Edit all bookings",
         "View reports",
       ];
-    case "manager":
+    case "supervisor":
       return [
-        "View all bookings",
-        "Edit all bookings",
-        "Assign bookings to staff",
+        "View team bookings",
+        "Assign staff within their team",
         "View team members",
-        "Limited reports access",
       ];
     case "staff":
       return [
@@ -204,4 +202,3 @@ export function getRolePermissions(role: ProviderRole): string[] {
       return [];
   }
 }
-

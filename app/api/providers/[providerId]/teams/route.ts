@@ -106,7 +106,7 @@ export async function POST(
     const user = await getAuthenticatedUser();
     const supabase = await createClient();
 
-    // Verify user is a manager or above
+    // Verify user is an admin or owner
     const { data: currentMember, error: memberError } = await supabase
       .from("provider_members")
       .select("id, role, status")
@@ -119,8 +119,8 @@ export async function POST(
       throw APIErrors.FORBIDDEN("You are not an active member of this provider");
     }
 
-    if (!["owner", "admin", "manager"].includes(currentMember.role)) {
-      throw APIErrors.FORBIDDEN("Only managers and above can create teams");
+    if (!["owner", "admin"].includes(currentMember.role)) {
+      throw APIErrors.FORBIDDEN("Only admins and owners can create teams");
     }
 
     // Parse request body
@@ -131,11 +131,15 @@ export async function POST(
       description,
       daily_capacity,
       max_concurrent_events,
+      supervisor_member_id,
     } = body;
 
     // Validate required fields
     if (!service_location_id || !name) {
       throw APIErrors.INVALID_INPUT("service_location_id and name are required");
+    }
+    if (!supervisor_member_id) {
+      throw APIErrors.INVALID_INPUT("A supervisor must be assigned when creating a team");
     }
 
     // Verify service location belongs to this provider
@@ -183,6 +187,35 @@ export async function POST(
       throw APIErrors.INTERNAL("Failed to create team");
     }
 
+    // Assign supervisor to this team (must be active member of provider)
+    // Only allow promoting from staff or reassigning an existing supervisor
+    const { data: member, error: memberFetchError } = await supabase
+      .from("provider_members")
+      .select("id, role, status, user_id")
+      .eq("provider_id", providerId)
+      .eq("id", supervisor_member_id)
+      .single();
+
+    if (memberFetchError || !member) {
+      throw APIErrors.INVALID_INPUT("Invalid supervisor member");
+    }
+    if (member.status !== "active") {
+      throw APIErrors.INVALID_INPUT("Supervisor must be an active member");
+    }
+    if (!["staff", "supervisor"].includes(member.role)) {
+      throw APIErrors.INVALID_INPUT("Supervisor must be selected from staff or existing supervisor");
+    }
+
+    const { error: updateMemberError } = await supabase
+      .from("provider_members")
+      .update({ role: "supervisor", team_id: team.id })
+      .eq("id", supervisor_member_id)
+      .eq("provider_id", providerId);
+
+    if (updateMemberError) {
+      throw APIErrors.INTERNAL("Failed to assign supervisor to team");
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -194,4 +227,3 @@ export async function POST(
     return handleAPIError(error);
   }
 }
-

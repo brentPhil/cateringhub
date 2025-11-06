@@ -899,6 +899,15 @@ export type Database = {
         Args: { p_event_date: string; p_team_id: string }
         Returns: boolean
       }
+      can_view_provider_member: {
+        Args: {
+          p_provider_id: string
+          p_target_team_id: string
+          p_target_user_id: string
+          p_viewer_id: string
+        }
+        Returns: boolean
+      }
       check_idempotency_key: {
         Args: { p_key: string; p_scope: string; p_user_id: string }
         Returns: Json
@@ -917,6 +926,7 @@ export type Database = {
           p_guest_count?: number
           p_notes?: string
           p_provider_id: string
+          p_service_location_id?: string
           p_special_requests?: string
           p_status?: string
           p_team_id?: string
@@ -1025,12 +1035,22 @@ export type Database = {
         Returns: boolean
       }
       is_provider_owner: { Args: never; Returns: boolean }
-      is_team_member: {
-        Args: { p_team_id: string; p_user_id: string }
-        Returns: boolean
-      }
+      is_team_member:
+        | {
+            Args: {
+              p_provider_id: string
+              p_team_id: string
+              p_user_id: string
+            }
+            Returns: boolean
+          }
+        | { Args: { p_team_id: string; p_user_id: string }; Returns: boolean }
       is_team_member_for_booking: {
         Args: { p_booking_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      is_team_supervisor: {
+        Args: { p_provider_id: string; p_team_id: string; p_user_id: string }
         Returns: boolean
       }
       mask_pii_in_payload: { Args: { payload: Json }; Returns: Json }
@@ -1079,7 +1099,13 @@ export type Database = {
         | "other"
       invitation_method: "email_invite" | "admin_created" | "onboarding"
       provider_member_status: "pending" | "active" | "suspended"
-      provider_role: "owner" | "admin" | "manager" | "staff" | "viewer"
+      provider_role:
+        | "owner"
+        | "admin"
+        | "manager"
+        | "supervisor"
+        | "staff"
+        | "viewer"
       team_status: "active" | "inactive" | "archived"
       worker_status: "active" | "inactive"
     }
@@ -1234,7 +1260,14 @@ export const Constants = {
       ],
       invitation_method: ["email_invite", "admin_created", "onboarding"],
       provider_member_status: ["pending", "active", "suspended"],
-      provider_role: ["owner", "admin", "manager", "staff", "viewer"],
+      provider_role: [
+        "owner",
+        "admin",
+        "manager",
+        "supervisor",
+        "staff",
+        "viewer",
+      ],
       team_status: ["active", "inactive", "archived"],
       worker_status: ["active", "inactive"],
     },

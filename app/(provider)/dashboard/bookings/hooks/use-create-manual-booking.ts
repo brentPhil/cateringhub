@@ -9,6 +9,7 @@ export interface CreateManualBookingParams {
   providerId: string;
   customerName: string;
   eventDate: string; // ISO date string (YYYY-MM-DD)
+  serviceLocationId?: string;
   customerPhone?: string;
   customerEmail?: string;
   eventTime?: string; // HH:MM:SS format
@@ -49,6 +50,7 @@ export function useCreateManualBooking() {
         p_provider_id: params.providerId,
         p_customer_name: params.customerName,
         p_event_date: params.eventDate,
+        p_service_location_id: params.serviceLocationId || null,
         p_customer_phone: params.customerPhone || null,
         p_customer_email: params.customerEmail || null,
         p_event_time: params.eventTime || null,
@@ -100,4 +102,3 @@ export function useCreateManualBooking() {
     },
   });
 }
-

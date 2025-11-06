@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import {
   createShift as createShiftAction,
+  createBulkShifts as createBulkShiftsAction,
   checkIn as checkInAction,
   checkOut as checkOutAction,
   deleteShift as deleteShiftAction,
@@ -266,6 +267,48 @@ export function useCreateShift(bookingId: string) {
       queryClient.invalidateQueries({ queryKey: shiftsKeys.list(bookingId) });
       const assigneeType = variables.userId ? "Team member" : "Worker";
       toast.success(`${assigneeType} assigned successfully`);
+    },
+  });
+}
+
+/**
+ * Hook to create shifts for all team members (bulk assignment)
+ */
+export function useCreateBulkShifts(bookingId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: {
+      teamId: string;
+      role?: string;
+      scheduledStart?: string;
+      scheduledEnd?: string;
+      notes?: string;
+    }) => {
+      const result = await createBulkShiftsAction({
+        bookingId,
+        ...params,
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || "Failed to create shifts");
+      }
+
+      return result.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: shiftsKeys.list(bookingId) });
+
+      if (data) {
+        const message = data.skipped > 0
+          ? `Assigned ${data.created} team members (${data.skipped} already assigned)`
+          : `Assigned ${data.created} team members successfully`;
+
+        toast.success(message);
+      }
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to create shifts");
     },
   });
 }
