@@ -23,15 +23,10 @@ export default async function DashboardLayout({
   }
 
   // Verify user has an active provider membership
-  const { data: membership, error: membershipError } = await supabase
-    .from("provider_members")
-    .select("id, provider_id, user_id, role, status")
-    .eq("user_id", user.id)
-    .eq("status", "active")
-    .maybeSingle();
+  const { data: hasMembership, error: membershipError } = await supabase.rpc('is_provider');
 
   // If user doesn't have an active provider membership, redirect to onboarding
-  if (membershipError || !membership) {
+  if (membershipError || !hasMembership) {
     redirect("/onboarding/provider/flow");
   }
 

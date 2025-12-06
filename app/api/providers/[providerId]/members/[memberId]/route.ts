@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthenticatedUser, verifyProviderExists } from '@/lib/api/auth';
 import { handleAPIError, APIErrors } from '@/lib/api/errors';
-import { validateUUID } from '@/lib/api/validation';
+import { validateUUID, parseRequestBody } from '@/lib/api/validation';
 
 interface RouteContext {
   params: Promise<{ providerId: string; memberId: string }>;
@@ -212,6 +212,156 @@ export async function DELETE(
           bookings_reassigned: assignedBookings?.length || 0,
         },
       },
+      { status: 200 }
+    );
+  } catch (error) {
+    return handleAPIError(error);
+  }
+}
+
+/**
+ * PATCH /api/providers/[providerId]/members/[memberId]
+ * Atomically update member properties (role and/or team_id)
+ */
+export async function PATCH(
+  request: NextRequest,
+  context: RouteContext
+): Promise<NextResponse> {
+  try {
+    // Params
+    const { providerId, memberId } = await context.params;
+    validateUUID(providerId, 'Provider ID');
+    validateUUID(memberId, 'Member ID');
+
+    // Auth + client
+    const user = await getAuthenticatedUser();
+    const supabase = await createClient();
+
+    // Provider guard (friendly 404)
+    await verifyProviderExists(providerId);
+
+    // Parse body
+    const body = await parseRequestBody(request);
+    const role = typeof body.role === 'string' ? body.role : undefined;
+    const team_id = body.team_id === undefined ? undefined : (body.team_id || null);
+
+    if (role === undefined && team_id === undefined) {
+      throw APIErrors.INVALID_INPUT('Provide at least one field to update (role or team_id)');
+    }
+
+    // Fetch target (for no-op detection and self-role guard)
+    const { data: targetMember, error: memberError } = await supabase
+      .from('provider_members')
+      .select('id, provider_id, user_id, role, status, team_id')
+      .eq('id', memberId)
+      .eq('provider_id', providerId)
+      .single();
+
+    if (memberError || !targetMember) {
+      throw APIErrors.NOT_FOUND('Member');
+    }
+
+    // Prevent changing an owner's role
+    if (role !== undefined && targetMember.role === 'owner' && role !== targetMember.role) {
+      throw APIErrors.INVALID_INPUT('Cannot change the role of an owner');
+    }
+
+    // Prevent changing your own role
+    if (role !== undefined && targetMember.user_id === user.id) {
+      throw APIErrors.INVALID_INPUT('You cannot change your own role');
+    }
+
+    // If assigning to a team, verify team exists and is active in this provider
+    if (team_id !== undefined && team_id !== null) {
+      validateUUID(team_id, 'Team ID');
+      const { data: team, error: teamError } = await supabase
+        .from('teams')
+        .select('id, provider_id, status')
+        .eq('id', team_id)
+        .eq('provider_id', providerId)
+        .single();
+
+      if (teamError || !team) {
+        throw APIErrors.NOT_FOUND('Team');
+      }
+      if (team.status !== 'active') {
+        throw APIErrors.INVALID_INPUT('Cannot assign members to an inactive or archived team');
+      }
+    }
+
+    // No-op early return
+    const noRoleChange = role === undefined || role === targetMember.role;
+    const noTeamChange = team_id === undefined || team_id === targetMember.team_id;
+    if (noRoleChange && noTeamChange) {
+      return NextResponse.json(
+        { data: targetMember, message: 'No changes to update' },
+        { status: 200 }
+      );
+    }
+
+    // Build updates atomically
+    const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (role !== undefined) updates.role = role;
+    if (team_id !== undefined) updates.team_id = team_id;
+
+    // Perform update atomically
+    const { data: updatedMember, error: updateError } = await supabase
+      .from('provider_members')
+      .update(updates)
+      .eq('id', memberId)
+      .select('id, provider_id, user_id, role, status, team_id, updated_at')
+      .single();
+
+    if (updateError) {
+      console.error('Error updating member:', updateError);
+      const msg = (updateError as unknown as { message?: string })?.message?.toLowerCase() || '';
+      if (msg.includes('last supervisor')) {
+        return NextResponse.json(
+          { error: { message: 'Cannot remove the last supervisor from this team. Assign another supervisor first.' } },
+          { status: 400 }
+        );
+      }
+      if (msg.includes('supervisor') && msg.includes('team')) {
+        return NextResponse.json(
+          { error: { message: 'Assign this member to a team before promoting to supervisor.' } },
+          { status: 400 }
+        );
+      }
+      if (msg.includes('owner') && msg.includes('policy')) {
+        return NextResponse.json(
+          { error: { message: 'Only owners can assign the owner role.' } },
+          { status: 403 }
+        );
+      }
+      throw APIErrors.INTERNAL('Failed to update member');
+    }
+
+    // Audit log
+    try {
+      await supabase.from('audit_logs').insert({
+        provider_id: providerId,
+        user_id: user.id,
+        action: 'member_updated',
+        resource_type: 'member',
+        resource_id: memberId,
+        details: {
+          previous_role: targetMember.role,
+          new_role: role ?? targetMember.role,
+          previous_team_id: targetMember.team_id,
+          new_team_id: team_id ?? targetMember.team_id,
+        },
+      });
+    } catch (auditError) {
+      console.error('Error creating audit log:', auditError);
+    }
+
+    const changed: string[] = [];
+    if (!noRoleChange) changed.push('role');
+    if (!noTeamChange) changed.push('team');
+    const message = changed.length > 0 ? `Member ${changed.join(' & ')} updated successfully` : 'Member updated';
+
+    return NextResponse.json(
+      { data: updatedMember, message },
       { status: 200 }
     );
   } catch (error) {

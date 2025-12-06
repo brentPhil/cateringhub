@@ -82,7 +82,7 @@ export async function POST(
     const newToken = generateSecureToken(32);
     const newExpiresAt = generateTokenExpiration(48);
 
-    // Update invitation with new token and expiration
+    // Update invitation with new token and expiration (RLS allows admin/owner UPDATE)
     const { data: updatedInvitation, error: updateError } = await supabase
       .from('provider_invitations')
       .update({
@@ -112,6 +112,7 @@ export async function POST(
     const providerName = provider?.name || 'the team';
 
     // Send new invitation email
+    let emailDelivery: 'queued' | 'skipped' | 'failed' = 'queued';
     try {
       await sendInvitationEmail(
         invitation.email,
@@ -122,7 +123,7 @@ export async function POST(
       );
     } catch (emailError) {
       console.error('Error sending invitation email:', emailError);
-      throw APIErrors.INTERNAL('Failed to send invitation email');
+      emailDelivery = (process.env.RESEND_API_KEY ? 'failed' : 'skipped');
     }
 
     // Audit log: Record invitation resent
@@ -144,8 +145,8 @@ export async function POST(
     // Return updated invitation details (without token)
     return NextResponse.json(
       {
-        data: updatedInvitation,
-        message: 'Invitation resent successfully',
+        data: { ...updatedInvitation, emailDelivery },
+        message: emailDelivery === 'queued' ? 'Invitation resent successfully' : 'Invitation updated, but email delivery is not configured.',
       },
       { status: 200 }
     );
@@ -153,4 +154,3 @@ export async function POST(
     return handleAPIError(error);
   }
 }
-

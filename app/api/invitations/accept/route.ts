@@ -10,7 +10,6 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthenticatedUser } from '@/lib/api/auth';
 import { handleAPIError, APIErrors } from '@/lib/api/errors';
@@ -30,13 +29,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const body = await parseRequestBody(request);
     const { token } = validateAcceptInvitationRequest(body);
 
-    // Use admin client ONLY for invitation lookup by token
-    // This is necessary because server-side RLS context doesn't work reliably
-    // with SSR cookie-based authentication
-    const adminClient = createAdminClient();
-
-    // Find invitation by token
-    const { data: invitation, error: invitationError } = await adminClient
+    // Find invitation by token using standard client (RLS allows users to view
+    // invitations sent to their email address; policy enforces email match)
+    const supabase = await createClient();
+    const { data: invitation, error: invitationError } = await supabase
       .from('provider_invitations')
       .select('id, provider_id, email, role, expires_at, accepted_at, invited_by')
       .eq('token', token)
@@ -66,7 +62,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Use RPC function to accept invitation and create membership
     // This function uses SECURITY DEFINER to bypass RLS for membership creation
     // while keeping the business logic encapsulated in the database
-    const supabase = await createClient();
     const { data, error: rpcError } = await supabase.rpc('accept_invitation', {
       p_invitation_id: invitation.id,
       p_user_id: user.id,
@@ -102,4 +97,3 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return handleAPIError(error);
   }
 }
-

@@ -39,6 +39,8 @@ interface AssignTeamDialogProps {
   onOpenChange: (open: boolean) => void;
   member: TeamMemberWithUser | null;
   providerId: string;
+  onAssigned?: (teamId: string | null) => void;
+  onSubmitOverride?: (member: TeamMemberWithUser, teamId: string | null) => Promise<void>;
 }
 
 export function AssignTeamDialog({
@@ -46,6 +48,8 @@ export function AssignTeamDialog({
   onOpenChange,
   member,
   providerId,
+  onAssigned,
+  onSubmitOverride,
 }: AssignTeamDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -75,13 +79,21 @@ export function AssignTeamDialog({
 
     setIsSubmitting(true);
     try {
-      await assignTeamMutation.mutateAsync({
-        memberId: member.id,
-        teamId: data.team_id || null,
-      });
+      if (onSubmitOverride) {
+        await onSubmitOverride(member, data.team_id || null);
+      } else {
+        await assignTeamMutation.mutateAsync({
+          memberId: member.id,
+          teamId: data.team_id || null,
+        });
+      }
+      // Notify parent on successful assignment
+      try {
+        onAssigned?.(data.team_id || null);
+      } catch {}
       onOpenChange(false);
     } catch (error) {
-      console.error("Error assigning team:", error);
+      console.error('Error assigning team:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -172,4 +184,3 @@ export function AssignTeamDialog({
     </Dialog>
   );
 }
-

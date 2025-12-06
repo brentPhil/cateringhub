@@ -73,7 +73,7 @@ export function AssignBookingTeamDialog({
     const next = initialTeamId || "";
     // Avoid setState during render; update within effect only
     form.setValue("team_id", next, { shouldDirty: false, shouldTouch: false });
-  }, [initialTeamId, open]);
+  }, [initialTeamId, open, form]);
 
   const assignMutation = useAssignBookingTeam(providerId, bookingId);
 

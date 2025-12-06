@@ -12,7 +12,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
 import { getAuthenticatedUser, verifyProviderExists } from '@/lib/api/auth';
 import { handleAPIError, APIErrors } from '@/lib/api/errors';
 import { parseRequestBody, validateInvitationRequest, validateUUID } from '@/lib/api/validation';
@@ -105,13 +104,8 @@ export async function POST(
       throw APIErrors.INVALID_INPUT('You cannot invite yourself');
     }
 
-    // Use admin client for invitation queries and mutations
-    // This is necessary because server-side RLS context doesn't work reliably
-    // with SSR cookie-based authentication (same issue as invitation acceptance)
-    const adminClient = createAdminClient();
-
-    // Check for pending invitation with same email
-    const { data: existingInvitation } = await adminClient
+    // Check for pending invitation with same email (RLS allows admin/owner)
+    const { data: existingInvitation } = await supabase
       .from('provider_invitations')
       .select('id, expires_at, accepted_at')
       .eq('provider_id', providerId)
@@ -129,8 +123,8 @@ export async function POST(
         );
       }
 
-      // Delete expired invitation using admin client
-      await adminClient
+      // Delete expired invitation
+      await supabase
         .from('provider_invitations')
         .delete()
         .eq('id', existingInvitation.id);
@@ -140,9 +134,8 @@ export async function POST(
     const token = generateSecureToken(32);
     const expiresAt = generateTokenExpiration(48);
 
-    // Create invitation using admin client to bypass RLS
-    // Authorization has already been verified above (user is admin/owner)
-    const { data: invitation, error: invitationError } = await adminClient
+    // Create invitation (RLS allows admin/owner INSERT)
+    const { data: invitation, error: invitationError } = await supabase
       .from('provider_invitations')
       .insert({
         provider_id: providerId,
@@ -173,11 +166,13 @@ export async function POST(
     const providerName = provider?.name || 'the team';
 
     // Send invitation email
+    let emailDelivery: 'queued' | 'skipped' | 'failed' = 'queued';
     try {
       await sendInvitationEmail(email, providerName, role, inviterName, token);
     } catch (emailError) {
       console.error('Error sending invitation email:', emailError);
-      throw APIErrors.INTERNAL('Failed to send invitation email');
+      // Do not fail the request if email cannot be sent (e.g., missing API key)
+      emailDelivery = (process.env.RESEND_API_KEY ? 'failed' : 'skipped');
     }
 
     // Audit log: Record invitation sent
@@ -198,8 +193,8 @@ export async function POST(
     // Return invitation details (without token for security)
     return NextResponse.json(
       {
-        data: invitation,
-        message: 'Invitation sent successfully',
+        data: { ...invitation, emailDelivery },
+        message: emailDelivery === 'queued' ? 'Invitation sent successfully' : 'Invitation created, but email delivery is not configured.',
       },
       { status: 200 }
     );

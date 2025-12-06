@@ -34,21 +34,9 @@ export async function PATCH(
     // Verify provider exists
     await verifyProviderExists(providerId);
 
-    // Check user has admin/owner role or supervisor (team-scoped)
-    const { data: currentMember, error: currentMemberError } = await supabase
-      .from('provider_members')
-      .select('id, provider_id, user_id, role, status, team_id')
-      .eq('provider_id', providerId)
-      .eq('user_id', user.id)
-      .eq('status', 'active')
-      .single();
-
-    if (currentMemberError || !currentMember) {
-      throw APIErrors.FORBIDDEN('You are not an active member of this provider');
-    }
-
-    // Determine permissions
-    const isOwnerOrAdmin = currentMember.role === 'owner' || currentMember.role === 'admin';
+    // Authorization and scope are enforced by RLS. We intentionally avoid
+    // duplicating complex permission logic here to reduce backend complexity.
+    // If the caller is not permitted, the update below will fail under RLS.
 
     // Parse and validate request body
     const body = await parseRequestBody(request);
@@ -89,52 +77,8 @@ export async function PATCH(
       }
     }
 
-    // If removing/moving a supervisor, ensure they are not the last supervisor of the team
-    if (
-      targetMember.role === 'supervisor' &&
-      targetMember.team_id &&
-      (team_id === null || team_id === undefined || team_id !== targetMember.team_id)
-    ) {
-      const { count: otherSupervisorsCount, error: supErr } = await supabase
-        .from('provider_members')
-        .select('id', { count: 'exact', head: true })
-        .eq('provider_id', providerId)
-        .eq('team_id', targetMember.team_id)
-        .eq('role', 'supervisor')
-        .eq('status', 'active')
-        .neq('id', targetMember.id);
-
-      if (supErr) {
-        throw APIErrors.INTERNAL('Failed to verify team supervisors');
-      }
-
-      if ((otherSupervisorsCount as unknown as number) === 0) {
-        return NextResponse.json(
-          {
-            error: {
-              message:
-                'Cannot remove the last supervisor from this team. Assign another supervisor first.',
-            },
-          },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Enforce supervisor's team-scoped permission: supervisors can only manage staff within their own team
-    if (!isOwnerOrAdmin && currentMember.role === 'supervisor') {
-      // Only allow changes for staff members
-      if (targetMember.role !== 'staff') {
-        throw APIErrors.FORBIDDEN('Supervisors can only manage staff assignments');
-      }
-      // Only allow assigning to their own team or removing from their own team
-      const supTeamId = currentMember.team_id;
-      const isAssigningToOwnTeam = !!team_id && supTeamId && team_id === supTeamId;
-      const isRemovingFromOwnTeam = (team_id === null || team_id === undefined) && targetMember.team_id === supTeamId;
-      if (!isAssigningToOwnTeam && !isRemovingFromOwnTeam) {
-        throw APIErrors.FORBIDDEN('Supervisors can only assign staff to their own team or remove them from it');
-      }
-    }
+    // Do not pre-enforce last-supervisor or supervisor-scope rules here; these
+    // are enforced in the database via RLS and triggers to keep logic DRY.
 
     // Check if team assignment is already set to the requested value
     if (targetMember.team_id === team_id) {

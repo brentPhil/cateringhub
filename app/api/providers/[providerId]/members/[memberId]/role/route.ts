@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getAuthenticatedUser, verifyProviderExists } from '@/lib/api/auth';
 import { handleAPIError, APIErrors } from '@/lib/api/errors';
 import { parseRequestBody, validateUUID } from '@/lib/api/validation';
-import { ProviderRoleSchema, ROLE_HIERARCHY, type ProviderRole } from '@/lib/roles';
+import { ProviderRoleSchema, type ProviderRole } from '@/lib/roles';
 
 interface RouteContext {
   params: Promise<{ providerId: string; memberId: string }>;
@@ -36,24 +36,6 @@ export async function PATCH(
 
     // Verify provider exists
     await verifyProviderExists(providerId);
-
-    // Check user has admin or owner role - query directly
-    const { data: currentMember, error: currentMemberError } = await supabase
-      .from('provider_members')
-      .select('id, provider_id, user_id, role, status')
-      .eq('provider_id', providerId)
-      .eq('user_id', user.id)
-      .eq('status', 'active')
-      .single();
-
-    if (currentMemberError || !currentMember) {
-      throw APIErrors.FORBIDDEN('You are not an active member of this provider');
-    }
-
-    // Check if user has admin or owner role
-    if (ROLE_HIERARCHY[currentMember.role as ProviderRole] > ROLE_HIERARCHY['admin']) {
-      throw APIErrors.FORBIDDEN('You do not have permission to update member roles');
-    }
 
     // Parse and validate request body
     const body = await parseRequestBody(request);
@@ -84,11 +66,6 @@ export async function PATCH(
       throw APIErrors.INVALID_INPUT('Cannot change the role of an owner');
     }
 
-    // Prevent non-owners from assigning owner role
-    if (role === 'owner' && currentMember.role !== 'owner') {
-      throw APIErrors.FORBIDDEN('Only owners can assign the owner role');
-    }
-
     // Prevent users from changing their own role
     if (targetMember.user_id === user.id) {
       throw APIErrors.INVALID_INPUT('You cannot change your own role');
@@ -105,14 +82,6 @@ export async function PATCH(
       );
     }
 
-    // If promoting to supervisor, ensure member is already assigned to a team
-    if (role === 'supervisor' && !targetMember.team_id) {
-      return NextResponse.json(
-        { error: { message: 'Assign this member to a team before promoting to supervisor.' } },
-        { status: 400 }
-      );
-    }
-
     // Update member role
     const { data: updatedMember, error: updateError } = await supabase
       .from('provider_members')
@@ -126,6 +95,19 @@ export async function PATCH(
 
     if (updateError) {
       console.error('Error updating member role:', updateError);
+      const msg = (updateError as unknown as { message?: string })?.message?.toLowerCase() || '';
+      if (msg.includes('supervisor') && msg.includes('team')) {
+        return NextResponse.json(
+          { error: { message: 'Assign this member to a team before promoting to supervisor.' } },
+          { status: 400 }
+        );
+      }
+      if (msg.includes('owner') && msg.includes('policy')) {
+        return NextResponse.json(
+          { error: { message: 'Only owners can assign the owner role.' } },
+          { status: 403 }
+        );
+      }
       throw APIErrors.INTERNAL('Failed to update member role');
     }
 

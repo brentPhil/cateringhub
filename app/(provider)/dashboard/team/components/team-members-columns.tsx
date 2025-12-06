@@ -59,9 +59,14 @@ export const createTeamMembersColumns = (
     cell: ({ row }) => {
       const member = row.original;
       return (
-        <Badge className={getRoleBadgeClassName(member.role)}>
-          {formatRoleDisplay(member.role)}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge className={getRoleBadgeClassName(member.role)}>
+            {formatRoleDisplay(member.role)}
+          </Badge>
+          {member.role === "supervisor" && !member.team_id && (
+            <Badge variant="outline" className="text-xs">No team yet</Badge>
+          )}
+        </div>
       );
     },
   },
@@ -90,7 +95,14 @@ export const createTeamMembersColumns = (
     cell: ({ row }) => {
       const member = row.original;
       if (!member.team) {
-        return <span className="text-sm text-muted-foreground">No team</span>;
+        return (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>No team</span>
+            {member.role === "supervisor" && (
+              <Badge variant="outline" className="text-xs">Supervisor</Badge>
+            )}
+          </div>
+        );
       }
       return (
         <div className="flex flex-col">

@@ -9,17 +9,6 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/supabase';
 
-// Validate that service role key is available
-if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error(
-    'SUPABASE_SERVICE_ROLE_KEY is not set. This is required for admin operations.'
-  );
-}
-
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-  throw new Error('NEXT_PUBLIC_SUPABASE_URL is not set.');
-}
-
 /**
  * Create Supabase admin client with service role key
  * This client bypasses Row Level Security (RLS) policies
@@ -27,16 +16,19 @@ if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
  * @returns Supabase client with admin privileges
  */
 export function createAdminClient() {
-  return createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url) {
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL is not set.');
+  }
+  if (!serviceKey) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set. This operation requires admin privileges.');
+  }
+
+  return createClient<Database>(url, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
 }
 
 /**
@@ -143,4 +135,3 @@ export async function deleteUser(userId: string): Promise<void> {
     throw new Error(`Failed to delete user: ${error.message}`);
   }
 }
-

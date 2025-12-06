@@ -163,7 +163,14 @@ export function useInviteMember(providerId: string) {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: teamKeys.invitations(providerId) });
-      toast.success(`Invitation sent to ${data.data.email}`);
+      const delivery = (data?.data as any)?.emailDelivery as 'queued' | 'skipped' | 'failed' | undefined;
+      if (delivery === 'queued' || delivery === undefined) {
+        toast.success(`Invitation sent to ${(data.data as any).email}`);
+      } else if (delivery === 'skipped') {
+        toast.success('Invitation created, but email delivery is not configured.');
+      } else {
+        toast.success('Invitation created, but email delivery failed.');
+      }
     },
   });
 }
@@ -374,6 +381,60 @@ export function useUpdateMemberRole(providerId: string) {
 }
 
 /**
+ * Hook to atomically update a team member (role and/or team_id)
+ */
+export function useUpdateMember(providerId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ memberId, role, team_id }: { memberId: string; role?: string; team_id?: string | null }) => {
+      if (!memberId) throw new Error('Member ID is required');
+      if (role === undefined && team_id === undefined) throw new Error('Provide role and/or team_id');
+
+      const response = await fetch(`/api/providers/${providerId}/members/${memberId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role, team_id }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error?.message || 'Failed to update member');
+      }
+
+      return response.json();
+    },
+    onMutate: async ({ memberId, role, team_id }) => {
+      await queryClient.cancelQueries({ queryKey: teamKeys.members(providerId) });
+      const previous = queryClient.getQueryData(teamKeys.members(providerId));
+      // Optimistically update role/team fields
+      queryClient.setQueryData<TeamMemberWithUser[]>(teamKeys.members(providerId), (old = []) =>
+        old.map((m) =>
+          m.id === memberId
+            ? {
+                ...m,
+                role: role ? (role as Enums<'provider_role'>) : m.role,
+                team_id: team_id !== undefined ? (team_id as any) : m.team_id,
+              }
+            : m
+        )
+      );
+      return { previous };
+    },
+    onError: (error, _variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(teamKeys.members(providerId), context.previous);
+      }
+      toast.error(error instanceof Error ? error.message : 'Failed to update member');
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: teamKeys.members(providerId) });
+      toast.success(data.message || 'Member updated successfully');
+    },
+  });
+}
+
+/**
  * Hook to add staff manually (admin-created flow)
  */
 export function useAddStaff(providerId: string) {
@@ -453,4 +514,3 @@ export function useAddStaff(providerId: string) {
     },
   });
 }
-

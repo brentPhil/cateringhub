@@ -16,7 +16,6 @@ import {
   MoreHorizontal,
   ArrowUpDown,
   Eye,
-  Edit,
   Trash2,
   ChevronDown,
   ChevronRight,
