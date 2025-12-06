@@ -1,6 +1,8 @@
 import { updateSession } from '@/lib/supabase/middleware'
 import { NextResponse, type NextRequest } from 'next/server'
 
+// Proxy to guard auth-protected routes and redirect logged-in users away from public pages
+
 // List of public routes that should redirect to dashboard if user is logged in
 const PUBLIC_ROUTES = [
   '/login',
@@ -22,7 +24,7 @@ const PASSWORD_RESET_ROUTES = [
 //   '/onboarding/provider'
 // ] // TODO: Use this when implementing more complex routing logic
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   // Get the pathname from the URL
   const { pathname } = request.nextUrl
 
