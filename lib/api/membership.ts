@@ -58,13 +58,10 @@ function calculateCapabilities(role: ProviderRole): MembershipCapabilities {
   };
 }
 
-// Request-level cache to avoid multiple database queries
-const membershipCache = new Map<string, CurrentMembership>();
-
 /**
  * Get current user's membership with capabilities
- * Includes request-level caching to avoid redundant database queries
- * 
+ * Fetches fresh data each call to avoid stale permissions after role/status changes
+ *
  * @param providerId - Optional provider ID. If not provided, gets user's first/default provider
  * @returns CurrentMembership object with role and capabilities
  * @throws APIErrors.UNAUTHORIZED if user is not authenticated
@@ -75,14 +72,6 @@ export async function getCurrentMembership(
 ): Promise<CurrentMembership> {
   // Get authenticated user
   const user = await getAuthenticatedUser();
-
-  // Check cache first (request-level caching)
-  const cacheKey = `${user.id}-${providerId || 'default'}`;
-  const cached = membershipCache.get(cacheKey);
-  if (cached) {
-    return cached;
-  }
-
   const supabase = await createClient();
 
   // If providerId is provided, get membership for that specific provider
@@ -110,9 +99,6 @@ export async function getCurrentMembership(
       memberId: membership.id,
       teamId: membership.team_id,
     };
-
-    // Cache the result
-    membershipCache.set(cacheKey, result);
     return result;
   }
 
@@ -142,9 +128,6 @@ export async function getCurrentMembership(
     memberId: membership.id,
     teamId: membership.team_id,
   };
-
-  // Cache the result
-  membershipCache.set(cacheKey, result);
   return result;
 }
 
@@ -198,7 +181,7 @@ export async function requireCapability(
  * Clear membership cache (useful for testing or after membership changes)
  */
 export function clearMembershipCache(): void {
-  membershipCache.clear();
+  // No-op: caching removed to ensure permissions remain fresh across requests
 }
 
 /**

@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { providerProfileFormSchema } from "@/lib/validations";
 import { revalidatePath } from "next/cache";
+import { ROLE_HIERARCHY } from "@/lib/roles";
 
 export async function updateProviderProfile(formData: unknown) {
   try {
@@ -38,16 +39,10 @@ export async function updateProviderProfile(formData: unknown) {
       };
     }
 
-    // Check if user has edit permissions (owner, admin, or manager)
-    const roleHierarchy: Record<string, number> = {
-      owner: 1,
-      admin: 2,
-      manager: 3,
-      staff: 4,
-      viewer: 5,
-    };
+    // Check if user has edit permissions (owner, admin, or supervisor)
+    const roleRank = ROLE_HIERARCHY[membership.role as keyof typeof ROLE_HIERARCHY];
 
-    if (roleHierarchy[membership.role] > roleHierarchy['manager']) {
+    if (!roleRank || roleRank > ROLE_HIERARCHY.supervisor) {
       return {
         success: false,
         error: "You do not have permission to edit the profile. Contact an admin or owner.",
@@ -103,4 +98,3 @@ export async function updateProviderProfile(formData: unknown) {
     };
   }
 }
-

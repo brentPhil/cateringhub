@@ -14,9 +14,21 @@ interface ProfileUpdateData {
 
 export async function updateProfile(data: ProfileUpdateData) {
   const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    throw new Error('You must be logged in to update your profile')
+  }
   
   if (!data.id) {
     throw new Error('User ID is required')
+  }
+
+  if (data.id !== user.id) {
+    throw new Error('You can only update your own profile')
   }
 
   // Extract the data we want to update

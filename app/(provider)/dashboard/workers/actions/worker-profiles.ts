@@ -150,7 +150,7 @@ export async function assignWorkerToTeam(params: {
       };
     }
 
-    // Verify user is a member of the provider with manager+ role
+    // Verify user is a member of the provider with supervisor+ role
     const { data: membership, error: membershipError } = await supabase
       .from("provider_members")
       .select("id, role, status")

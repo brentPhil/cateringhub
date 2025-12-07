@@ -2,10 +2,16 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { ROLE_HIERARCHY } from "@/lib/roles";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_GALLERY_IMAGES = 20;
 const ALLOWED_FILE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+const canEditGallery = (role: string) => {
+  const rank = ROLE_HIERARCHY[role as keyof typeof ROLE_HIERARCHY];
+  return !!rank && rank <= ROLE_HIERARCHY.supervisor;
+};
 
 interface ActionResult {
   success: boolean;
@@ -45,16 +51,8 @@ export async function uploadGalleryImage(
       return { success: false, error: "Provider not found or unauthorized" };
     }
 
-    // Check if user has edit permissions (owner, admin, or manager)
-    const roleHierarchy: Record<string, number> = {
-      owner: 1,
-      admin: 2,
-      manager: 3,
-      staff: 4,
-      viewer: 5,
-    };
-
-    if (roleHierarchy[membership.role] > roleHierarchy['manager']) {
+    // Check if user has edit permissions (owner, admin, or supervisor)
+    if (!canEditGallery(membership.role)) {
       return { success: false, error: "You do not have permission to upload images" };
     }
 
@@ -206,16 +204,8 @@ export async function removeGalleryImage(
       return { success: false, error: "Provider not found or unauthorized" };
     }
 
-    // Check if user has edit permissions (owner, admin, or manager)
-    const roleHierarchy: Record<string, number> = {
-      owner: 1,
-      admin: 2,
-      manager: 3,
-      staff: 4,
-      viewer: 5,
-    };
-
-    if (roleHierarchy[membership.role] > roleHierarchy['manager']) {
+    // Check if user has edit permissions (owner, admin, or supervisor)
+    if (!canEditGallery(membership.role)) {
       return { success: false, error: "You do not have permission to delete images" };
     }
 
@@ -308,16 +298,8 @@ export async function reorderGalleryImages(
       return { success: false, error: "Provider not found or unauthorized" };
     }
 
-    // Check if user has edit permissions (owner, admin, or manager)
-    const roleHierarchy: Record<string, number> = {
-      owner: 1,
-      admin: 2,
-      manager: 3,
-      staff: 4,
-      viewer: 5,
-    };
-
-    if (roleHierarchy[membership.role] > roleHierarchy['manager']) {
+    // Check if user has edit permissions (owner, admin, or supervisor)
+    if (!canEditGallery(membership.role)) {
       return { success: false, error: "You do not have permission to reorder images" };
     }
 
@@ -409,16 +391,8 @@ export async function setFeaturedImage(
       return { success: false, error: "Provider not found or unauthorized" };
     }
 
-    // Check if user has edit permissions (owner, admin, or manager)
-    const roleHierarchy: Record<string, number> = {
-      owner: 1,
-      admin: 2,
-      manager: 3,
-      staff: 4,
-      viewer: 5,
-    };
-
-    if (roleHierarchy[membership.role] > roleHierarchy['manager']) {
+    // Check if user has edit permissions (owner, admin, or supervisor)
+    if (!canEditGallery(membership.role)) {
       return { success: false, error: "You do not have permission to set featured image" };
     }
 
@@ -472,4 +446,3 @@ export async function setFeaturedImage(
     };
   }
 }
-

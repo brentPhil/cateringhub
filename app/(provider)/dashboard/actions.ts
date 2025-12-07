@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { requireCapability } from "@/lib/api/membership";
 
 // Types for dashboard analytics
 export interface RevenueMetrics {
@@ -82,6 +83,7 @@ export async function getRevenueMetrics(
   endDate?: string
 ): Promise<{ success: boolean; data?: RevenueMetrics; error?: string }> {
   try {
+    await requireCapability(providerId, "canViewAnalytics");
     const supabase = await createClient();
 
     const { data, error } = await supabase.rpc("get_revenue_metrics", {
@@ -114,6 +116,7 @@ export async function getBookingStatistics(
   endDate?: string
 ): Promise<{ success: boolean; data?: BookingStatistics; error?: string }> {
   try {
+    await requireCapability(providerId, "canViewAnalytics");
     const supabase = await createClient();
 
     const { data, error } = await supabase.rpc("get_booking_statistics", {
@@ -146,6 +149,7 @@ export async function getStaffUtilization(
   endDate?: string
 ): Promise<{ success: boolean; data?: StaffUtilization; error?: string }> {
   try {
+    await requireCapability(providerId, "canViewAnalytics");
     const supabase = await createClient();
 
     const { data, error } = await supabase.rpc("get_staff_utilization", {
@@ -178,6 +182,7 @@ export async function getExpenseSummary(
   endDate?: string
 ): Promise<{ success: boolean; data?: ExpenseSummary; error?: string }> {
   try {
+    await requireCapability(providerId, "canViewAnalytics");
     const supabase = await createClient();
 
     const { data, error } = await supabase.rpc("get_expense_summary", {
@@ -209,6 +214,7 @@ export async function getMonthlyTrendData(
   months: number = 6
 ): Promise<{ success: boolean; data?: MonthlyTrendData[]; error?: string }> {
   try {
+    await requireCapability(providerId, "canViewAnalytics");
     const supabase = await createClient();
 
     const { data, error } = await supabase.rpc("get_monthly_trend_data", {
@@ -241,6 +247,7 @@ export async function getDashboardAnalytics(
   trendMonths: number = 6
 ): Promise<{ success: boolean; data?: DashboardAnalytics; error?: string }> {
   try {
+    await requireCapability(providerId, "canViewAnalytics");
     console.log("[getDashboardAnalytics] Called with:", { providerId, startDate, endDate, trendMonths });
 
     // Fetch all analytics in parallel
@@ -343,4 +350,3 @@ export async function getRecentExpenses(
     };
   }
 }
-

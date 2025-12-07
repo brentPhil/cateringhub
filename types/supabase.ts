@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       audit_logs: {
@@ -1016,6 +1041,10 @@ export type Database = {
           provider_id: string
         }[]
       }
+      get_user_supervised_teams: {
+        Args: { p_provider_id: string; p_user_id: string }
+        Returns: string[]
+      }
       get_user_teams: {
         Args: { p_provider_id: string; p_user_id: string }
         Returns: string[]
@@ -1034,7 +1063,12 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_provider_owner: { Args: never; Returns: boolean }
+      is_provider_owner:
+        | { Args: never; Returns: boolean }
+        | {
+            Args: { p_provider_id: string; p_user_id: string }
+            Returns: boolean
+          }
       is_team_member:
         | {
             Args: {
@@ -1233,6 +1267,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       booking_source: ["auto", "manual"],

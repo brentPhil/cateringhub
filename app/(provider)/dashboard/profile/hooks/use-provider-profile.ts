@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import type { Tables } from "@/types/supabase";
+import { ROLE_HIERARCHY } from "@/lib/roles";
 
 export interface BannerAdjustments {
   zoom: number; // percentage (50-200)
@@ -134,16 +135,10 @@ async function fetchProviderProfile(): Promise<ProviderProfileData> {
   }
 
   // Step 3: Determine edit permissions based on role
-  const roleHierarchy: Record<string, number> = {
-    owner: 1,
-    admin: 2,
-    manager: 3,
-    staff: 4,
-    viewer: 5,
-  };
+  const roleRank = ROLE_HIERARCHY[membership.role as keyof typeof ROLE_HIERARCHY];
 
-  // Owner, Admin, and Manager can edit the profile
-  const canEdit = roleHierarchy[membership.role] <= roleHierarchy['manager'];
+  // Owner, Admin, and Supervisor can edit the profile
+  const canEdit = !!roleRank && roleRank <= ROLE_HIERARCHY.supervisor;
 
   // console.log("🟢 [FETCH PROFILE] Profile fetched successfully");
   // console.log("🟠 [FETCH PROFILE] Full data:", data);

@@ -102,19 +102,6 @@ export async function saveServiceLocations(
     // Determine which locations to delete (exist in DB but not in new list)
     const idsToDelete = existingIds.filter((id) => !keptLocationIds.includes(id));
 
-    // Delete removed locations
-    if (idsToDelete.length > 0) {
-      const { error: deleteError } = await supabase
-        .from("service_locations")
-        .delete()
-        .in("id", idsToDelete);
-
-      if (deleteError) {
-        console.error("Delete error:", deleteError);
-        return { success: false, error: "Failed to delete locations" };
-      }
-    }
-
     // Insert new locations (without ID, let database generate)
     if (newLocations.length > 0) {
       const newLocationsData = newLocations.map((loc) => ({
@@ -162,6 +149,19 @@ export async function saveServiceLocations(
           console.error("Update error:", updateError);
           return { success: false, error: `Failed to update location: ${updateError.message}` };
         }
+      }
+    }
+
+    // Delete removed locations after successful inserts/updates
+    if (idsToDelete.length > 0) {
+      const { error: deleteError } = await supabase
+        .from("service_locations")
+        .delete()
+        .in("id", idsToDelete);
+
+      if (deleteError) {
+        console.error("Delete error:", deleteError);
+        return { success: false, error: "Failed to delete locations" };
       }
     }
 
