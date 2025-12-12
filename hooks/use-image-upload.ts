@@ -1,29 +1,22 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import { createClient } from "@/lib/supabase/client";
+import type { Database, Tables } from "@/types/supabase";
 
-interface UploadImageParams {
-  file: File;
-  bucket: string;
-  path: string;
-  userId: string;
-}
+/* ------------------------------------------------------------------ */
+/* Types from supabase.ts                                             */
+/* ------------------------------------------------------------------ */
 
-export interface BannerAdjustments {
-  zoom: number; // percentage (50-200)
-  offsetX: number; // pixels
-  offsetY: number; // pixels
-  rotation: 0 | 90 | 180 | 270;
-}
+// Row/update types for the providers table (no custom interfaces)
+type ProviderUpdate = Database["public"]["Tables"]["providers"]["Update"];
+type BannerAdjustments =
+  Tables<"providers">["banner_adjustments"]; // JSON | null by default
 
-interface UpdateProviderImageParams {
-  userId: string;
-  imageType: "logo" | "banner";
-  imageUrl: string;
-  bannerAdjustments?: BannerAdjustments | null;
-}
+/* ------------------------------------------------------------------ */
+/* Helpers                                                            */
+/* ------------------------------------------------------------------ */
 
 // Validate image file
 export function validateImageFile(
@@ -31,14 +24,12 @@ export function validateImageFile(
   maxSizeMB: number
 ): { valid: boolean; error?: string } {
   const validTypes = ["image/jpeg", "image/png", "image/webp"];
-
   if (!validTypes.includes(file.type)) {
     return {
       valid: false,
       error: "Invalid file type. Please upload a JPEG, PNG, or WebP image.",
     };
   }
-
   const maxSizeBytes = maxSizeMB * 1024 * 1024;
   if (file.size > maxSizeBytes) {
     return {
@@ -46,7 +37,6 @@ export function validateImageFile(
       error: `File size exceeds ${maxSizeMB}MB limit.`,
     };
   }
-
   return { valid: true };
 }
 
@@ -56,52 +46,50 @@ export function generateUniqueFilename(
   originalFilename: string
 ): string {
   const timestamp = Date.now();
-  const extension = originalFilename.split(".").pop();
-  const sanitizedName = originalFilename
-    .replace(/\.[^/.]+$/, "")
+  const [name, ext] = originalFilename.split(".").reduce<[string, string]>(
+    (acc, part, idx, arr) => {
+      if (idx < arr.length - 1) {
+        acc[0] += `${part}.`;
+      } else {
+        acc[0] = acc[0].replace(/\.$/, "");
+        acc[1] = part;
+      }
+      return acc;
+    },
+    ["", ""]
+  );
+  const sanitized = name
     .replace(/\s+/g, "-")
     .replace(/[^a-zA-Z0-9\-_]/g, "");
-
-  return `${userId}-${timestamp}-${sanitizedName}.${extension}`;
+  return `${userId}-${timestamp}-${sanitized}.${ext}`;
 }
 
-// Upload image to Supabase Storage
-async function uploadImageToStorage({
-  file,
-  bucket,
-  path,
-  userId,
-}: UploadImageParams): Promise<string> {
-  const supabase = createClient();
-
-  // Generate unique filename
+/**
+ * Upload an image to Supabase Storage and return its public URL.
+ */
+async function uploadImageToStorage(params: {
+  file: File;
+  bucket: string;
+  path: string;
+  userId: string;
+}): Promise<string> {
+  // Typed client ensures supabase methods return strongly typed results
+const supabase = createClient();
+  const { file, bucket, path, userId } = params;
   const uniqueFilename = generateUniqueFilename(userId, file.name);
-  const fullPath = `${path}/${uniqueFilename}`;
-
-  // Sanitize path
-  const sanitizedPath = fullPath
+  const fullPath = `${path}/${uniqueFilename}`
     .replace(/\s+/g, "-")
     .replace(/[^a-zA-Z0-9\-_.\/]/g, "");
-
-  console.log("Uploading image:", {
-    originalPath: fullPath,
-    sanitizedPath,
-    fileName: file.name,
-    fileSize: file.size,
-    fileType: file.type,
-  });
 
   // Upload file
   const { data, error } = await supabase.storage
     .from(bucket)
-    .upload(sanitizedPath, file, {
+    .upload(fullPath, file, {
       cacheControl: "3600",
-      upsert: true, // Allow replacing existing files
+      upsert: true,
       contentType: file.type,
     });
-
   if (error) {
-    console.error("Upload error:", error);
     throw new Error(`Failed to upload image: ${error.message}`);
   }
 
@@ -109,176 +97,137 @@ async function uploadImageToStorage({
   const { data: urlData } = supabase.storage
     .from(bucket)
     .getPublicUrl(data.path);
-
-  console.log("Image uploaded successfully:", urlData.publicUrl);
   return urlData.publicUrl;
 }
 
-// Update provider profile with new image URL and optional banner adjustments
-async function updateProviderImage({
-  userId,
-  imageType,
-  imageUrl,
-  bannerAdjustments,
-}: UpdateProviderImageParams): Promise<void> {
-  const supabase = createClient();
+/**
+ * Update the provider record with a new logo or banner URL.
+ */
+async function updateProviderImage(params: {
+  userId: string;
+  imageType: "logo" | "banner";
+  imageUrl: string;
+  bannerAdjustments?: BannerAdjustments | null;
+}): Promise<void> {
+const supabase = createClient();
+  const { userId, imageType, imageUrl, bannerAdjustments } = params;
 
-  const updateData =
-    imageType === "logo"
-      ? { logo_url: imageUrl }
-      : {
-          banner_image: imageUrl,
-          ...(bannerAdjustments !== undefined && {
-            banner_adjustments: bannerAdjustments,
-          }),
-        };
+  // Build update object using the generated ProviderUpdate type
+  let updateData: ProviderUpdate;
+  if (imageType === "logo") {
+    updateData = { logo_url: imageUrl };
+  } else {
+    updateData = {
+      banner_image: imageUrl,
+      banner_adjustments: bannerAdjustments ?? null,
+    };
+  }
 
   const { error } = await supabase
     .from("providers")
     .update(updateData)
     .eq("user_id", userId);
-
   if (error) {
-    console.error("Database update error:", error);
     throw new Error(`Failed to update ${imageType}: ${error.message}`);
   }
-
-  console.log(`${imageType} updated successfully in database`, {
-    imageUrl,
-    ...(bannerAdjustments && { bannerAdjustments }),
-  });
 }
 
-// Hook for uploading logo
+/* ------------------------------------------------------------------ */
+/* Hooks                                                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Upload a logo (max 2 MB) to Supabase Storage and update the provider.
+ */
 export function useUploadLogo() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async ({
-      file,
-      userId,
-    }: {
-      file: File;
-      userId: string;
-    }) => {
-      // Validate file
-      const validation = validateImageFile(file, 2); // 2MB limit for logo
-      if (!validation.valid) {
-        throw new Error(validation.error);
-      }
-
-      // Upload to storage
+  return useMutation<string, Error, { file: File; userId: string }>({
+    mutationFn: async ({ file, userId }) => {
+      const { valid, error } = validateImageFile(file, 2);
+      if (!valid) throw new Error(error);
       const imageUrl = await uploadImageToStorage({
         file,
         bucket: "provider-assets",
         path: "logos",
         userId,
       });
-
-      // Update database
       await updateProviderImage({
         userId,
         imageType: "logo",
         imageUrl,
       });
-
       return imageUrl;
     },
-    onSuccess: (imageUrl) => {
+    onSuccess: async (imageUrl) => {
       toast.success("Logo uploaded successfully");
-      queryClient.invalidateQueries({ queryKey: ["provider-profile"] });
+      // Await invalidation to avoid dangling promises
+      await queryClient.invalidateQueries({ queryKey: ["provider-profile"] });
       return imageUrl;
     },
-    onError: (error: Error) => {
-      toast.error(error.message || "Failed to upload logo");
-      console.error("Logo upload error:", error);
+    onError: (err) => {
+      toast.error(err.message || "Failed to upload logo");
+      console.error("Logo upload error:", err);
     },
   });
 }
 
-// Hook for uploading banner with adjustments
+/**
+ * Upload a banner (max 5 MB) to Supabase Storage and update the provider.
+ */
 export function useUploadBanner() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async ({
-      file,
-      userId,
-      adjustments,
-    }: {
-      file: File;
-      userId: string;
-      adjustments?: BannerAdjustments;
-    }) => {
-      // Validate file
-      const validation = validateImageFile(file, 5); // 5MB limit for banner
-      if (!validation.valid) {
-        throw new Error(validation.error);
-      }
-
-      // Upload to storage
+  return useMutation<string, Error, { file: File; userId: string; adjustments?: BannerAdjustments }>({
+    mutationFn: async ({ file, userId, adjustments }) => {
+      const { valid, error } = validateImageFile(file, 5);
+      if (!valid) throw new Error(error);
       const imageUrl = await uploadImageToStorage({
         file,
         bucket: "provider-assets",
         path: "banners",
         userId,
       });
-
-      // Update database with image URL and adjustments
       await updateProviderImage({
         userId,
         imageType: "banner",
         imageUrl,
-        bannerAdjustments: adjustments || null,
+        bannerAdjustments: adjustments ?? null,
       });
-
       return imageUrl;
     },
-    onSuccess: (imageUrl) => {
+    onSuccess: async (imageUrl) => {
       toast.success("Banner uploaded successfully");
-      queryClient.invalidateQueries({ queryKey: ["provider-profile"] });
+      await queryClient.invalidateQueries({ queryKey: ["provider-profile"] });
       return imageUrl;
     },
-    onError: (error: Error) => {
-      toast.error(error.message || "Failed to upload banner");
-      console.error("Banner upload error:", error);
+    onError: (err) => {
+      toast.error(err.message || "Failed to upload banner");
+      console.error("Banner upload error:", err);
     },
   });
 }
 
-// Hook for deleting image from storage
+/**
+ * Delete an image from Supabase Storage.
+ */
 export function useDeleteImage() {
-  return useMutation({
-    mutationFn: async ({
-      imageUrl,
-      bucket,
-    }: {
-      imageUrl: string;
-      bucket: string;
-    }) => {
-      const supabase = createClient();
-
-      // Extract path from URL
+  return useMutation<void, Error, { imageUrl: string; bucket: string }>({
+    mutationFn: async ({ imageUrl, bucket }) => {
+const supabase = createClient();
       const urlParts = imageUrl.split(`/${bucket}/`);
       if (urlParts.length < 2) {
         throw new Error("Invalid image URL");
       }
-
       const path = urlParts[1];
-
       const { error } = await supabase.storage.from(bucket).remove([path]);
-
       if (error) {
-        console.error("Delete error:", error);
         throw new Error(`Failed to delete image: ${error.message}`);
       }
-
-      console.log("Image deleted successfully");
     },
-    onError: (error: Error) => {
-      toast.error(error.message || "Failed to delete image");
-      console.error("Image delete error:", error);
+    onError: (err) => {
+      toast.error(err.message || "Failed to delete image");
+      console.error("Image delete error:", err);
     },
   });
 }
-

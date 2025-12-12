@@ -2,7 +2,7 @@
  * API-related type definitions for CateringHub
  */
 
-import type { Database } from './supabase'
+import type { Database, Tables } from './supabase'
 
 // Generic API response types
 export interface SupabaseResponse<T> {
@@ -20,12 +20,25 @@ export interface SupabaseError {
   code?: string
 }
 
+// Supabase table names (type-safe)
+export type TableName = keyof Database['public']['Tables'] & string
+type TableRow<Table extends TableName> = Tables<Table>
+type QueryFilterValue<Table extends TableName> =
+  | TableRow<Table>[keyof TableRow<Table>]
+  | string
+  | number
+  | boolean
+  | null
+  | string[]
+  | number[]
+  | boolean[]
+
 // Query options for Supabase operations
-export interface QueryOptions {
+export interface QueryOptions<Table extends TableName = TableName> {
   columns?: string
-  filter?: Record<string, unknown>
+  filter?: Partial<Record<keyof TableRow<Table>, QueryFilterValue<Table>>>
   order?: {
-    column: string
+    column: keyof TableRow<Table>
     ascending?: boolean
   }
   limit?: number
@@ -46,9 +59,6 @@ export interface SearchOptions extends PaginationOptions {
   searchColumns?: string[]
   filters?: Record<string, unknown>
 }
-
-// Supabase table names (type-safe)
-export type TableName = keyof Database['public']['Tables']
 
 // Generic CRUD operation types
 export interface CreateOperation<T> {
@@ -184,11 +194,6 @@ export interface RPCResponse<T extends RPCFunction> {
   error: SupabaseError | null
 }
 
-// Specific RPC function return types
-/**
- * Return type for the get_user_metadata RPC function
- * This function retrieves user metadata from auth.users table
- */
 export interface UserMetadata {
   id: string
   email: string | null

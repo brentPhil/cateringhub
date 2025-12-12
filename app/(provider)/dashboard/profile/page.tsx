@@ -152,7 +152,6 @@ export default function ProfilePage() {
       const selectedId = primary?.id || locations[0].id;
       setActiveLocationId(selectedId);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locations]); // Only depend on locations, not activeLocationId
 
   // Select location for coverage: 1) active by ID, 2) primary, 3) first
@@ -275,7 +274,7 @@ export default function ProfilePage() {
           }
         }
 
-        toast.success(result.message || "Profile updated successfully");
+        toast.success(result?.message || "Profile updated successfully");
 
         const refetchResult = await refetch();
 
@@ -325,7 +324,7 @@ export default function ProfilePage() {
   // Show error state with helpful message for no membership
   if (error) {
     const errorMessage =
-      error instanceof Error ? error.message : "An error occurred";
+      error.message;
     const isNoMembership = errorMessage.includes("not a member");
 
     return (

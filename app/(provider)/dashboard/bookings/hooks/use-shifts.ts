@@ -11,7 +11,7 @@ import {
   deleteShift as deleteShiftAction,
 } from "../actions/shifts";
 import { Tables } from "@/types/supabase";
-import type { UserMetadata } from "@/types/api.types";
+import { UserMetadata } from "@/types/api.types";
 
 // Types
 export type Shift = Tables<"shifts"> & {
@@ -107,8 +107,7 @@ export function useShifts(bookingId: string | undefined) {
               };
             }
 
-            const metadata =
-              (authUser.raw_user_meta_data as Record<string, unknown>) || {};
+            const metadata = (authUser.raw_user_meta_data) || {};
 
             const full_name =
               (metadata.full_name as string) ||
@@ -263,8 +262,8 @@ export function useCreateShift(bookingId: string) {
       }
       toast.error(error instanceof Error ? error.message : "Failed to create shift");
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: shiftsKeys.list(bookingId) });
+    onSuccess: async (_, variables) => {
+      await queryClient.invalidateQueries({ queryKey: shiftsKeys.list(bookingId) });
       const assigneeType = variables.userId ? "Team member" : "Worker";
       toast.success(`${assigneeType} assigned successfully`);
     },
@@ -296,8 +295,8 @@ export function useCreateBulkShifts(bookingId: string) {
 
       return result.data;
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: shiftsKeys.list(bookingId) });
+    onSuccess: async (data) => {
+      await queryClient.invalidateQueries({ queryKey: shiftsKeys.list(bookingId) });
 
       if (data) {
         const message = data.skipped > 0
@@ -357,8 +356,8 @@ export function useCheckIn(bookingId: string) {
       }
       toast.error(error instanceof Error ? error.message : "Failed to check in");
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: shiftsKeys.list(bookingId) });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: shiftsKeys.list(bookingId) });
       toast.success("Checked in successfully");
     },
   });
@@ -408,8 +407,8 @@ export function useCheckOut(bookingId: string) {
       }
       toast.error(error instanceof Error ? error.message : "Failed to check out");
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: shiftsKeys.list(bookingId) });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: shiftsKeys.list(bookingId) });
       toast.success("Checked out successfully");
     },
   });
@@ -450,8 +449,8 @@ export function useDeleteShift(bookingId: string) {
       }
       toast.error(error instanceof Error ? error.message : "Failed to delete shift");
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: shiftsKeys.list(bookingId) });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: shiftsKeys.list(bookingId) });
       toast.success("Shift removed successfully");
     },
   });

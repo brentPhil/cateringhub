@@ -24,23 +24,21 @@ export function useAssignBookingTeam(providerId: string, bookingId: string) {
       );
 
       if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(
-          error?.error?.message || "Failed to assign team to booking"
-        );
+        const error = await response.json();
+        throw new Error(error.error?.message || "Failed to assign team to booking");
       }
 
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       // Refresh bookings lists and any cached detail
-      queryClient.invalidateQueries({ queryKey: bookingsKeys.lists() });
+      await queryClient.invalidateQueries({ queryKey: bookingsKeys.lists() });
       // Refresh shifts for this booking so roster appears immediately
-      queryClient.invalidateQueries({ queryKey: shiftsKeys.list(bookingId) });
+      await queryClient.invalidateQueries({ queryKey: shiftsKeys.list(bookingId) });
       toast.success("Team assigned to booking");
     },
     onError: (error) => {
-      toast.error(error.message || "Failed to assign team");
+      toast.error(error.message || "Failed to assign team to booking");
     },
   });
 }

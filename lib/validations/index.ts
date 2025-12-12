@@ -5,6 +5,21 @@
 import { z } from 'zod'
 import { isValidPhoneNumber } from 'libphonenumber-js'
 
+// Helper to create file field schema that handles edge cases
+// This schema accepts File | string | undefined | null
+// and rejects invalid types like empty arrays or plain objects
+const createFileFieldSchema = () => {
+  return z
+    .union([
+      z.instanceof(File),
+      z.string(),
+      z.undefined(),
+      z.null(),
+    ])
+    .optional()
+    .nullable();
+};
+
 // Common validation patterns
 const emailSchema = z.string().email('Please enter a valid email address')
 const passwordSchema = z
@@ -131,99 +146,6 @@ export const providerProfileFormSchema = z.object({
     .optional(),
 })
 
-// Helper to create file field schema that handles edge cases
-// This schema accepts File | string | undefined | null
-// and rejects invalid types like empty arrays or plain objects
-const createFileFieldSchema = () => {
-  return z
-    .union([
-      z.instanceof(File),
-      z.string(),
-      z.undefined(),
-      z.null(),
-    ])
-    .optional()
-    .nullable();
-};
-
-// Provider onboarding schemas - Multi-step
-export const providerBusinessInfoSchema = z.object({
-  businessName: z.string().min(2, 'Business name must be at least 2 characters'),
-  businessAddress: z.string().optional().or(z.literal('')),
-  logo: createFileFieldSchema(),
-})
-
-export const providerServiceDetailsSchema = z.object({
-  description: z
-    .string()
-    .min(10, 'Description must be at least 10 characters')
-    .max(500, 'Description must be less than 500 characters'),
-  serviceAreas: z
-    .array(z.string().min(1, 'Service area cannot be empty'))
-    .min(1, 'At least one service area is required'),
-  sampleMenu: createFileFieldSchema(),
-})
-
-export const providerContactInfoSchema = z.object({
-  contactPersonName: z.string().min(2, 'Contact person name must be at least 2 characters'),
-  mobileNumber: z
-    .string()
-    .min(1, 'Mobile number is required')
-    .refine(isValidPhoneNumber, { message: 'Please enter a valid phone number' }),
-  socialMediaLinks: z.object({
-    facebook: z.string().optional().or(z.literal('')).refine(val => !val || val === '' || z.string().url().safeParse(val).success, {
-      message: 'Please enter a valid Facebook URL or leave empty'
-    }),
-    instagram: z.string().optional().or(z.literal('')).refine(val => !val || val === '' || z.string().url().safeParse(val).success, {
-      message: 'Please enter a valid Instagram URL or leave empty'
-    }),
-    website: z.string().optional().or(z.literal('')).refine(val => !val || val === '' || z.string().url().safeParse(val).success, {
-      message: 'Please enter a valid Website URL or leave empty'
-    }),
-  }).optional(),
-})
-
-// Combined schema for final submission
-export const providerOnboardingSchema = providerBusinessInfoSchema
-  .merge(providerServiceDetailsSchema)
-  .merge(providerContactInfoSchema)
-
-// Enhanced schema for the streamlined onboarding flow with comprehensive validation
-export const simpleProviderOnboardingSchema = z.object({
-  businessName: z
-    .string()
-    .min(2, 'Business name must be at least 2 characters')
-    .max(100, 'Business name must be less than 100 characters')
-    .regex(/^[a-zA-Z0-9\s&'-]+$/, 'Business name contains invalid characters')
-    .refine(val => val.trim().length > 0, 'Business name cannot be empty'),
-  description: z
-    .string()
-    .min(10, 'Description must be at least 10 characters')
-    .max(500, 'Description must be less than 500 characters')
-    .refine(val => val.trim().length >= 10, 'Description must contain meaningful content'),
-  serviceAreas: z
-    .string()
-    .min(1, 'Service areas are required')
-    .refine(val => {
-      const areas = val.split(',').map(area => area.trim()).filter(area => area.length > 0);
-      return areas.length > 0;
-    }, 'Please provide at least one service area')
-    .refine(val => {
-      const areas = val.split(',').map(area => area.trim()).filter(area => area.length > 0);
-      return areas.every(area => area.length >= 2);
-    }, 'Each service area must be at least 2 characters'),
-  contactPersonName: z
-    .string()
-    .min(2, 'Contact person name must be at least 2 characters')
-    .max(50, 'Contact person name must be less than 50 characters')
-    .regex(/^[a-zA-Z\s'-]+$/, 'Contact person name can only contain letters, spaces, hyphens, and apostrophes')
-    .refine(val => val.trim().length > 0, 'Contact person name cannot be empty'),
-  mobileNumber: z
-    .string()
-    .min(1, 'Mobile number is required')
-    .refine(isValidPhoneNumber, { message: 'Please enter a valid phone number' }),
-})
-
 // Contact form schema
 export const contactSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -265,15 +187,6 @@ export const searchSchema = z.object({
   filters: z.record(z.unknown()).optional(),
 })
 
-// Settings schemas
-export const notificationSettingsSchema = z.object({
-  emailNotifications: z.boolean(),
-  pushNotifications: z.boolean(),
-  marketingEmails: z.boolean(),
-  bookingReminders: z.boolean(),
-  reviewNotifications: z.boolean(),
-})
-
 export const privacySettingsSchema = z.object({
   profileVisibility: z.enum(['public', 'private', 'contacts']),
   showEmail: z.boolean(),
@@ -289,29 +202,19 @@ export const accountSettingsSchema = z.object({
   dateFormat: z.string().min(1, 'Please select a date format'),
   theme: z.enum(['light', 'dark', 'system']),
 })
-
-// File upload schema
-export const fileUploadSchema = z.object({
-  file: z
-    .any()
-    .refine(
-      (file) => typeof File !== 'undefined' && file instanceof File,
-      'Must be a valid file'
-    )
-    .refine(file => file.size <= 5 * 1024 * 1024, 'File size must be less than 5MB')
-    .refine(
-      file => ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type),
-      'File must be an image (JPEG, PNG, WebP, or GIF)'
-    ),
-  alt: z.string().optional(),
-})
-
 // Invitation schema
 export const invitationSchema = z.object({
   email: emailSchema,
   role: z.enum(['user', 'admin', 'catering_provider']),
   provider_role: z.enum(['owner', 'staff']).optional(),
   message: z.string().max(500, 'Message must be less than 500 characters').optional(),
+})
+
+// Provider onboarding schemas - Multi-step
+export const providerBusinessInfoSchema = z.object({
+  businessName: z.string().min(2, 'Business name must be at least 2 characters'),
+  businessAddress: z.string().optional().or(z.literal('')),
+  logo: createFileFieldSchema(),
 })
 
 // Two-factor authentication schema
@@ -372,13 +275,10 @@ export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>
 export type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>
 export type ChangePasswordFormData = z.infer<typeof changePasswordSchema>
 export type ProfileFormData = z.infer<typeof profileSchema>
-export type ProviderOnboardingFormData = z.infer<typeof providerOnboardingSchema>
 export type ContactFormData = z.infer<typeof contactSchema>
 export type SearchFormData = z.infer<typeof searchSchema>
-export type NotificationSettingsFormData = z.infer<typeof notificationSettingsSchema>
 export type PrivacySettingsFormData = z.infer<typeof privacySettingsSchema>
 export type AccountSettingsFormData = z.infer<typeof accountSettingsSchema>
-export type FileUploadFormData = z.infer<typeof fileUploadSchema>
 export type InvitationFormData = z.infer<typeof invitationSchema>
 export type TwoFactorSetupFormData = z.infer<typeof twoFactorSetupSchema>
 export type TwoFactorVerificationFormData = z.infer<typeof twoFactorVerificationSchema>

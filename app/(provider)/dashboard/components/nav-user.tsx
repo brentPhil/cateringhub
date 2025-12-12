@@ -47,8 +47,6 @@ export function NavUser({
     return pathname === path || pathname.startsWith(`${path}/`);
   };
 
-  // We'll use the form action directly for logout
-
   return (
     <SidebarMenu>
       <SidebarMenuItem>
